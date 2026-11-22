@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.4** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
+Version **1.0.5** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
@@ -27,10 +27,10 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 
 ## Game rules
 
-- 3 levels plus the boss arena: TC Wollerau clay courts, Krebsbach creek and sports fields, the clubhouse and indoor hall, then the giant mutant crayfish.
+- 3 levels plus the boss arena: TC Wollerau clay courts, Krebsbach creek and sports fields, the clubhouse and indoor hall (with the Einsiedler bar: a chrome tap tower with red-and-white Einsiedler handles, an EINSIEDLER sign, beers and beer mats on the counter, three regulars on stools who lift their glasses and clink "PROST!", and a blonde waitress pulling beers behind the counter), then the giant mutant crayfish.
 - 8 health points and 3 lives. The lives counter includes the current life, so the game ends when the counter would reach 0. You respawn at the last checkpoint (Swiss flag) with full health, but the Mega Blaster power-up is lost.
 - Pickups: tennis balls (50 points), trophies (1000), Rivella (+2 HP), Cervelat (+3 HP), extra life (hero head), key cards (red/blue/green open doors of the same colour), Mega Blaster (faster shots, double damage).
-- Enemies: lawyers (throw briefcases), mutant crayfish (realistic glossy red-brown crayfish; they leap and hide in the creek), gardener-punks with a petrol lawn mower (mohawk, blunt; its two-stroke engine putt-putts louder as you get closer and puffs exhaust smoke, revs in a black cloud and charges at full throttle, throwing grass and stones; it sputters and dies with the punk).
+- Enemies: lawyers (sharp women in skirt suits with short hair; they throw Swiss law books — OR, ZGB, StGB, SchKG — that burst into pages with an article like "ART. 41 OR", and call out legal one-liners such as "OBJECTION!" or "SEE YOU IN BERN!"), mutant crayfish (realistic glossy red-brown crayfish; they leap and hide in the creek), gardener-punks with a petrol lawn mower (mohawk, blunt; its two-stroke engine putt-putts louder as you get closer and puffs exhaust smoke, revs in a black cloud and charges at full throttle, throwing grass and stones; it sputters and dies with the punk).
 - Boss: a giant red crayfish. In its arena Buck fights with a giant **disc cutter** that fires spinning saw blades (2.5 per second, 3 damage each; they also cut crayfish on the ground) and keeps it after respawning there. Blades bounce off the shell and closed claws in a shower of sparks: hit the face when the claws are raised. Below half health it attacks faster. It summons small crayfish only 3 times per fight; after that it alternates claw slams and bubble sprays. The arena is two screens wide, and the camera keeps Buck near the left edge so the view shows the arena ahead and the boss. Platforms on three heights and two ladders take Buck above the floor shockwave, and the lowest ledge in front of the boss lines up with its face. Wooden cover crates stop the shockwave and bubbles, and Buck can kneel behind them or stand on them. They also block his own shots. Sturdy crates (metal bands) last forever; plain ones crack and burst after 6 blaster hits, 2 saw blades or 2 shockwaves. Summoned crayfish always appear on screen. On the highest platform waits the **Mega Cutter**: every shot fires two glowing blades (one level, one angled up) of 5 damage each. It is lost with a life and comes back 20 s after it was taken. When the arena starts, the camera pans over to show the boss and back; Jump or Fire skips it.
 
 ## Look
@@ -99,6 +99,7 @@ src/level.js             tile maps, themed tiles, camera, collision
 src/player.js            the hero
 src/enemies.js           lawyers, crayfish, gardener-punks, projectiles
 src/props.js             clubhouse interior props (bar, restaurant, club decoration)
+src/bar.js               clubhouse bar scene: regulars and the waitress (decoration)
 src/boss.js              giant mutant crayfish
 src/hud.js, screens.js   HUD and title/intro/complete/pause/game-over/victory screens
 src/main.js              game state machine and the fixed 60 Hz loop
@@ -128,6 +129,8 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 | `y` `Y` | potted plant (1×2), club plaque (4×2) | | |
 | `Q` `@` `%` | umpire chair (2×3), ball machine (2×1), ball basket | `V` `z` `[` | racket bag (2×1), player bench (2×1), scoreboard (5×2) |
 | `J` `&` | court drag brush (2×1), water cooler (1×2) | `*` `^` | toxic waste drum, skull "TOXIC" warning sign (2×2) |
+| `O` | bar regular on a stool (decoration, clubhouse bar) | `W` | blonde waitress (put in the cell above the counter; decoration) |
+| `I` | "EINSIEDLER" back-bar sign (4×1) | | |
 | `F` | cheering tennis fan (background, stands on floor or a platform; 8–10 per level, 4–5 in the arena) | `D` `d` | cover crate: sturdy (indestructible), breakable (6 strength) |
 
 Multi-tile props are placed by their top-left cell; the rest of their footprint must be `.` (the build warns otherwise). The header line `interior: x0-x1` draws columns x0–x1 as the clubhouse interior (wallpaper and wood panelling instead of the photo; windows still show the photo).

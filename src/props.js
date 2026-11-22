@@ -14,6 +14,7 @@ const PROP_DEFS = {
   j: { w: 1, h: 1, name: "hanging lamp" },
   y: { w: 1, h: 2, name: "potted plant" },
   Y: { w: 4, h: 2, name: "club plaque" },
+  I: { w: 4, h: 1, name: "Einsiedler sign" },
   // tennis court equipment (level 1)
   Q: { w: 2, h: 3, name: "umpire chair" },
   "@": { w: 2, h: 1, name: "ball machine" },
@@ -181,6 +182,13 @@ const PROP_DRAW = {
     pxEllipse(g, 16, 5, 3, 3, "#101010"); r(g, 15, 5, 1, 1, "#ffd020"); r(g, 17, 5, 1, 1, "#ffd020");   // skull
     r(g, 14, 8, 5, 1, "#101010"); r(g, 12, 3, 1, 1, "#101010"); r(g, 20, 7, 1, 1, "#101010");
     drawTextTo(g, "TOXIC", 2, 10, "#101010");
+  },
+  I(g) {   // "EINSIEDLER" back-bar sign (4x1): wood board, gold frame, cream letters on dark red
+    r(g, 0, 1, 64, 14, "#3a2010");
+    r(g, 1, 2, 62, 12, "#c8a040");
+    r(g, 2, 3, 60, 10, "#6a1010");
+    r(g, 2, 3, 60, 1, "#8a2020");
+    drawTextTo(g, "EINSIEDLER", 3, 5, "#f4e8c8");
   },
   Y(g) {   // brass club plaque (4x2)
     r(g, 2, 2, 60, 28, "#8a6a2a"); r(g, 4, 4, 56, 24, "#c8a040"); r(g, 4, 4, 56, 1, "#e8d080");

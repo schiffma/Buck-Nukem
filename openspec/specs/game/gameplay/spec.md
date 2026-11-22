@@ -184,7 +184,7 @@ While the player holds Down and the hero stands on the ground (not on a ladder t
 - **THEN** the shot flies over the crayfish
 
 #### Scenario: Ducking under a briefcase
-- **WHEN** a projectile flies at the hero's chest height while he kneels
+- **WHEN** a projectile such as a thrown law book flies at the hero's chest height while he kneels
 - **THEN** it passes over him and he takes no damage
 
 #### Scenario: Still hurt by contact

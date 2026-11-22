@@ -114,6 +114,17 @@ function buildFanSprites() {
 }
 
 // ---- behaviour: idle cheer, face Buck, react to his successes ----
+// Comic speech bubble (fans and lawyers): cream box with a dark outline at (x, y), w x h, red
+// text, and a tail pointing down at screen x tx.
+function drawSpeechBubble(text, x, y, w, h, tx) {
+  fillRect(x - 1, y - 1, w + 2, h + 2, "#101018");                 // outline
+  fillRect(x, y, w, h, "#fffbe8");
+  tx = clamp(tx, x + 3, x + w - 4);
+  fillRect(tx - 1, y + h, 3, 1, "#fffbe8"); fillRect(tx, y + h + 1, 1, 1, "#fffbe8");   // tail
+  fillRect(tx - 2, y + h, 1, 1, "#101018"); fillRect(tx + 2, y + h, 1, 1, "#101018"); fillRect(tx - 1, y + h + 1, 1, 1, "#101018"); fillRect(tx + 1, y + h + 1, 1, 1, "#101018"); fillRect(tx, y + h + 2, 1, 1, "#101018");
+  drawText(text, x + 3, y + 2, "#c01818");
+}
+
 const Fans = {
   list: [], lastCheer: -99, lastWhistle: -99, time: 0, hearts: [], decks: {}, shown: [],
   spawn(level, levelIndex) {
@@ -246,15 +257,7 @@ const Fans = {
     return out;
   },
   drawBubble(camX, camY) {
-    for (const b of this.layoutBubbles(camX, camY)) {
-      const x = b.x, y = b.y, w = b.w, h = b.h;
-      fillRect(x - 1, y - 1, w + 2, h + 2, "#101018");                 // outline
-      fillRect(x, y, w, h, "#fffbe8");
-      const tx = clamp(b.tx, x + 3, x + w - 4);
-      fillRect(tx - 1, y + h, 3, 1, "#fffbe8"); fillRect(tx, y + h + 1, 1, 1, "#fffbe8");   // tail
-      fillRect(tx - 2, y + h, 1, 1, "#101018"); fillRect(tx + 2, y + h, 1, 1, "#101018"); fillRect(tx - 1, y + h + 1, 1, 1, "#101018"); fillRect(tx + 1, y + h + 1, 1, 1, "#101018"); fillRect(tx, y + h + 2, 1, 1, "#101018");
-      drawText(b.text, x + 3, y + 2, "#c01818");
-    }
+    for (const b of this.layoutBubbles(camX, camY)) drawSpeechBubble(b.text, b.x, b.y, b.w, b.h, b.tx);
   },
   draw(camX, camY) {
     for (const f of this.list) {

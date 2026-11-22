@@ -7,6 +7,7 @@
 //  L  lawyer          K  crayfish       M  gardener-punk   X  boss
 //  o  tennis ball     t  trophy         h  Rivella         s  Cervelat
 //  +  extra life      w  weapon power-up
+//  O  bar guy (seated regular)   W  waitress (behind the counter)   I  Einsiedler sign (4x1 prop)
 //  D  sturdy crate (solid, indestructible)   d  breakable crate (solid, CRATE_HP strength)
 //  n  net  f  fence  l  lamp  b  bush  v  window   (background decoration)
 //  Clubhouse: a bar counter, A counter with taps, T table (one-way platforms);
@@ -19,7 +20,7 @@ const SOLID_CH = "#BRUGDd";
 const CRATE_HP = 6;               // breakable crate strength (blaster 1, blade 3, shockwave 3)
 const DECO_CH = "nflbv";
 const PLATFORM_CH = "=aAT";
-const ENTITY_CH = "PLKMXortuhsg+wCEF";
+const ENTITY_CH = "PLKMXortuhsg+wCEFOW";   // O bar guy, W waitress (clubhouse bar)
 
 // Water palettes: clear blue by default, toxic red in the Krebsbach creek.
 const WATER_BLUE = { deep: "rgba(40,110,200,0.88)", mid: "rgba(120,190,255,0.6)", surface: "#cfe8ff",
@@ -151,16 +152,43 @@ function buildTileset(themeName) {
     g.fillStyle = "#5e3818"; g.fillRect(1, 5, 6, 9); g.fillRect(9, 5, 6, 9);
     g.fillStyle = "#c8a040"; g.fillRect(0, 13, 16, 1);         // brass foot rail
   });
+  // Einsiedler tap tower (16x28, 12 px above the counter): chrome column and crossbar,
+  // 3 tall red/white striped tap handles with a little red shield, spouts and a drip tray
   ts.counterTaps = (function () {
-    const c = makeCanvas(TILE, TILE + 8), g = c.getContext("2d");
-    g.drawImage(ts.counter, 0, 8);
-    g.fillStyle = "#c8c8d0"; g.fillRect(3, 1, 10, 2);           // tap tower
-    [4, 8, 12].forEach(function (x, i) {
-      g.fillStyle = "#9a9aa4"; g.fillRect(x - 1, 3, 2, 5);
-      g.fillStyle = ["#d8a020", "#2a1a10", "#e8e0c0"][i]; g.fillRect(x - 1, 0, 2, 2);   // tap handles
+    const c = makeCanvas(TILE, TILE + 12), g = c.getContext("2d");
+    g.drawImage(ts.counter, 0, 12);
+    g.fillStyle = "#101018"; g.fillRect(1, 6, 14, 4);            // crossbar outline
+    g.fillStyle = "#c8ccd4"; g.fillRect(2, 7, 12, 2);            // chrome crossbar
+    g.fillStyle = "#f0f4f8"; g.fillRect(2, 7, 12, 1);
+    g.fillStyle = "#8a8e98"; g.fillRect(7, 9, 2, 3);             // column into the counter
+    [3, 7, 11].forEach(function (x) {
+      g.fillStyle = "#101018"; g.fillRect(x - 1, 0, 4, 7);       // handle outline
+      for (let y = 1; y < 6; y++) { g.fillStyle = y % 2 ? "#d01818" : "#f4f0e8"; g.fillRect(x, y, 2, 1); }   // red/white stripes
+      g.fillStyle = "#e02020"; g.fillRect(x, 0, 2, 1);           // shield cap
+      g.fillStyle = "#ffffff"; g.fillRect(x, 3, 1, 1);           // tiny white cross on the shield
+      g.fillStyle = "#9a9ea8"; g.fillRect(x, 9, 2, 2);           // spout
     });
+    g.fillStyle = "#3a3e48"; g.fillRect(1, 11, 14, 1);           // drip tray
+    g.fillStyle = "#6a6e78"; g.fillRect(2, 11, 12, 1);
     return c;
   })();
+  // counter variants: a beer on a beer mat, two beer mats (plain counter stays variant 0)
+  ts.counterGlass = (function () {
+    const c = makeCanvas(TILE, TILE + 6), g = c.getContext("2d");
+    g.drawImage(ts.counter, 0, 6);
+    g.fillStyle = "#101018"; g.fillRect(4, 0, 6, 7);             // glass outline
+    g.fillStyle = "#d8902a"; g.fillRect(5, 2, 4, 4);             // amber beer
+    g.fillStyle = "#f8f4e8"; g.fillRect(5, 1, 4, 1);             // foam
+    g.fillStyle = "#ffd070"; g.fillRect(5, 3, 1, 2);             // highlight
+    g.fillStyle = "#f0e8d0"; g.fillRect(3, 6, 8, 1);             // beer mat
+    g.fillStyle = "#c81e1e"; g.fillRect(6, 6, 2, 1);
+    return c;
+  })();
+  ts.counterMats = tile(function (g) {
+    g.drawImage(ts.counter, 0, 0);
+    g.fillStyle = "#f0e8d0"; g.fillRect(2, 0, 5, 1); g.fillRect(10, 0, 5, 1);   // two beer mats
+    g.fillStyle = "#c81e1e"; g.fillRect(4, 0, 1, 1); g.fillRect(12, 0, 1, 1);
+  });
   ts.table = tile(function (g) {
     for (let x = 0; x < 16; x += 2) {                             // red/white checked cloth
       g.fillStyle = (x / 2) % 2 ? "#e8e0d0" : "#b01818"; g.fillRect(x, 0, 2, 2);
@@ -374,9 +402,13 @@ class Level {
         else if (ch === "d") img = this.crateStrength(tx, ty) <= CRATE_HP / 2 ? ts.crateCracked : ts.crate;
         else if (ch === "B") img = ts.alt[v];
         else if (ch === "=") img = ts.plat[v];
-        else if (ch === "a") img = ts.counter;
+        else if (ch === "a") {          // counter: plain, a beer on a mat, or two mats
+          const cv = v % 3;
+          if (cv === 1) { ctx.drawImage(ts.counterGlass, Math.round(sx), Math.round(sy) - 6); continue; }
+          img = cv === 2 ? ts.counterMats : ts.counter;
+        }
         else if (ch === "T") img = ts.table;
-        else if (ch === "A") { ctx.drawImage(ts.counterTaps, Math.round(sx), Math.round(sy) - 8); continue; }
+        else if (ch === "A") { ctx.drawImage(ts.counterTaps, Math.round(sx), Math.round(sy) - 12); continue; }
         else if (ts.door[ch]) img = ts.door[ch];
       } else if (layer === "water" && ch === "~") {
         const top = !this.isWater(tx, ty - 1);

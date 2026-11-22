@@ -32,7 +32,7 @@ MAX_BYTES = 2 * 1024 * 1024
 JS_ORDER = [
     "config.js", "assets.js", "render.js", "film.js", "input.js", "font.js",
     "sprites.js", "fx.js", "audio.js", "level.js", "props.js", "player.js",
-    "enemies.js", "boss.js", "fans.js", "hud.js", "screens.js", "main.js", "test.js",
+    "enemies.js", "boss.js", "fans.js", "bar.js", "hud.js", "screens.js", "main.js", "test.js",
 ]
 
 REQUIRED_IMAGES = [
@@ -268,7 +268,8 @@ def parse_level(path):
 # Multi-tile clubhouse props (width, height in tiles), anchored at their top-left cell.
 # Must match PROP_DEFS in src/props.js.
 PROP_SIZES = {"N": (2, 1), "Z": (2, 2), "m": (6, 2), "k": (3, 2), "y": (1, 2), "Y": (4, 2),
-              "Q": (2, 3), "@": (2, 1), "V": (2, 1), "z": (2, 1), "[": (5, 2), "J": (2, 1), "&": (1, 2), "^": (2, 2)}
+              "Q": (2, 3), "@": (2, 1), "V": (2, 1), "z": (2, 1), "[": (5, 2), "J": (2, 1), "&": (1, 2), "^": (2, 2),
+              "I": (4, 1)}
 
 
 def prop_overlaps(meta, name="level"):

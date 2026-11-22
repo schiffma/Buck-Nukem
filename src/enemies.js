@@ -20,18 +20,50 @@ function heroInFront(e, range, dyMax) {
 
 function spawnEnemyShot(s) { Game.enemyShots.push(s); }
 
+// Legal one-liners the lawyers call out when throwing (at most 20 characters, game font).
+const LAWYER_LINES = ["ART. 41 OR!", "OBJECTION!", "SEE YOU IN BERN!", "YOU'RE SUED!", "TERMS APPLY!", "SIGN HERE!",
+  "ZGB SAYS NO!", "SCHKG FOR YOU!", "OVERRULED!", "BILLABLE HOURS!", "ART. 8 ZGB, BUCK!", "STGB ART. 139!"];
+const LawyerTalk = {
+  deck: [],
+  line() {
+    if (!this.deck.length) {
+      this.deck = LAWYER_LINES.slice();
+      for (let i = this.deck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); const t = this.deck[i]; this.deck[i] = this.deck[k]; this.deck[k] = t; }
+    }
+    return this.deck.pop();
+  },
+  // a throw may come with a line: once per lawyerTalkCd per lawyer, one lawyer bubble at a time
+  maybe(e) {
+    if (e.talkCd > 0 || Math.random() >= CONFIG.lawyerTalkChance) return;
+    if (Game.enemies.some(function (o) { return o !== e && o.bubble && !o.dead; })) return;
+    e.bubble = { text: this.line(), t: CONFIG.lawyerTalkT };
+    e.talkCd = CONFIG.lawyerTalkCd;
+  },
+  draw(camX, camY) {
+    for (const e of Game.enemies) {
+      if (!e.bubble || e.dead) continue;
+      const w = textWidth(e.bubble.text) + 6, h = 11;
+      const cx = Math.round(e.x + e.w / 2 - camX), top = Math.round(e.y - camY + HUD_H) - h - 3;
+      const x = clamp(cx - Math.floor(w / 2), 2, W - w - 2);
+      drawSpeechBubble(e.bubble.text, x, Math.max(HUD_H + 2, top), w, h, cx);
+    }
+  },
+};
+
 const ENEMY_TYPES = {
   lawyer: {
     w: 12, h: 30, hp: CONFIG.lawyerHp, points: CONFIG.lawyerPoints, contact: 1,
     init(e) { e.vx = CONFIG.lawyerSpeed * e.face; e.cd = 0.8 + Math.random(); e.throwT = 0; },
     update(e, dt, level) {
       e.cd -= dt;
+      if (e.talkCd > 0) e.talkCd -= dt;
+      if (e.bubble && (e.bubble.t -= dt) <= 0) e.bubble = null;
       if (e.throwT > 0) {
         e.throwT -= dt; e.vx = 0;
         if (e.throwT <= 0.2 && !e.thrown) {
           e.thrown = true;
-          spawnEnemyShot({ kind: "briefcase", x: e.x + (e.face > 0 ? e.w : -10), y: e.y + 10, w: 10, h: 8,
-            vx: 125 * e.face, vy: -70, grav: 160, dmg: 1, t: 0 });
+          spawnEnemyShot({ kind: "lawbook", code: Math.floor(Math.random() * LAWBOOK_CODES.length),   // a Swiss law book
+            x: e.x + (e.face > 0 ? e.w : -10), y: e.y + 10, w: 10, h: 8, vx: 125 * e.face, vy: -70, grav: 160, dmg: 1, t: 0 });
           Sound.play("throw");
         }
         if (e.throwT <= 0) e.vx = CONFIG.lawyerSpeed * e.face;
@@ -39,6 +71,7 @@ const ENEMY_TYPES = {
         e.vx = CONFIG.lawyerSpeed * e.face;
         if (e.cd <= 0 && heroInFront(e, CONFIG.lawyerRange, 20)) {
           e.throwT = 0.6; e.thrown = false; e.cd = CONFIG.lawyerCooldown;
+          LawyerTalk.maybe(e);
         }
       }
       e.vy = Math.min(CONFIG.maxFall, e.vy + CONFIG.gravity * dt);
@@ -250,6 +283,14 @@ function updateEnemies(dt, level) {
   }
 }
 
+// A law book bursts into fluttering pages and the floating label names one of its articles.
+function burstBook(s) {
+  const b = LAWBOOK_CODES[s.code || 0], cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+  FX.spark(cx, cy, "#f4ecd0", 5, 70, 0.9, 90);
+  FX.spark(cx, cy, "#ffffff", 3, 60, 0.9, 90);
+  FX.text(cx, cy - 8, b.arts[Math.floor(Math.random() * b.arts.length)], b.cover === "#2a4ca0" ? "#7fa0ff" : b.cover);
+}
+
 function updateEnemyShots(dt, level) {
   const list = Game.enemyShots;
   for (let i = list.length - 1; i >= 0; i--) {
@@ -272,12 +313,13 @@ function updateEnemyShots(dt, level) {
       if (s.life !== undefined) { s.life -= dt; if (s.life <= 0) remove = true; }
       if (level.isSolid(Math.floor((s.x + s.w / 2) / TILE), Math.floor((s.y + s.h / 2) / TILE))) {
         remove = true; FX.spark(s.x + s.w / 2, s.y + s.h / 2, s.kind === "bubble" ? "#bfe6ff" : "#a07040", 6, 60, 0.3);
+        if (s.kind === "lawbook") burstBook(s);
       }
       if (s.y > level.pxH + 20 || s.x < Camera.x - 40 || s.x > Camera.x + W + 40) remove = true;
     }
     if (!remove && overlap(s, Player)) {
       // projectiles vanish on a successful hit; spray clouds and shockwaves persist
-      if (Player.hurt(s.dmg) && s.kind !== "shockwave") remove = true;
+      if (Player.hurt(s.dmg) && s.kind !== "shockwave") { remove = true; if (s.kind === "lawbook") burstBook(s); }
     }
     if (remove) list.splice(i, 1);
   }
@@ -334,9 +376,9 @@ function drawEnemies(camX, camY) {
 function drawEnemyShots(camX, camY) {
   for (const s of Game.enemyShots) {
     const sx = Math.round(s.x - camX), sy = Math.round(s.y - camY + HUD_H);
-    if (s.kind === "briefcase") {
-      const flip = Math.floor(s.t * 10) % 2;
-      ctx.drawImage(flip ? SPR.briefcase.l : SPR.briefcase.r, sx - SPR.briefcase.pad, sy - SPR.briefcase.pad);
+    if (s.kind === "lawbook") {
+      const set = SPR.lawbook[s.code || 0][Math.floor(s.t * 10) % 2];       // tumbling
+      ctx.drawImage(s.vx < 0 ? set.l : set.r, sx - set.pad, sy - set.pad);
     } else if (s.kind === "bubble") {
       ctx.drawImage(SPR.bubble, sx, sy);
     } else if (s.kind === "shockwave") {

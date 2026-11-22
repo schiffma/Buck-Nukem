@@ -39,6 +39,7 @@ const Game = {
     const L = this.level = new Level(data || LEVEL_DATA[i], i);
     Camera.anchorX = L.isBoss ? CONFIG.bossCamX : W / 2;   // boss arena: Buck on the left, the boss ahead
     this.fans = Fans.spawn(L, i);
+    Bar.spawn(L);
     this.enemies = []; this.shots = []; this.enemyShots = []; this.pickups = []; this.checkpoints = [];
     this.reveal = null;
     this.exit = null; this.boss = null; Boss.active = false; this.arenaHealthSpots = []; this.arenaUpgradeSpot = null; this.upgradeT = 0;
@@ -58,6 +59,7 @@ const Game = {
         case "C": self.checkpoints.push({ x: bx - 4, y: by - 24, w: 8, h: 24, on: false }); break;
         case "E": self.exit = { x: s.tx * TILE, y: by - 32, w: 16, h: 32 }; break;
         case "F": break;                                   // cheering fans: see Fans.spawn
+        case "O": case "W": break;                         // bar regulars and waitress: see Bar.spawn
         case "h": if (L.isBoss) self.arenaHealthSpots.push({ x: bx, y: by }); self.addPickup(s.ch, bx, by); break;
         case "w": if (L.isBoss) self.arenaUpgradeSpot = { x: bx, y: by }; self.addPickup(s.ch, bx, by); break;
         default: self.addPickup(s.ch, bx, by);
@@ -226,7 +228,8 @@ const Game = {
       R.t = backAt; R.back = C.skipBack; R.xb = fromX;
     }
     R.t += dt;
-    Fans.update(dt); FX.update(dt);
+    Fans.update(dt);
+    Bar.update(dt); FX.update(dt);
     Boss.anim += dt; Boss.t = 99;
     Boss.raised = R.t > C.pan * 0.6 && R.t < backAt; Boss.claw += clamp((Boss.raised ? 1 : 0) - Boss.claw, -dt * 6, dt * 6);
     if (R.t < C.pan) Camera.x = R.x0 + (R.xb - R.x0) * ease(R.t / C.pan);
@@ -243,6 +246,7 @@ const Game = {
     const L = this.level;
     this.levelTime += dt;
     Fans.update(dt);
+    Bar.update(dt);
     if (this.lockedMsgT > 0) this.lockedMsgT -= dt;
     if (this.hurtFlash > 0) this.hurtFlash = Math.max(0, this.hurtFlash - dt);
     Player.update(dt, L);
@@ -308,8 +312,10 @@ const Game = {
     L.drawBackground(camX, camY);
     L.drawTiles(camX, camY, this.time, "back");
     this.drawObjects(camX, camY);
+    Bar.drawBack(camX, camY);                            // the waitress: the counter tiles hide her legs
     L.drawTiles(camX, camY, this.time, "main");
     Fans.draw(camX, camY);                               // background fans, behind everything that moves
+    Bar.drawFront(camX, camY);
     FX.drawStains(camX, camY - HUD_H);
     for (const p of this.pickups) {
       const bob = Math.round(Math.sin(p.t * 4) * 1.5);
@@ -328,6 +334,8 @@ const Game = {
     FX.draw(camX, camY - HUD_H);
     Fans.drawHearts(camX, camY);                         // hearts under the bubbles: text stays readable
     Fans.drawBubble(camX, camY);
+    LawyerTalk.draw(camX, camY);
+    Bar.drawBubble(camX, camY);
     L.drawTiles(camX, camY, this.time, "water");
     if (this.hurtFlash > 0) {
       ctx.globalAlpha = Math.min(1, this.hurtFlash / 0.25) * 0.75;

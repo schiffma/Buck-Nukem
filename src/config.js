@@ -32,6 +32,7 @@ const CONFIG = {
   // enemies
   activateMarginX: W,            // enemies update within one screen width of the view
   activateMarginY: VIEW_H,
+  lawyerTalkCd: 4, lawyerTalkT: 1.5, lawyerTalkChance: 0.5,   // lawyer one-liners at a throw
   lawyerHp: 3, lawyerSpeed: 28, lawyerRange: 150, lawyerCooldown: 1.8, lawyerPoints: 200,
   crayHp: 2, craySpeed: 40, crayLeapRange: 96, crayCooldown: 1.6, crayPoints: 100,
   punkHp: 5, punkSpeed: 24, punkChargeSpeed: 110, punkRange: 96, punkChargeMax: 128,

@@ -9,6 +9,15 @@ const TEST = { results: [], warns: [], errors: [] };
   window.addEventListener("error", function (ev) { TEST.errors.push(ev.message); });
 })();
 
+// fixture: the former male lawyer (the female lawyer frames must differ from it)
+const OLD_MALE_LAWYER_TOP = [
+  ".....hhhhh......", "....hhhhhhh.....", "....hhkkskk.....", "....hsSSkSSk....",
+  "....ssssssss....", "....sskwwwwk....", ".....skkkks.....", "......sSs.......",
+  "...nnnwtwnnn....", "..nnnnwtwnnnn...", "..nnnnwtwnnnn...", "..nnnnwttnnnn...",
+  "..nNnnwttnnnNn..", "..nNnnntnnnnNn..", "..nNnnnnnnnnNn..", ".BBBBnnnnnnnNs..",
+  ".BbbBnnnnnnnn...", ".BbbBNNNNNNNN...",
+];
+
 function runTests() {
   const R = TEST.results;
   function check(name, cond, info) { R.push({ name: name, ok: !!cond, info: info === undefined ? "" : String(info) }); }
@@ -104,7 +113,7 @@ function runTests() {
       return bad === 0 && outl > 10;
     }
     const sets = [SPR.hero.idle, SPR.hero.run[1], SPR.hero.climb[0], SPR.hero.hurt, SPR.hero.kneel, SPR.hero.kneelShoot, SPR.heroCutter.kneel, SPR.lawyer[0], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.heroCutter.idle, SPR.heroCutter.run[1], SPR.heroCutter.jump].concat(
-      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump, f.kiss]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev, SPR.briefcase]);
+      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump, f.kiss]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev].concat(SPR.lawbook.reduce(function (a, b) { return a.concat(b); }, [])));
     check("sprites: hero and enemy edge pixels all border a dark outline", sets.every(function (s) { return edgesOutlined(s.r) && edgesOutlined(s.l); }));
     // 3 tones: the lawyer's suit colour appears as base, highlight and shadow
     (function () {
@@ -482,20 +491,20 @@ function runTests() {
 
   safe("kneel duck", function () {
     const FLOOR = 10 * 16;
-    // a briefcase flying level at chest height (8-10 px above where a kneeling hero ends)
-    function briefcase(kneel) {
+    // a law book flying level at chest height (8-10 px above where a kneeling hero ends)
+    function lawbook(kneel) {
       load(grid(40, 12, [[3, 9, "P"]]));
       Game.enemies = [];
       if (kneel) { press("down"); steps(5); }
       const hp0 = Player.hp;
-      Game.enemyShots = [{ kind: "briefcase", x: Player.x + 80, y: FLOOR - 26, w: 10, h: 8, vx: -125, vy: 0, grav: 0, dmg: 1, t: 0 }];
+      Game.enemyShots = [{ kind: "lawbook", code: 0, x: Player.x + 80, y: FLOOR - 26, w: 10, h: 8, vx: -125, vy: 0, grav: 0, dmg: 1, t: 0 }];
       steps(60);
       const hit = Player.hp < hp0;
       release("down"); Input.reset();
       return hit;
     }
-    const kneelHit = briefcase(true), standHit = briefcase(false);
-    check("kneel: a briefcase at chest height passes over a kneeling hero", !kneelHit && standHit, "kneeling hit " + kneelHit + ", standing hit " + standHit);
+    const kneelHit = lawbook(true), standHit = lawbook(false);
+    check("kneel: a law book at chest height passes over a kneeling hero", !kneelHit && standHit, "kneeling hit " + kneelHit + ", standing hit " + standHit);
     // a crayfish walking into a kneeling hero still hurts
     load(grid(40, 12, [[3, 9, "P"]]));
     press("down"); steps(5);
@@ -661,7 +670,7 @@ function runTests() {
   // ---------------- health / lives ----------------
   safe("damage", function () {
     load(grid(40, 12, [[2, 9, "P"]]));
-    function hitShot() { Game.enemyShots.push({ kind: "briefcase", x: Player.x, y: Player.y + 5, w: 10, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1 }); }
+    function hitShot() { Game.enemyShots.push({ kind: "lawbook", code: 0, x: Player.x, y: Player.y + 5, w: 10, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1 }); }
     hitShot(); steps(1);
     const hp1 = Player.hp, inv = Player.invuln;
     Game.enemyShots = []; hitShot(); steps(1);
@@ -982,8 +991,8 @@ function runTests() {
     load(grid(40, 12, [[2, 9, "P"], [9, 9, "L"]]));
     Game.godMode = true; sounds.length = 0;
     let thrown = false;
-    steps(150, function () { if (Game.enemyShots.some(function (s) { return s.kind === "briefcase" && s.vx < 0; })) thrown = true; });
-    check("lawyer: throws a briefcase toward the hero", thrown && sounds.indexOf("throw") >= 0);
+    steps(150, function () { if (Game.enemyShots.some(function (s) { return s.kind === "lawbook" && s.vx < 0; })) thrown = true; });
+    check("lawyer: throws a law book toward the hero", thrown && sounds.indexOf("throw") >= 0);
   });
 
   safe("crayfish", function () {
@@ -1833,6 +1842,183 @@ function runTests() {
     Game.godMode = false; Input.reset(); FX.clear();
   });
 
+  safe("female lawyer", function () {
+    check("lawyer look: new frames differ from the former male lawyer", LAWYER_TOP.join("") !== OLD_MALE_LAWYER_TOP.join(""));
+    const chin = 6;
+    const hairLow = LAWYER_TOP.slice(chin + 1).concat(LAWYER_THROW_TOP.slice(chin + 1)).some(function (r) { return r.indexOf("h") >= 0; });
+    check("lawyer look: short hair (none below the chin row)", !hairLow && LAWYER_TOP.slice(0, chin + 1).some(function (r) { return r.indexOf("h") >= 0; }));
+    const legRows = LAWYER_LEGS1.slice(4, 10).concat(LAWYER_LEGS2.slice(4, 10));
+    check("lawyer look: skirt to the knee, then bare legs (skin, no suit) and heels",
+      legRows.every(function (r) { return /[sS]/.test(r) && !/[nN]/.test(r); }) &&
+      LAWYER_LEGS1.slice(0, 4).every(function (r) { return /n/.test(r); }) && /k/.test(LAWYER_LEGS1[10] + LAWYER_LEGS1[11]),
+      legRows.join("|"));
+    check("lawyer look: white blouse and lips", LAWYER_TOP.some(function (r) { return r.indexOf("w") >= 0; }) && LAWYER_TOP.some(function (r) { return r.indexOf("r") >= 0; }));
+  });
+
+  safe("law books", function () {
+    function edgesOutlined(c) {      // every opaque pixel next to transparency is the outline colour
+      const w = c.width, h = c.height, d = c.getContext("2d").getImageData(0, 0, w, h).data;
+      const A = function (x, y) { return x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0; };
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (!A(x, y) || (A(x - 1, y) && A(x + 1, y) && A(x, y - 1) && A(x, y + 1))) continue;
+        const i = (y * w + x) * 4;
+        if (d[i] !== OUTLINE_COLOR[0] || d[i + 1] !== OUTLINE_COLOR[1] || d[i + 2] !== OUTLINE_COLOR[2]) return false;
+      }
+      return true;
+    }
+    // sprites: four cover colours, a white cross, outlined, tumbling frames
+    const covers = {};
+    let crossOk = true, outlinedOk = true, tumbleOk = true;
+    SPR.lawbook.forEach(function (fr, i) {
+      fr.forEach(function (set) {
+        const c = set.r, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        let white = 0;
+        for (let k = 0; k < d.length; k += 4) if (d[k + 3] && d[k] === 255 && d[k + 1] === 255 && d[k + 2] === 255) white++;
+        if (white < 4) crossOk = false;
+        if (!edgesOutlined(set.r) || !edgesOutlined(set.l)) outlinedOk = false;
+      });
+      covers[LAWBOOK_CODES[i].cover] = true;
+      const a0 = fr[0].r.getContext("2d").getImageData(0, 0, fr[0].r.width, fr[0].r.height).data, a1 = fr[1].r.getContext("2d").getImageData(0, 0, fr[1].r.width, fr[1].r.height).data;
+      let diff = 0; for (let k = 0; k < a0.length; k++) if (a0[k] !== a1[k]) diff++;
+      if (!diff) tumbleOk = false;
+    });
+    check("law books: OR, ZGB, StGB and SchKG in four cover colours", SPR.lawbook.length === 4 && Object.keys(covers).length === 4 &&
+      LAWBOOK_CODES.map(function (b) { return b.code; }).join(",") === "OR,ZGB,StGB,SchKG");
+    check("law books: white Swiss cross on every cover, outlined, two tumbling frames", crossOk && outlinedOk && tumbleOk, [crossOk, outlinedOk, tumbleOk].join(","));
+    // a book hitting a wall bursts into pages and names an article of its code
+    load(grid(40, 12, [[2, 9, "P"], [14, 8, "B"], [14, 9, "B"]]));
+    Game.enemies = []; FX.clear();
+    Game.enemyShots = [{ kind: "lawbook", code: 1, x: 10 * 16, y: 8 * 16 + 4, w: 10, h: 8, vx: 125, vy: 0, grav: 0, dmg: 1, t: 0 }];
+    steps(60);
+    const tWall = FX.texts.map(function (t) { return t.str; });
+    const pages = FX.parts.filter(function (q) { return q.color === "#f4ecd0" || q.color === "#ffffff"; }).length;
+    check("law books: hitting a wall, a book bursts into pages with an article label", Game.enemyShots.length === 0 && pages >= 4 &&
+      tWall.some(function (t) { return LAWBOOK_CODES[1].arts.indexOf(t) >= 0; }), tWall.join("|") + ", " + pages + " pages");
+    // ... and when it hits Buck
+    load(grid(40, 12, [[3, 9, "P"]]));
+    Game.enemies = []; FX.clear();
+    const hp = Player.hp;
+    Game.enemyShots = [{ kind: "lawbook", code: 0, x: Player.x + 40, y: Player.y + 6, w: 10, h: 8, vx: -125, vy: 0, grav: 0, dmg: 1, t: 0 }];
+    steps(40);
+    const tHero = FX.texts.map(function (t) { return t.str; });
+    check("law books: hitting Buck costs 1 health and names an OR article", Player.hp === hp - 1 && tHero.some(function (t) { return LAWBOOK_CODES[0].arts.indexOf(t) >= 0; }),
+      "hp " + hp + " -> " + Player.hp + ", " + tHero.join("|"));
+    Input.reset(); FX.clear();
+  });
+
+  safe("lawyer lines", function () {
+    const swiss = LAWYER_LINES.filter(function (l) { return /(OR|ZGB|STGB|SCHKG|ART\.|BERN)/.test(l); });
+    const long = LAWYER_LINES.filter(function (l) { return l.length > 20; });
+    const glyph = LAWYER_LINES.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("lawyer lines: 8+ lines, at most 20 chars, drawable, at least half Swiss-legal",
+      LAWYER_LINES.length >= 8 && !long.length && !glyph.length && swiss.length * 2 >= LAWYER_LINES.length,
+      LAWYER_LINES.length + " lines, swiss " + swiss.length + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+    const chance = CONFIG.lawyerTalkChance;
+    CONFIG.lawyerTalkChance = 1;                       // always talk when allowed: tests the limits
+    // one lawyer throwing for 30 s: bubbles at least 4 s apart, each about 1.5 s
+    load(grid(60, 12, [[4, 9, "P"], [12, 9, "L"]]));
+    Game.godMode = true;
+    const e = Game.enemies[0];
+    let starts = [], lens = [], cur = 0, prev = null;
+    for (let i = 0; i < 30 * 60; i++) {
+      Player.x = 4 * 16; e.x = Math.max(e.x, 10 * 16); e.hp = 99;
+      steps(1);
+      if (e.bubble && !prev) { starts.push(i); cur = 0; }
+      if (e.bubble) cur++;
+      if (!e.bubble && prev) lens.push(cur);
+      prev = e.bubble;
+    }
+    const gaps = starts.slice(1).map(function (t, k) { return (t - starts[k]) / 60; });
+    check("lawyer lines: a lawyer talks while throwing, at most once per 4 s", starts.length >= 3 && gaps.every(function (g) { return g >= 3.99; }),
+      starts.length + " bubbles, gaps " + gaps.map(function (g) { return g.toFixed(1); }).join(","));
+    check("lawyer lines: a bubble lasts about 1.5 s", lens.length >= 2 && lens.every(function (n) { return Math.abs(n / 60 - CONFIG.lawyerTalkT) < 0.1; }), lens.join(","));
+    // two lawyers: never more than one lawyer bubble at a time
+    load(grid(60, 12, [[4, 9, "P"], [11, 9, "L"], [16, 9, "L"]]));
+    Game.godMode = true;
+    let maxTalk = 0, anyTalk = 0;
+    for (let i = 0; i < 20 * 60; i++) {
+      Player.x = 4 * 16; Game.enemies.forEach(function (q) { q.hp = 99; q.x = Math.max(q.x, 9 * 16); });
+      steps(1);
+      const n = Game.enemies.filter(function (q) { return q.bubble; }).length;
+      maxTalk = Math.max(maxTalk, n); if (n) anyTalk++;
+    }
+    check("lawyer lines: at most one lawyer bubble on screen at a time", maxTalk === 1 && anyTalk > 0, "max " + maxTalk);
+    CONFIG.lawyerTalkChance = chance;
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
+  safe("einsiedler bar", function () {
+    function px(c) { return c.getContext("2d").getImageData(0, 0, c.width, c.height).data; }
+    function differ(a, b2) { if (a.length !== b2.length) return true; for (let i = 0; i < a.length; i++) if (a[i] !== b2[i]) return true; return false; }
+    function edgesOutlined(c) {
+      const w = c.width, h = c.height, d = px(c);
+      const A = function (x, y) { return x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0; };
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        if (!A(x, y) || (A(x - 1, y) && A(x + 1, y) && A(x, y - 1) && A(x, y + 1))) continue;
+        const i = (y * w + x) * 4;
+        if (d[i] !== OUTLINE_COLOR[0] || d[i + 1] !== OUTLINE_COLOR[1] || d[i + 2] !== OUTLINE_COLOR[2]) return false;
+      }
+      return true;
+    }
+    // taps: a taller tower with red and white handle pixels above the counter top
+    const ts = buildTileset("hall"), tap = ts.counterTaps, td = px(tap);
+    let red = 0, white = 0;
+    for (let y = 0; y < 12; y++) for (let x = 0; x < tap.width; x++) {
+      const i = (y * tap.width + x) * 4;
+      if (td[i] > 190 && td[i + 1] < 60 && td[i + 2] < 60) red++;
+      if (td[i] > 230 && td[i + 1] > 225 && td[i + 2] > 210) white++;
+    }
+    check("bar: Einsiedler tap tower, 3 red/white handles above the counter", tap.height >= TILE + 12 && red >= 9 && white >= 6, "h " + tap.height + ", red " + red + ", white " + white);
+    check("bar: counter variants with a beer and beer mats", differ(px(ts.counterGlass), px(ts.counter)) && differ(px(ts.counterMats), px(ts.counter)));
+    // the sign
+    TEXT_LOG.active = true; TEXT_LOG.items = []; const sign = buildProp("I", true); TEXT_LOG.active = false;
+    check("bar: EINSIEDLER back-bar sign, 4 tiles wide, text fits", sign.width === 64 && TEXT_LOG.items.indexOf("EINSIEDLER") >= 0 && textWidth("EINSIEDLER", 1) <= 60, TEXT_LOG.items.join("|"));
+    // sprites
+    const guys = SPR.barGuys, all = [];
+    guys.forEach(function (g) { all.push(g.idle, g.drink, g.clink); });
+    all.push(SPR.waitress.walk[0], SPR.waitress.walk[1], SPR.waitress.pour);
+    SPR.beerGlass.forEach(function (g) { all.push(g); });
+    check("bar: regulars, waitress and glass outlined", all.every(function (set) { return edgesOutlined(set.r) && edgesOutlined(set.l); }));
+    check("bar: three different regulars, drinking differs from idle",
+      guys.length === 3 && differ(px(guys[0].idle.r), px(guys[1].idle.r)) && differ(px(guys[1].idle.r), px(guys[2].idle.r)) &&
+      guys.every(function (g) { return differ(px(g.drink.r), px(g.idle.r)) && differ(px(g.clink.r), px(g.idle.r)); }));
+    check("bar: the waitress is blonde", WAITRESS_TOP.slice(0, 7).join("").split("z").length > 20);
+    // the scene: test map with a counter, 3 regulars, the waitress above the counter cell
+    load(grid(40, 12, [[2, 9, "P"], [12, 9, "O"], [20, 9, "O"], [21, 9, "O"], [15, 8, "W"],
+      [14, 9, "a"], [15, 9, "a"], [16, 9, "A"], [17, 9, "A"], [18, 9, "a"], [19, 9, "a"]]), { theme: "hall", bg: "bg_hall" });
+    Game.enemies = []; Game.godMode = true;
+    const L = Game.level;
+    check("bar: 3 regulars and the waitress spawn, their cells cleared, the counter whole",
+      Bar.guys.length === 3 && !!Bar.waitress && L.at(12, 9) === "." && L.at(15, 8) === "." && L.at(15, 9) === "a" &&
+      Bar.waitress.minX === 14 * TILE && Bar.waitress.maxX === 19 * TILE, Bar.guys.length + " guys");
+    check("bar: regulars face the counter", Bar.guys[0].face === 1 && Bar.guys[1].face === -1 && Bar.guys[2].face === -1);
+    const frames = Bar.guys.map(function () { return {}; });
+    let prostStarts = [], prev = null, wMin = 1e9, wMax = -1e9, pours = 0, wasPour = false;
+    for (let i = 0; i < 40 * 60; i++) {
+      steps(1);
+      Bar.guys.forEach(function (g, k) { frames[k][Bar.frame(g)] = true; });
+      if (Bar.bubble && !prev) prostStarts.push(i);
+      prev = Bar.bubble;
+      wMin = Math.min(wMin, Bar.waitress.x); wMax = Math.max(wMax, Bar.waitress.x);
+      if (Bar.waitress.pourT > 0 && !wasPour) pours++;
+      wasPour = Bar.waitress.pourT > 0;
+    }
+    check("bar: every regular lifts his glass (2+ frames)", frames.every(function (f) { return Object.keys(f).length >= 2; }), JSON.stringify(frames));
+    const gaps = prostStarts.slice(1).map(function (t, k) { return (t - prostStarts[k]) / 60; });
+    check("bar: PROST! now and then, at least 6 s apart", prostStarts.length >= 2 && gaps.every(function (g) { return g >= 5.99; }), prostStarts.length + " toasts, gaps " + gaps.map(function (g) { return g.toFixed(1); }).join(","));
+    check("bar: the waitress stays behind the counter and walks along it", wMin >= 14 * TILE && wMax <= 19 * TILE && wMax - wMin >= 3 * TILE,
+      (wMin / TILE).toFixed(1) + ".." + (wMax / TILE).toFixed(1));
+    check("bar: she pulls beers", pours >= 2, pours + " pours");
+    // decoration only: Buck and his shots pass the regulars
+    Player.x = 11 * TILE; Player.y = 10 * TILE - Player.h; Player.face = 1; Player.vx = 0;
+    Game.shots.length = 0; Player.fireCd = 0; Player.fire();
+    const shot = Game.shots[0];
+    press("right"); steps(40); release("right");
+    check("bar: Buck walks through the regulars and his shots pass them", Player.x > 13 * TILE && (!Game.shots.length || Game.shots[0].x > 13 * TILE || !shot),
+      "x " + Math.round(Player.x));
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
   safe("hearts", function () {
     ctx.clearRect(0, 0, W, 8);
     drawText("♥", 0, 0, "#ff3070");
@@ -2179,7 +2365,7 @@ function runShot(spec) {
     [SPR.lawyer[0], SPR.lawyer[1], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev].forEach(function (s, i) {
       ctx.drawImage(s.r, 4 + i * 30, 80); ctx.drawImage(s.fl, 4 + i * 30, 116);
     });
-    [SPR.ball, SPR.trophy, SPR.rivella, SPR.cervelat, SPR.life, SPR.megagun, SPR.keys.R, SPR.keys.U, SPR.keys.G, SPR.briefcase.r,
+    [SPR.ball, SPR.trophy, SPR.rivella, SPR.cervelat, SPR.life, SPR.megagun, SPR.keys.R, SPR.keys.U, SPR.keys.G, SPR.lawbook[0][0].r,
      SPR.bubble, SPR.shot, SPR.shotUp, SPR.blasterIcon, SPR.megaIcon, IMG.head, SPR.headBack].forEach(function (img, i) {
       ctx.drawImage(img, 4 + i * 18, 156);
     });
@@ -2190,6 +2376,8 @@ function runShot(spec) {
     [tsI.wallpaper[0], tsI.wainscot, tsI.counter, tsI.table].forEach(function (img, i) { ctx.drawImage(img, 160 + i * 18, 138); });
     ctx.drawImage(tsI.counterTaps, 236, 130);
     [tsI.crateSturdy, tsI.crate, tsI.crateCracked].forEach(function (img, i) { ctx.drawImage(img, 262 + i * 18, 138); });   // cover crates
+    SPR.barGuys.forEach(function (g, i) { ctx.drawImage(g.idle.r, 160 + i * 20, 92); ctx.drawImage(g.drink.r, 160 + i * 20, 60); });
+    ctx.drawImage(SPR.waitress.walk[0].r, 222, 62); ctx.drawImage(SPR.waitress.pour.r, 240, 62);
     ctx.drawImage(SPR.megaCutter, 262, 100); ctx.drawImage(SPR.megaBlade[0], 284, 100); ctx.drawImage(SPR.megaBlade[2], 302, 100);   // Mega Cutter
     const ts = buildTileset("court"), ts2 = buildTileset("creek"), ts3 = buildTileset("hall");
     [ts, ts2, ts3].forEach(function (t, j) {

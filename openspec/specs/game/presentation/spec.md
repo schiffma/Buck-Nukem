@@ -173,11 +173,35 @@ The clubhouse part of level 3 SHALL be drawn as the furnished interior of the TC
 - **THEN** the graded photo backdrop is used as in the other levels
 
 ### Requirement: Clubhouse bar
-The clubhouse SHALL contain a bar with a counter, bar stools, beer taps, a back-bar shelf of bottles, a neon beer sign and a cash register.
+The clubhouse SHALL contain a bar with a counter, bar stools, Einsiedler beer taps on a chrome tower, an "EINSIEDLER" back-bar sign, a back-bar shelf of bottles, a neon beer sign, a cash register, glasses and beer mats on the counter, three bar guys sitting at the counter and a blonde waitress behind it. The guys and the waitress SHALL be decoration only.
 
 #### Scenario: Bar visible
 - **WHEN** the hero walks through the bar area of level 3
 - **THEN** the counter, stools, taps, bottle shelf and neon sign are visible, and the neon sign flickers
+
+#### Scenario: Einsiedler taps and sign
+- **WHEN** the bar is drawn
+- **THEN** the tap tower shows 3 tall red-and-white tap handles over a drip tray, and a back-bar sign reads "EINSIEDLER"
+
+#### Scenario: Three different bar guys
+- **WHEN** the bar guys are drawn
+- **THEN** there are three, sitting on stools at the counter, each with a different look, and each lifts his glass now and then (at least two different frames)
+
+#### Scenario: Prost
+- **WHEN** the bar guys clink glasses
+- **THEN** a "PROST!" speech bubble shows for about 1.5 seconds, at most once per 6 seconds for the whole bar
+
+#### Scenario: Blonde waitress behind the counter
+- **WHEN** the waitress is drawn
+- **THEN** she has blonde hair, stays within the counter's columns, is hidden below the waist by the counter, walks between the taps and sometimes pours a beer with a foam animation
+
+#### Scenario: Decoration only
+- **WHEN** the hero, his shots or enemies pass the bar guys or the waitress
+- **THEN** nothing collides with them, nothing is damaged and the level checker's results are unchanged
+
+#### Scenario: Outlined pixel art
+- **WHEN** any bar guy or waitress frame is drawn
+- **THEN** every opaque edge pixel borders a dark outline pixel, as for the other sprites
 
 ### Requirement: Clubhouse restaurant
 The clubhouse SHALL contain a restaurant with tables with checked tablecloths, chairs, a menu chalkboard listing CERVELAT, RIVELLA and FONDUE with prices, a kitchen pass-through and potted plants.
@@ -364,3 +388,25 @@ The Mega Cutter's pickup and blades SHALL look distinct from the plain disc cutt
 #### Scenario: Pickup readable
 - **WHEN** the upgrade pickup is drawn on the top platform
 - **THEN** it is outlined like the other pickups and differs from the Mega Blaster pickup
+
+### Requirement: Female lawyer look
+The lawyer sprites SHALL show a woman in a dark skirt suit with a white blouse, short hair and dark heels, as outlined, 3-tone shaded pixel art in the same 16 x 30 frame as before, with two walk frames and a throwing pose.
+
+#### Scenario: Recognisably female with short hair
+- **WHEN** the lawyer frames are drawn
+- **THEN** they show a skirt (no trouser legs above the knee), hair no lower than the chin line, and heels, and differ from the former male lawyer frames
+
+#### Scenario: Outlined and shaded
+- **WHEN** any lawyer frame is drawn
+- **THEN** every opaque edge pixel borders a dark outline pixel and the suit colour appears as base, highlight and shadow tones
+
+### Requirement: Swiss law book projectile
+Thrown law books SHALL be drawn as thick hardbacks (about 10 x 8 pixels) with a white Swiss cross on the cover and a pale page edge, tumbling in flight, in four cover colours for the codes OR (red), ZGB (dark blue), StGB (green) and SchKG (orange).
+
+#### Scenario: Four codes
+- **WHEN** the law book sprites are drawn
+- **THEN** there are four cover colours, each frame shows white cross pixels on the cover, and every opaque edge pixel is outlined
+
+#### Scenario: Tumbling
+- **WHEN** a law book is in flight
+- **THEN** its drawing alternates between at least two different frames

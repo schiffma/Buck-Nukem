@@ -216,32 +216,52 @@ function buildHeadBack() {
 }
 
 // ---------------- enemies ----------------
+// Lawyer: a woman in a dark skirt suit (n/N), white blouse, short bob (h), lips, skin legs and
+// dark heels, holding a red file folder; 16x30 (18 top rows + 12 leg rows).
 const LAWYER_TOP = [
-  ".....hhhhh......", "....hhhhhhh.....", "....hhkkskk.....", "....hsSSkSSk....",
-  "....ssssssss....", "....sskwwwwk....", ".....skkkks.....", "......sSs.......",
-  "...nnnwtwnnn....", "..nnnnwtwnnnn...", "..nnnnwtwnnnn...", "..nnnnwttnnnn...",
-  "..nNnnwttnnnNn..", "..nNnnntnnnnNn..", "..nNnnnnnnnnNn..", ".BBBBnnnnnnnNs..",
-  ".BbbBnnnnnnnn...", ".BbbBNNNNNNNN...",
+  ".....hhhhh......", "....hhhhhhh.....", "...hhhhhhhhh....", "...hhhsSksSk....",
+  "...hhhssssss....", "...hhhsssrrs....", "....hh.ssss.....", "......sSs.......",
+  "...nnnwwwnnn....", "..nnnnwwwnnnn...", "..nnnnnwnnnnn...", "..nnnnnwnnnnn...",
+  "..nNnnnnnnnnNn..", "..nNnnnnnnnnNn..", "..nNnnnnnnnnNn..", ".rrrrnnnnnnnNs..",
+  ".rwwrnnnnnnnn...", ".rrrrNNNNNNNN...",
 ];
 const LAWYER_THROW_TOP = LAWYER_TOP.slice();
-LAWYER_THROW_TOP[12] = "..nNnnwttnnnnnss";
-LAWYER_THROW_TOP[13] = "..nNnnntnnnnn...";
+LAWYER_THROW_TOP[12] = "..nNnnnnnnnnnnss";
+LAWYER_THROW_TOP[13] = "..nNnnnnnnnnn...";
 LAWYER_THROW_TOP[14] = "..nNnnnnnnnnn...";
-LAWYER_THROW_TOP[15] = ".BBBBnnnnnnnn...";
+LAWYER_THROW_TOP[15] = ".rrrrnnnnnnnn...";
 const LAWYER_LEGS1 = [
-  ".BBBBnnnn.nnnn..", ".....nnnn.nnnn..", ".....nnnn.nnnn..", ".....nnnn.nnnn..",
-  ".....nnnn.nnnn..", ".....nnnn.nnnn..", ".....NnnN.NnnN..", ".....nnnn.nnnn..",
-  ".....nnnn.nnnn..", ".....nnnn.nnnn..", ".....kkkk.kkkk..", "....kkkkk.kkkkk.",
+  ".rrrrnnnnnnnn...", ".....nnnnnnnn...", ".....nnnnnnnn...", ".....NnnnnnnN...",
+  "......sS..sS....", "......sS..sS....", "......sS..sS....", "......sS..sS....",
+  "......sS..sS....", "......sS..sS....", "......kk..kk....", ".....kk.k.kk.k..",
 ];
 const LAWYER_LEGS2 = [
-  ".BBBBnnnn.nnnn..", "....nnnn...nnnn.", "....nnnn...nnnn.", "...nnnn.....nnnn",
-  "...nnnn.....nnnn", "...nnnn.....nnnn", "...NnnN.....NnnN", "...nnnn.....nnnn",
-  "...nnnn.....nnnn", "...nnnn.....nnnn", "...kkkk.....kkkk", "..kkkkk.....kkkk",
+  ".rrrrnnnnnnnn...", ".....nnnnnnnn...", "....nnnnnnnnnn..", "....NnnnnnnnnN..",
+  ".....sS....sS...", ".....sS....sS...", "....sS......sS..", "....sS......sS..",
+  "...sS........sS.", "...sS........sS.", "...kk........kk.", "..kk.k......kk.k",
 ];
-const BRIEFCASE = [
-  "...kkkk...", "..k....k..", "BBBBBBBBBB", "BbbbbbbbbB",
-  "BbbbybbbbB", "BbbbbbbbbB", "BbbbbbbbbB", "BBBBBBBBBB",
+// Swiss law books thrown by the lawyers: cover colour per code, articles for the impact label.
+const LAWBOOK_CODES = [
+  { code: "OR", cover: "#c81e1e", dark: "#7e1010", arts: ["ART. 41 OR", "ART. 97 OR", "ART. 1 OR"] },
+  { code: "ZGB", cover: "#2a4ca0", dark: "#162a60", arts: ["ART. 8 ZGB", "ART. 2 ZGB", "ART. 28 ZGB"] },
+  { code: "StGB", cover: "#1e7a36", dark: "#0e4a1e", arts: ["ART. 111 STGB", "ART. 139 STGB"] },
+  { code: "SchKG", cover: "#e07818", dark: "#8a4408", arts: ["ART. 38 SCHKG", "ART. 67 SCHKG"] },
 ];
+// 10x8 hardback: cover, darker spine on the left, cream page edge right and bottom, white
+// Swiss cross on a 5x5 field; frame 1 is the book turned over (tumbling).
+function buildLawBook(b, f) {
+  const c = makeCanvas(10, 8), g = c.getContext("2d");
+  g.fillStyle = b.cover; g.fillRect(0, 0, 10, 8);
+  g.fillStyle = b.dark; g.fillRect(0, 0, 2, 8);                   // spine
+  g.fillStyle = "#f4ecd0"; g.fillRect(9, 1, 1, 7); g.fillRect(2, 7, 8, 1);   // page edge
+  g.fillStyle = "#e8dcb8"; g.fillRect(9, 3, 1, 1); g.fillRect(5, 7, 1, 1);
+  g.fillStyle = "#ffffff"; g.fillRect(5, 2, 1, 3); g.fillRect(4, 3, 3, 1);   // Swiss cross
+  g.fillStyle = "#ffd840"; g.fillRect(0, 2, 2, 1); g.fillRect(0, 5, 2, 1);   // gold bands on the spine
+  if (!f) return c;
+  const t = makeCanvas(10, 8), tg = t.getContext("2d");
+  tg.translate(10, 8); tg.rotate(Math.PI); tg.drawImage(c, 0, 0);
+  return t;
+}
 // Crayfish, 32x14, side view facing right, after the reference photo: red only - glossy
 // red-brown armour (a base, A shadow, x lit edges, i sheen), overlapping tail plates and a
 // tail fan, carapace with cervical groove, eye, antennae, heavy claw with pale tips (E).
@@ -362,6 +382,69 @@ function buildSawBlade(f) {
   return c;
 }
 
+// Bar guys (16x24, seated on a stool, facing right): pose templates with H hair/cap, C cap
+// brim, M mustache, T shirt, substituted per look; o beer, e foam, R red stool seat.
+const BARGUY_IDLE = [
+  "................", "....HHHH........", "...HHHHHHC......", "...HssssS.......",
+  "...ssskss.......", "...sssssss......", "...sMMMs........", "....sss.........",
+  "...TTTTTT.......", "..TTTTTTTT......", "..TTTTTTTTTs....", "..TTTTTTTT.see..",
+  "..TTTTTTTT..oo..", "..TTTTTTTT..oo..", "..PPPPPPPPPP....", "..PPPPPPPPPPP...",
+  "..RRRRRRR..PP...", ".....g.....PP...", ".....g.....PP...", ".....g.....PP...",
+  ".....g....kkkk..", "....ggg.........", "...ggggg........", "................",
+];
+const BARGUY_DRINK = [
+  "................", "....HHHH........", "...HHHHHHC......", "...HssssS.......",
+  "...ssskss.......", "...sssssssee....", "...sMMMssoo.....", "....sss..oo.....",
+  "...TTTTTTs......", "..TTTTTTTs......", "..TTTTTTTT......", "..TTTTTTTT......",
+  "..TTTTTTTT......", "..TTTTTTTT......", "..PPPPPPPPPP....", "..PPPPPPPPPPP...",
+  "..RRRRRRR..PP...", ".....g.....PP...", ".....g.....PP...", ".....g.....PP...",
+  ".....g....kkkk..", "....ggg.........", "...ggggg........", "................",
+];
+const BARGUY_CLINK = [
+  "................", "....HHHH........", "...HHHHHHC......", "...HssssS.......",
+  "...ssskss.......", "...sssssss......", "...sMMMs........", "....sss.....ee..",
+  "...TTTTTT...oo..", "..TTTTTTTTssoo..", "..TTTTTTTT......", "..TTTTTTTT......",
+  "..TTTTTTTT......", "..TTTTTTTT......", "..PPPPPPPPPP....", "..PPPPPPPPPPP...",
+  "..RRRRRRR..PP...", ".....g.....PP...", ".....g.....PP...", ".....g.....PP...",
+  ".....g....kkkk..", "....ggg.........", "...ggggg........", "................",
+];
+const BARGUY_LOOKS = [
+  { H: "r", C: "r", M: "h", T: "w" },   // mustache, red cap, white TC Wollerau tennis shirt
+  { H: "s", C: ".", M: "s", T: "g" },   // bald, grey work jacket
+  { H: "b", C: ".", M: "s", T: "u" },   // brown mullet, blue tennis shirt
+];
+// Blonde waitress (16x30, facing right): blouse, black apron/skirt; pour = arm up with a glass.
+const WAITRESS_TOP = [
+  "....zzzzz.......", "...zzzzzzz......", "..zzzzzzzzZ.....", "..zzzssksZ......",
+  "..zzzsssss......", "..zzzssrrs......", "..zzz.sss.......", "..zz...s........",
+  "....wwwwww......", "...wwwwwwww.....", "...wwwwwwwws....", "...kkkkkkkks....",
+  "...kNkkkkkk.....", "...kNkkkkkk.....", "...kkkkkkkk.....", "...kkkkkkkk.....",
+  "...NNNNNNNN.....", "....kkkkkk......",
+];
+const WAITRESS_POUR = WAITRESS_TOP.slice();
+WAITRESS_POUR[9] = "...wwwwwwwwss...";
+WAITRESS_POUR[10] = "...wwwwwwww.see.";
+WAITRESS_POUR[11] = "...kkkkkkkk..oo.";
+WAITRESS_POUR[12] = "...kNkkkkkk..oo.";
+const WAITRESS_LEGS1 = [
+  "....kkkkkk......", ".....sS.sS......", ".....sS.sS......", ".....sS.sS......",
+  ".....sS.sS......", ".....sS.sS......", ".....sS.sS......", ".....sS.sS......",
+  ".....kk.kk......", "....kk..kk......", "................", "................",
+];
+const WAITRESS_LEGS2 = [
+  "....kkkkkk......", "....sS...sS.....", "....sS...sS.....", "...sS.....sS....",
+  "...sS.....sS....", "...sS.....sS....", "...sS.....sS....", "...sS.....sS....",
+  "...kk.....kk....", "..kk......kk....", "................", "................",
+];
+const BEER_GLASS = [
+  ["k..k", "k..k", "k..k", "k..k", "kook", "kkkk"],
+  ["k..k", "k..k", "keek", "kook", "kook", "kkkk"],
+  ["keek", "keek", "kook", "kook", "kook", "kkkk"],
+];   // filling: low, half, full
+function barGuyRows(rows, look) {
+  return rows.map(function (r) { let s = r; Object.keys(look).forEach(function (k) { s = s.split(k).join(look[k]); }); return s; });
+}
+
 // Mega Cutter blade: 16x16, orange-hot teeth and rim with a glow, outlined like the sprites.
 function buildMegaBlade(f) {
   const c = makeCanvas(16, 16), g = c.getContext("2d");
@@ -413,7 +496,7 @@ function buildSprites() {
   SPR.cutterIcon = spriteFromRows(CUTTER_ICON);
   SPR.lawyer = [makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS1))), makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS2)))];
   SPR.lawyerThrow = makeSet(spriteFromRows(LAWYER_THROW_TOP.concat(LAWYER_LEGS1)));
-  SPR.briefcase = makeSet(spriteFromRows(BRIEFCASE));
+  SPR.lawbook = LAWBOOK_CODES.map(function (b) { return [makeSet(buildLawBook(b, 0)), makeSet(buildLawBook(b, 1))]; });
   SPR.cray = [makeSet(spriteFromRows(CRAY1)), makeSet(spriteFromRows(CRAY2))];
   SPR.punk = { walk: [makeSet(spriteFromRows(PUNK_WALK1)), makeSet(spriteFromRows(PUNK_WALK2))], rev: makeSet(spriteFromRows(PUNK_REV)) };
   SPR.ball = shadeAndOutline(spriteFromRows(TENNIS_BALL));
@@ -441,6 +524,14 @@ function buildSprites() {
   SPR.shotUp = spriteFromRows(["..uuuuu.", ".uwwwwuu", "uwwwwwwu", ".uuuuuu."]);
   SPR.sawBlade = [0, 1, 2, 3].map(buildSawBlade);
   SPR.megaBlade = [0, 1, 2, 3].map(buildMegaBlade);
+  // clubhouse bar: three regulars and the waitress, a filling beer glass
+  SPR.barGuys = BARGUY_LOOKS.map(function (look) {
+    return { idle: makeSet(spriteFromRows(barGuyRows(BARGUY_IDLE, look))), drink: makeSet(spriteFromRows(barGuyRows(BARGUY_DRINK, look))),
+      clink: makeSet(spriteFromRows(barGuyRows(BARGUY_CLINK, look))) };
+  });
+  SPR.waitress = { walk: [makeSet(spriteFromRows(WAITRESS_TOP.concat(WAITRESS_LEGS1))), makeSet(spriteFromRows(WAITRESS_TOP.concat(WAITRESS_LEGS2)))],
+    pour: makeSet(spriteFromRows(WAITRESS_POUR.concat(WAITRESS_LEGS1))) };
+  SPR.beerGlass = BEER_GLASS.map(function (f) { return makeSet(spriteFromRows(f)); });
   SPR.megaCutter = shadeAndOutline(spriteFromRows(MEGACUTTER));
   SPR.megaCutterIcon = spriteFromRows(MEGA_CUTTER_ICON);
   if (typeof buildFanSprites === "function") buildFanSprites();
