@@ -30,7 +30,7 @@ MAX_BYTES = 2 * 1024 * 1024
 
 # Concatenation order matters: later files use names defined earlier.
 JS_ORDER = [
-    "config.js", "assets.js", "render.js", "film.js", "input.js", "font.js",
+    "config.js", "assets.js", "render.js", "film.js", "input.js", "touch.js", "font.js",
     "sprites.js", "fx.js", "audio.js", "level.js", "props.js", "player.js",
     "enemies.js", "boss.js", "fans.js", "bar.js", "hud.js", "screens.js", "main.js", "test.js",
 ]

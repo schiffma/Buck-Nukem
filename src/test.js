@@ -54,9 +54,15 @@ function runTests() {
 
   // ---------------- rendering / engine ----------------
   safe("display", function () {
-    const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
-    check("display: integer scale fits window", screenCanvas.width === W * s && screenCanvas.height === H * s,
-      "window " + window.innerWidth + "x" + window.innerHeight + " -> canvas " + screenCanvas.width + "x" + screenCanvas.height);
+    if (Touch.on) {
+      const L = Touch.computeLayout(), dpr = window.devicePixelRatio || 1;
+      check("display: touch mode fits the picture between the bars", screenCanvas.width === Math.round(W * L.s * dpr) && Math.abs(displayScale - L.s * dpr) < 1e-9,
+        "window " + window.innerWidth + "x" + window.innerHeight + " -> canvas " + screenCanvas.width + "x" + screenCanvas.height);
+    } else {
+      const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
+      check("display: integer scale fits window", screenCanvas.width === W * s && screenCanvas.height === H * s,
+        "window " + window.innerWidth + "x" + window.innerHeight + " -> canvas " + screenCanvas.width + "x" + screenCanvas.height);
+    }
     check("display: back buffer is 320x240", buffer.width === 320 && buffer.height === 240);
     check("display: smoothing disabled", ctx.imageSmoothingEnabled === false && screenCtx.imageSmoothingEnabled === false);
   });
@@ -88,6 +94,399 @@ function runTests() {
     window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space", cancelable: true }));
     window.dispatchEvent(new KeyboardEvent("keyup", { code: "ArrowDown", cancelable: true }));
     Input.reset();
+  });
+
+  safe("input sources", function () {
+    function key(code, type) { window.dispatchEvent(new KeyboardEvent(type || "keydown", { code: code, key: code, cancelable: true })); }
+    Input.reset();
+    // simulate keeps its edge semantics: edge on the first press only, cleared per step
+    Input.simulate("jump", true);
+    const e1 = Input.pressed("jump"); Input.endStep();
+    Input.simulate("jump", true);
+    const e2 = Input.pressed("jump");
+    Input.simulate("jump", false);
+    check("input: simulate press edge once, held until released", e1 && !e2 && !Input.down("jump"));
+    // a key and a simulated hold of the same action: held until both let go, one edge only
+    Input.reset();
+    key("ArrowRight"); Input.endStep();
+    Input.simulate("right", true);
+    const noEdge = !Input.pressed("right");
+    Input.simulate("right", false);
+    const stillKb = Input.down("right");
+    key("ArrowRight", "keyup");
+    check("input: key and simulate hold one action; released only when both let go", noEdge && stillKb && !Input.down("right"));
+    Input.reset();
+    Input.simulate("right", true); key("ArrowRight"); key("ArrowRight", "keyup");
+    const stillSim = Input.down("right"); Input.simulate("right", false);
+    check("input: releasing the key leaves a simulated hold", stillSim && !Input.down("right"));
+    // blur releases the keyboard only
+    Input.reset();
+    key("KeyX"); Input.simulate("jump", true);
+    window.dispatchEvent(new Event("blur"));
+    check("input: blur releases keys but not simulated holds", !Input.down("fire") && Input.down("jump"));
+    Input.reset();
+    check("input: reset clears every source", !Input.down("jump") && Object.keys(Input.src).length === 0);
+  });
+
+  // ---------------- touch mode (src/touch.js) ----------------
+  // touch tests force the mode they need and restore the mode the suite runs in (#test&touch)
+  const touchWasOn = Touch.on;
+  // fake viewport size (window.innerWidth/innerHeight) plus a resize event; restoreViewport undoes it
+  const vpDesc = { w: Object.getOwnPropertyDescriptor(window, "innerWidth"), h: Object.getOwnPropertyDescriptor(window, "innerHeight") };
+  let vpFaked = false;
+  function setViewport(w, h) {
+    Object.defineProperty(window, "innerWidth", { configurable: true, get: function () { return w; } });
+    Object.defineProperty(window, "innerHeight", { configurable: true, get: function () { return h; } });
+    vpFaked = true;
+    window.dispatchEvent(new Event("resize"));
+  }
+  function restoreViewport() {
+    if (!vpFaked) return;
+    if (vpDesc.w) Object.defineProperty(window, "innerWidth", vpDesc.w); else delete window.innerWidth;
+    if (vpDesc.h) Object.defineProperty(window, "innerHeight", vpDesc.h); else delete window.innerHeight;
+    vpFaked = false;
+    window.dispatchEvent(new Event("resize"));
+  }
+  // touch tests force the mode they need (landscape when the runner window is portrait) and
+  // restore the mode the suite runs in (#test&touch)
+  function withTouch(on, fn) {
+    const was = Touch.on;
+    const fake = on && window.innerHeight > window.innerWidth && !vpFaked;
+    if (fake) setViewport(844, 390);
+    if (on && !was) Touch.enable(); else if (!on && was) Touch.disable();
+    try { fn(); } finally {
+      if (fake) restoreViewport();
+      if (was && !Touch.on) Touch.enable(); else if (!was && Touch.on) Touch.disable();
+    }
+  }
+
+  safe("touch mode", function () {
+    check("touch: hash flag parsing", touchHashFlag("#touch") && touchHashFlag("#debug&touch") && touchHashFlag("#level=3&touch") && touchHashFlag("#test&touch") &&
+      !touchHashFlag("#untouched") && !touchHashFlag("#touchy") && !touchHashFlag("") && !touchHashFlag("#level=3"));
+    check("touch: mode matches the URL in the headless runner (no coarse pointer)", touchWasOn === touchHashFlag(location.hash), "on " + touchWasOn + ", hash " + location.hash);
+    withTouch(true, function () {
+      check("touch: enable shows the control canvas", document.getElementById("pad").style.display === "block" && document.documentElement.classList.contains("touch"));
+    });
+    withTouch(false, function () {
+      check("touch: off hides the control canvas", document.getElementById("pad").style.display === "none" && !document.documentElement.classList.contains("touch"));
+    });
+  });
+
+  safe("touch layout", function () {
+    function rectOf(c) { return c.r !== undefined ? { x: c.x - c.r, y: c.y - c.r, w: 2 * c.r, h: 2 * c.r } : c; }
+    function inside(a, b) { return a.x >= b.x - 0.01 && a.y >= b.y - 0.01 && a.x + a.w <= b.x + b.w + 0.01 && a.y + a.h <= b.y + b.h + 0.01; }
+    function overlaps(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+    [[844, 390, { l: 47, r: 47, t: 0, b: 21 }], [844, 390, { l: 47, r: 47, t: 0, b: 0 }], [932, 430, null], [1024, 768, null], [667, 375, null], [2340, 1080, null]].forEach(function (v) {
+      const L = touchLayout(v[0], v[1], v[2]), ins = v[2] || { l: 0, r: 0, t: 0, b: 0 };
+      const safeBox = { x: ins.l, y: ins.t, w: v[0] - ins.l - ins.r, h: v[1] - ins.t - ins.b };
+      const name = "touch layout " + v[0] + "x" + v[1] + (v[2] ? " insets" : "");
+      const p = L.pic;
+      check(name + ": picture 4:3, centred in the safe box", Math.abs(p.w / p.h - 4 / 3) < 1e-9 &&
+        Math.abs(p.x + p.w / 2 - (safeBox.x + safeBox.w / 2)) < 0.01 && Math.abs(p.y + p.h / 2 - (safeBox.y + safeBox.h / 2)) < 0.01 && inside(p, safeBox), JSON.stringify(p));
+      check(name + ": both bars at least 120 px", L.left.w >= 120 - 1e-9 && L.right.w >= 120 - 1e-9, L.left.w.toFixed(1));
+      const ctrls = [L.pad, L.jump, L.fire, L.util.pause, L.util.mute, L.util.film, L.util.fullscreen].map(rectOf);
+      check(name + ": every control inside a bar, none over the picture",
+        ctrls.every(function (c) { return (inside(c, L.left) || inside(c, L.right)) && !overlaps(c, p); }));
+      let clash = false;
+      for (let i = 0; i < ctrls.length; i++) for (let j = i + 1; j < ctrls.length; j++) if (overlaps(ctrls[i], ctrls[j])) clash = true;
+      check(name + ": controls don't overlap each other", !clash);
+      check(name + ": Jump and Fire at least 56 px across", 2 * L.jump.r >= 56 && 2 * L.fire.r >= 56, (2 * L.fire.r).toFixed(1));
+    });
+    const tall = touchLayout(932, 430, null);
+    check("touch layout 932x430: picture fills the height", Math.abs(tall.pic.h - 430) < 0.01 && Math.abs(tall.pic.w - 573.33) < 0.01, tall.pic.w + "x" + tall.pic.h);
+    const tab = touchLayout(1024, 768, null);
+    check("touch layout 1024x768: picture scaled below full height to keep 120 px bars", tab.pic.h < 768 && Math.abs(tab.left.w - 120) < 0.01, tab.pic.h);
+    check("touch layout: portrait flagged", touchLayout(390, 844, null).portrait && !touchLayout(844, 390, null).portrait);
+  });
+
+  safe("touch display", function () {
+    withTouch(true, function () {
+      const L = Touch.layout, dpr = window.devicePixelRatio || 1, st = screenCanvas.style;
+      check("touch display: canvas at the picture rect, fractional scale in device px",
+        st.position === "fixed" && Math.abs(parseFloat(st.left) - L.pic.x) < 0.01 && Math.abs(parseFloat(st.top) - L.pic.y) < 0.01 && Math.abs(parseFloat(st.width) - L.pic.w) < 0.01 &&
+        screenCanvas.width === Math.round(W * L.s * dpr) && displayScale === L.s * dpr, st.left + "," + st.top + " " + st.width + " s " + L.s);
+      if (window.innerWidth <= 900 && window.innerHeight <= 430) check("touch display, phone-size window: scale above 1", L.s > 1, window.innerWidth + "x" + window.innerHeight + " s " + L.s);
+      Game.setState(STATE.TITLE); Game.render(); present();
+      check("touch display: smoothing off", screenCtx.imageSmoothingEnabled === false);
+      // nearest neighbour: every device pixel shows a colour of the raw frame (no blended colours)
+      const filmWas = Film.enabled; Film.enabled = false;
+      Game.render(); present();
+      const raw = ctx.getImageData(0, 0, W, H).data, cols = {};
+      for (let i = 0; i < raw.length; i += 4) cols[(raw[i] << 16) | (raw[i + 1] << 8) | raw[i + 2]] = true;
+      const shown = screenCtx.getImageData(0, 0, Math.min(400, screenCanvas.width), Math.min(300, screenCanvas.height)).data;
+      let blended = 0;
+      for (let i = 0; i < shown.length; i += 4) if (!cols[(shown[i] << 16) | (shown[i + 1] << 8) | shown[i + 2]]) blended++;
+      Film.enabled = filmWas;
+      check("touch display: no blended colours after scaling", blended === 0, blended + " px");
+    });
+    withTouch(false, function () {
+      const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
+      check("touch display: off again restores the integer desktop scale, centred by the page",
+        screenCanvas.width === W * s && screenCanvas.style.position === "" && screenCanvas.style.left === "" && displayScale === s);
+    });
+  });
+
+  // synthetic finger on the control canvas
+  function ptr(type, id, x, y) {
+    const e = new PointerEvent(type, { pointerId: id, pointerType: "touch", clientX: x, clientY: y, bubbles: true, cancelable: true });
+    document.getElementById("pad").dispatchEvent(e);
+    return e;
+  }
+  function padAt(deg, f) {
+    const P = Touch.layout.pad, a = deg * Math.PI / 180, d = P.r * (f || 0.7);
+    return [P.x + Math.cos(a) * d, P.y + Math.sin(a) * d];      // 0 = right, 90 = down (screen y)
+  }
+  function at(c) { return [c.x + (c.w ? c.w / 2 : 0), c.y + (c.h ? c.h / 2 : 0)]; }
+
+  safe("touch controls", function () {
+    withTouch(true, function () {
+      const L = Touch.layout, R = padAt(0), Lf = padAt(180), DR = padAt(45), D = padAt(90), F = at(L.fire), J = at(L.jump);
+      // pad right walks right
+      load(grid(60, 12, [[5, 9, "P"]]));
+      let x0 = Player.x;
+      ptr("pointerdown", 11, R[0], R[1]); steps(30);
+      check("touch: pad right holds 'right' and the hero walks right", Input.down("right") && Player.x > x0 + 20, (Player.x - x0).toFixed(1));
+      // slide right -> left in one move
+      ptr("pointermove", 11, Lf[0], Lf[1]);
+      check("touch: sliding right -> left switches at once", Input.down("left") && !Input.down("right"));
+      // slid off the pad: keeps the last direction
+      ptr("pointermove", 11, L.pad.x, L.pad.y - L.pad.r * 3);
+      check("touch: finger slid off the pad keeps its direction", Input.down("left") && !Input.down("up"));
+      ptr("pointerup", 11, L.pad.x, L.pad.y - L.pad.r * 3);
+      check("touch: lifting releases the pad", !Input.down("left") && !Input.down("right"));
+      // dead zone
+      ptr("pointerdown", 11, L.pad.x, L.pad.y);
+      check("touch: pad centre is a dead zone", !PAD_DIRS.some(function (a) { return Input.down(a); }));
+      ptr("pointerup", 11, L.pad.x, L.pad.y);
+      // diagonal down-right: kneels facing right
+      load(grid(60, 12, [[5, 9, "P"]])); Player.face = -1;
+      ptr("pointerdown", 12, DR[0], DR[1]); steps(10);
+      check("touch: pad down-right holds down and right, hero kneels facing right", Input.down("down") && Input.down("right") && Player.kneeling && Player.face === 1);
+      ptr("pointerup", 12, DR[0], DR[1]); steps(2);
+      // Fire held for 1 s: fire-rate shots
+      load(grid(80, 12, [[5, 9, "P"]])); Game.stats.shots = 0;
+      ptr("pointerdown", 13, F[0], F[1]); steps(60);
+      const shots = Game.stats.shots;
+      ptr("pointerup", 13, F[0], F[1]);
+      check("touch: holding Fire for 1 s fires at the fire rate", shots >= CONFIG.fireRate - 1 && shots <= CONFIG.fireRate + 1, shots);
+      // pressed look while held
+      function goldPx(c) {
+        const dpr = window.devicePixelRatio || 1, cv = document.getElementById("pad");
+        const d = cv.getContext("2d").getImageData(Math.round((c.x - c.r) * dpr), Math.round((c.y - c.r) * dpr), Math.round(2 * c.r * dpr), Math.round(2 * c.r * dpr)).data;
+        let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] === 255 && d[i + 1] === 216 && d[i + 2] === 64) n++;
+        return n;
+      }
+      const restGold = goldPx(L.fire);
+      ptr("pointerdown", 13, F[0], F[1]);
+      const heldGold = goldPx(L.fire);
+      ptr("pointerup", 13, F[0], F[1]);
+      check("touch: Fire is drawn in its pressed look while held", restGold === 0 && heldGold > 20 && goldPx(L.fire) === 0, restGold + " -> " + heldGold);
+      // short vs held Jump
+      function apexTouch(holdSteps) {
+        load(grid(30, 12, [[5, 9, "P"]]));
+        const y0 = Player.y; let minY = y0;
+        ptr("pointerdown", 14, J[0], J[1]);
+        for (let i = 0; i < 80; i++) { if (i === holdSteps) ptr("pointerup", 14, J[0], J[1]); steps(1); minY = Math.min(minY, Player.y); }
+        ptr("pointerup", 14, J[0], J[1]);
+        return y0 - minY;
+      }
+      const full = apexTouch(80), short = apexTouch(4);
+      check("touch: short Jump tap jumps lower than a held Jump", short < full * 0.7 && full > 40, full.toFixed(1) + " / " + short.toFixed(1));
+      // slide Fire -> Jump
+      load(grid(30, 12, [[5, 9, "P"]])); sounds.length = 0;
+      ptr("pointerdown", 15, F[0], F[1]); steps(2);
+      ptr("pointermove", 15, J[0], J[1]);
+      const slid = Input.down("jump") && !Input.down("fire") && Input.pressed("jump");
+      steps(3); ptr("pointerup", 15, J[0], J[1]);
+      check("touch: sliding from Fire onto Jump releases fire and jumps", slid && sounds.indexOf("jump") >= 0);
+      // three fingers: run, fire and jump together
+      load(grid(80, 12, [[5, 9, "P"]])); Game.stats.shots = 0; x0 = Player.x; const y0 = Player.y;
+      ptr("pointerdown", 21, R[0], R[1]); ptr("pointerdown", 22, F[0], F[1]); ptr("pointerdown", 23, J[0], J[1]);
+      const all3 = Input.down("right") && Input.down("fire") && Input.down("jump");
+      let minY = y0; for (let i = 0; i < 20; i++) { steps(1); minY = Math.min(minY, Player.y); }
+      check("touch: three fingers run, fire and jump together", all3 && Player.x > x0 && Game.stats.shots >= 1 && minY < y0 - 20,
+        "dx " + (Player.x - x0).toFixed(1) + " shots " + Game.stats.shots + " rise " + (y0 - minY).toFixed(1));
+      // cancel releases only that finger
+      ptr("pointercancel", 22, F[0], F[1]);
+      check("touch: a cancelled touch releases only its own actions", !Input.down("fire") && Input.down("right") && Input.down("jump"));
+      // blur releases every finger
+      window.dispatchEvent(new Event("blur"));
+      check("touch: losing focus releases all fingers", !Input.down("right") && !Input.down("jump") && Object.keys(Touch.fingers).length === 0);
+      // key and finger hold the same action
+      Input.reset();
+      window.dispatchEvent(new KeyboardEvent("keydown", { code: "ArrowRight", key: "ArrowRight" }));
+      ptr("pointerdown", 24, R[0], R[1]); ptr("pointerup", 24, R[0], R[1]);
+      const kbStill = Input.down("right");
+      window.dispatchEvent(new KeyboardEvent("keyup", { code: "ArrowRight", key: "ArrowRight" }));
+      check("touch: key and finger on Right: lifting the finger keeps walking until the key is up", kbStill && !Input.down("right"));
+      // pad Down + Jump drops through a one-way ledge
+      const items = [[3, 5, "P"]];
+      for (let x = 1; x < 8; x++) items.push([x, 6, "="]);
+      load(grid(30, 12, items));
+      const top = Player.y + Player.h;
+      ptr("pointerdown", 25, D[0], D[1]); steps(10);
+      ptr("pointerdown", 26, J[0], J[1]); steps(2); ptr("pointerup", 26, J[0], J[1]); steps(60);
+      ptr("pointerup", 25, D[0], D[1]);
+      check("touch: pad Down + Jump drops through a one-way ledge", top === 96 && Player.onGround && Math.abs(Player.y + Player.h - 160) < 1, top + " -> " + (Player.y + Player.h));
+      // utility buttons act like P, M and G (on release inside the button)
+      load(grid(30, 12, [[5, 9, "P"]]));
+      function tapUtil(name) { const p = at(L.util[name]); ptr("pointerdown", 30, p[0], p[1]); ptr("pointerup", 30, p[0], p[1]); steps(1); }
+      tapUtil("pause");
+      const paused = Game.state === STATE.PAUSE;
+      tapUtil("pause");
+      check("touch: Pause button pauses and resumes like P", paused && Game.state === STATE.PLAY, Game.state);
+      const m0 = Sound.muted; tapUtil("mute"); const m1 = Sound.muted; tapUtil("mute");
+      check("touch: Mute button toggles the sound like M", m1 === !m0 && Sound.muted === m0);
+      const f0 = Film.enabled; tapUtil("film"); const f1 = Film.enabled; tapUtil("film");
+      check("touch: Film button toggles the filter like G", f1 === !f0 && Film.enabled === f0);
+      // a press that slides off the button before release does nothing
+      const pp = at(L.util.pause);
+      ptr("pointerdown", 31, pp[0], pp[1]); ptr("pointerup", 31, L.pic.x + 50, L.pic.y + 50); steps(1);
+      check("touch: releasing outside a utility button does nothing", Game.state === STATE.PLAY);
+      // no long-press menu
+      const cm = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+      document.getElementById("pad").dispatchEvent(cm);
+      check("touch: long press opens no context menu", cm.defaultPrevented);
+      Input.reset();
+    });
+  });
+
+  safe("touch menus", function () {
+    withTouch(true, function () {
+      const P = Touch.layout.pic, c = [P.x + P.w / 2, P.y + P.h / 2];
+      function tapPic() { ptr("pointerdown", 50, c[0], c[1]); ptr("pointerup", 50, c[0], c[1]); steps(1); }
+      Input.reset(); Game.startHash = ""; Game.setState(STATE.TITLE); steps(5);
+      tapPic();
+      check("touch menus: tap on the title starts a new game", Game.state === STATE.LEVEL_INTRO && Game.levelIndex === 0 && Player.lives === CONFIG.startLives, Game.state);
+      steps(30); tapPic();
+      check("touch menus: tap skips the reel card", Game.state === STATE.PLAY, Game.state);
+      // during play a tap does nothing
+      steps(5); tapPic(); steps(2);
+      check("touch menus: tap on the picture during play does not pause", Game.state === STATE.PLAY, Game.state);
+      // paused: a tap resumes
+      Game.setState(STATE.PAUSE); steps(1); tapPic();
+      check("touch menus: tap while paused resumes", Game.state === STATE.PLAY, Game.state);
+      // level tally: first tap fills it, the next continues
+      Game.completeLevel(); steps(1);
+      const inTally = Game.state === STATE.LEVEL_COMPLETE;
+      tapPic(); const filled = Game.tally && Game.tally.done;
+      tapPic();
+      check("touch menus: taps fill and continue the level tally", inTally && filled && Game.state === STATE.LEVEL_INTRO && Game.levelIndex === 1, Game.state + " L" + Game.levelIndex);
+      Game.setState(STATE.GAME_OVER); steps(70); tapPic();
+      check("touch menus: tap leaves the game-over card", Game.state === STATE.TITLE, Game.state);
+      Game.setState(STATE.VICTORY); steps(130); tapPic();
+      check("touch menus: tap leaves the victory card", Game.state === STATE.TITLE, Game.state);
+      Game.startHash = null; Input.reset(); FX.clear();
+    });
+  });
+
+  safe("touch audio", function () {
+    withTouch(true, function () {
+      // fresh page state: no audio yet, music off (restored afterwards: unlock() builds a new node graph)
+      const wasPlaying = Sound.playing;
+      Sound.stopMusic();
+      const snap = Object.assign({}, Sound);
+      Sound.ac = null;
+      Game.setState(STATE.TITLE);
+      const P = Touch.layout.pic;
+      try {
+        ptr("pointerdown", 60, P.x + 10, P.y + 10);
+        const created = !!Sound.ac, playing = Sound.playing, track = Sound.track;
+        ptr("pointerup", 60, P.x + 10, P.y + 10);
+        check("touch audio: the first touch creates the audio context and starts the title music", created && playing && track === "title",
+          "ac " + created + " playing " + playing + " track " + track);
+      } finally {
+        Sound.stopMusic();
+        if (Sound.ac && Sound.ac !== snap.ac && Sound.ac.close) Sound.ac.close();
+        Object.keys(Sound).forEach(function (k) { if (!(k in snap)) delete Sound[k]; });
+        Object.assign(Sound, snap);
+        if (wasPlaying) Sound.startMusic();
+        Input.reset(); steps(1);
+      }
+    });
+  });
+
+  safe("touch portrait", function () {
+    const pad = document.getElementById("pad");
+    function cardShown() {
+      const dpr = window.devicePixelRatio || 1, d = pad.getContext("2d").getImageData(Math.round(pad.width / 2), Math.round(pad.height / 2), 1, 1).data;
+      return pad.style.display === "block" && d[3] === 255 && Math.round(pad.width / dpr) === window.innerWidth;
+    }
+    function pauseText() { TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false; return TEXT_LOG.items.join("|"); }
+    withTouch(true, function () {
+      try {
+        load(grid(30, 12, [[5, 9, "P"]]));
+        setViewport(390, 844);
+        const L = Touch.layout;
+        check("touch portrait: turning to portrait during play pauses and shows the card", L.portrait && Game.state === STATE.PAUSE && cardShown(), Game.state);
+        check("touch portrait: controls hidden and inert in portrait", Touch.hit(L.pad.x, L.pad.y) === null && Touch.hit(L.fire.x, L.fire.y) === null);
+        Game.setState(STATE.PLAY); Touch.tick();
+        check("touch portrait: play that starts while in portrait is paused at once", Game.state === STATE.PAUSE, Game.state);
+        setViewport(844, 390);
+        const txt = pauseText();
+        check("touch portrait: back to landscape the game stays paused and shows PAUSED", !Touch.layout.portrait && Game.state === STATE.PAUSE && txt.indexOf("PAUSED") >= 0, Game.state);
+        // hidden page during play pauses and releases fingers
+        Game.setState(STATE.PLAY);
+        const R = padAt(0);
+        ptr("pointerdown", 70, R[0], R[1]);
+        Object.defineProperty(document, "hidden", { configurable: true, get: function () { return true; } });
+        document.dispatchEvent(new Event("visibilitychange"));
+        delete document.hidden;
+        check("touch portrait: hidden page during play pauses and releases the fingers", Game.state === STATE.PAUSE && !Input.down("right"), Game.state);
+      } finally { restoreViewport(); }
+    });
+    withTouch(false, function () {
+      try {
+        load(grid(30, 12, [[5, 9, "P"]]));
+        setViewport(400, 900); steps(1);
+        check("touch portrait: without touch mode a tall window shows no card and keeps playing", Game.state === STATE.PLAY && pad.style.display === "none", Game.state);
+        Object.defineProperty(document, "hidden", { configurable: true, get: function () { return true; } });
+        document.dispatchEvent(new Event("visibilitychange"));
+        delete document.hidden;
+        check("touch portrait: without touch mode a hidden page does not pause", Game.state === STATE.PLAY, Game.state);
+      } finally { restoreViewport(); }
+    });
+    Input.reset(); Game.setState(STATE.TITLE);
+  });
+
+  safe("touch fullscreen", function () {
+    const de = document.documentElement, calls = [];
+    let fsEl = null, enabled = true;
+    const realReq = de.requestFullscreen, realExit = document.exitFullscreen;
+    const fsDesc = Object.getOwnPropertyDescriptor(Document.prototype, "fullscreenElement");
+    const enDesc = Object.getOwnPropertyDescriptor(Document.prototype, "fullscreenEnabled");
+    const orDesc = Object.getOwnPropertyDescriptor(Screen.prototype, "orientation");
+    Object.defineProperty(document, "fullscreenElement", { configurable: true, get: function () { return fsEl; } });
+    Object.defineProperty(document, "fullscreenEnabled", { configurable: true, get: function () { return enabled; } });
+    Object.defineProperty(screen, "orientation", { configurable: true, get: function () {
+      return { type: "landscape-primary", lock: function (o) { calls.push("orient:" + o); return Promise.resolve(); }, addEventListener: function () {} };
+    } });
+    de.requestFullscreen = function () { calls.push("request"); fsEl = de; document.dispatchEvent(new Event("fullscreenchange")); return Promise.resolve(); };
+    document.exitFullscreen = function () { calls.push("exit"); fsEl = null; document.dispatchEvent(new Event("fullscreenchange")); return Promise.resolve(); };
+    try {
+      withTouch(true, function () {
+        const L = Touch.layout, r = L.util.fullscreen, p = at(r);
+        Fullscreen.noteT = 0; Touch.sig = ""; Touch.draw();
+        ptr("pointerdown", 40, p[0], p[1]); ptr("pointerup", 40, p[0], p[1]);
+        check("touch fullscreen: button goes fullscreen and locks landscape", calls[0] === "request" && calls[1] === "orient:landscape" && Fullscreen.isFull(), calls.join(","));
+        check("touch fullscreen: no Windows-key note in touch mode", Fullscreen.noteT === 0 || Fullscreen.note.indexOf("WINDOWS") < 0, Fullscreen.note);
+        ptr("pointerdown", 40, p[0], p[1]); ptr("pointerup", 40, p[0], p[1]);
+        check("touch fullscreen: button again leaves fullscreen", calls.indexOf("exit") >= 0 && !Fullscreen.isFull(), calls.join(","));
+        // browser without element fullscreen (iPhone Safari): button hidden and inert
+        enabled = false; calls.length = 0; Touch.sig = ""; Touch.draw();
+        const dpr = window.devicePixelRatio || 1;
+        const d = document.getElementById("pad").getContext("2d").getImageData(Math.round(r.x * dpr), Math.round(r.y * dpr), Math.round(r.w * dpr), Math.round(r.h * dpr)).data;
+        let opaque = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) opaque++;
+        ptr("pointerdown", 41, p[0], p[1]); ptr("pointerup", 41, p[0], p[1]);
+        check("touch fullscreen: without the API no button is drawn and tapping there does nothing", opaque === 0 && calls.length === 0, opaque + " px, " + calls.join(","));
+      });
+    } finally {
+      delete document.fullscreenElement; if (fsDesc) Object.defineProperty(Document.prototype, "fullscreenElement", fsDesc);
+      delete document.fullscreenEnabled; if (enDesc) Object.defineProperty(Document.prototype, "fullscreenEnabled", enDesc);
+      delete screen.orientation; if (orDesc) Object.defineProperty(Screen.prototype, "orientation", orDesc);
+      de.requestFullscreen = realReq; document.exitFullscreen = realExit;
+      Fullscreen.noteT = 0; Input.reset(); Touch.sig = "";
+    }
   });
 
   safe("font", function () {
@@ -366,13 +765,13 @@ function runTests() {
     });
   });
 
-  safe("title controls", function () {
-    const txt = TITLE_CONTROLS.map(function (l) { return l.join(" "); }).join("|");
+  safe("title controls", function () { withTouch(false, function () {
+    const txt = titleControls().map(function (l) { return l.join(" "); }).join("|");
     check("title: controls list shows SPACE jump and X/CTRL/ALT fire",
       txt.indexOf("SPACE JUMP") >= 0 && txt.indexOf("X/CTRL/ALT FIRE") >= 0 && txt.indexOf("CTRL JUMP") < 0, txt);
     check("title: controls list shows F fullscreen", txt.indexOf("F FULLSCREEN") >= 0, txt);
     check("title: controls list shows UP/DOWN climb and kneel", txt.indexOf("UP/DOWN CLIMB/KNEEL") >= 0, txt);
-  });
+  }); });
 
   safe("ladder", function () {
     const items = [[2, 9, "P"]];
@@ -593,6 +992,8 @@ function runTests() {
 
   safe("fullscreen", function () {
     // stub the Fullscreen and Keyboard Lock APIs (headless Chrome can't really go fullscreen)
+    // desktop behaviour: touch mode skips the Windows-key lock, so these run with it off
+    const touchOn = Touch.on; if (touchOn) Touch.disable();
     const de = document.documentElement, calls = [];
     let fsEl = null;
     const realReq = de.requestFullscreen, realExit = document.exitFullscreen;
@@ -632,6 +1033,7 @@ function runTests() {
       delete navigator.keyboard; if (kbDesc) Object.defineProperty(Navigator.prototype, "keyboard", kbDesc);
       de.requestFullscreen = realReq; document.exitFullscreen = realExit;
       Fullscreen.noteT = 0; Input.reset();
+      if (touchOn) Touch.enable();
     }
   });
 
@@ -1221,7 +1623,7 @@ function runTests() {
     check("reel cards: Space skips straight to play", Game.state === STATE.PLAY);
   });
 
-  safe("poster and end cards", function () {
+  safe("poster and end cards", function () { withTouch(false, function () {
     function textsOf(state, setup) {
       if (setup) setup();
       Game.setState(state); Game.stateT = 3; Game.time = 0.1;   // blink phase: visible
@@ -1260,6 +1662,65 @@ function runTests() {
     check("end cards: game over is a THE END card with the final score", go.indexOf("THE END") >= 0 && go.indexOf("FINAL SCORE") >= 0, go);
     check("end cards: victory is a THE END card with the final score", vi.indexOf("THE END") >= 0 && vi.indexOf("FINAL SCORE") >= 0, vi);
     FX.clear();
+  }); });
+
+  safe("touch texts", function () {
+    function textsOf(state, setup) {
+      if (setup) setup();
+      Game.setState(state); Game.stateT = 3; Game.time = 0.1;   // blink phase: visible
+      TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+      return TEXT_LOG.items;
+    }
+    const KEYS = ["SPACE", "CTRL", "ALT", "ENTER", "ARROWS", "WASD", "PRESS", "ANY KEY", "(M)", "P/", "UP/DOWN"];
+    function noKeys(list) { return list.filter(function (t) { return KEYS.some(function (k) { return t.indexOf(k) >= 0; }); }); }
+    // desktop texts are unchanged
+    withTouch(false, function () {
+      const t = textsOf(STATE.TITLE).join("|");
+      check("touch texts: desktop title keeps PRESS ENTER and the key list", t.indexOf("PRESS ENTER") >= 0 && t.indexOf("TAP") < 0 && titleControls() === TITLE_CONTROLS);
+    });
+    withTouch(true, function () {
+      const realAc = Sound.ac;
+      Sound.ac = null;                                       // before the first tap
+      const items = textsOf(STATE.TITLE), t = items.join("|");
+      Sound.ac = realAc;
+      const ctl = titleControls(), txt = ctl.map(function (l) { return l.join(" "); }).join("|");
+      check("touch texts: title says TAP TO START and (TAP STARTS THE MUSIC)", t.indexOf("TAP TO START") >= 0 && t.indexOf("(TAP STARTS THE MUSIC)") >= 0, t);
+      check("touch texts: controls list names pad, Jump, Fire, Down+Jump, Pause, Mute, Film",
+        txt.indexOf("PAD MOVE/CLIMB/KNEEL") >= 0 && txt.indexOf("JUMP JUMP") >= 0 && txt.indexOf("FIRE FIRE") >= 0 && txt.indexOf("DOWN+JUMP DROP THROUGH") >= 0 &&
+        txt.indexOf("PAUSE") >= 0 && txt.indexOf("MUTE") >= 0 && txt.indexOf("FILM FILTER") >= 0, txt);
+      check("touch texts: fullscreen line only where the button exists", (txt.indexOf("FULLSCREEN") >= 0) === Touch.canFullscreen(), txt);
+      check("touch texts: no keyboard keys on the touch title", noKeys(items).length === 0, noKeys(items).join(","));
+      check("touch texts: controls fit the panel columns (labels 12, values 18 characters)",
+        ctl.length <= 8 && ctl.every(function (l) { return l[0].length <= 12 && l[1].length <= 18; }));
+      const ts = textsOf(STATE.TITLE, function () { if (!Sound.muted) Sound.toggleMute(); }).join("|");
+      Sound.toggleMute();
+      check("touch texts: sound status without the M key", ts.indexOf("SOUND OFF") >= 0 && ts.indexOf("(M)") < 0, ts);
+      // prompts on the other screens
+      Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+      const pz = textsOf(STATE.PAUSE).join("|");
+      check("touch texts: pause says TAP II TO CONTINUE", pz.indexOf("TAP II TO CONTINUE") >= 0 && pz.indexOf("PRESS") < 0, pz);
+      Game.setState(STATE.PLAY); Game.completeLevel(); Game.tally.shown = Game.tally.total; Game.tally.done = true;
+      const lc = textsOf(STATE.LEVEL_COMPLETE).join("|");
+      const go = textsOf(STATE.GAME_OVER).join("|"), vi = textsOf(STATE.VICTORY).join("|");
+      check("touch texts: tally, game over and victory say TAP TO CONTINUE",
+        [lc, go, vi].every(function (x) { return x.indexOf("TAP TO CONTINUE") >= 0 && x.indexOf("PRESS") < 0; }), [lc, go, vi].join(" / "));
+      // placement: the tap prompts fit the screen and stay clear of the other title elements
+      const sw = textWidth("TAP TO START", 2), start = { x: 130 - sw / 2, y: 186, w: sw, h: 14 };
+      const mw = textWidth("(TAP STARTS THE MUSIC)", 1), music = { x: 130 - mw / 2, y: 218, w: mw, h: 8 };
+      const vw = textWidth(BUILD_VERSION, 1), vbox = { x: TITLE_VERSION_POS.x - vw - 1, y: TITLE_VERSION_POS.y - 1, w: vw + 2, h: 9 };
+      const nw = textWidth("STARTS AT FINAL REEL", 1), nbox = { x: TITLE_START_POS.x - 1, y: TITLE_START_POS.y - 1, w: nw + 2, h: 9 };
+      const badge = { x: 250, y: 186, w: 58, h: 30 }, filmed = { x: 130 - textWidth("FILMED ON LOCATION IN WOLLERAU", 1) / 2, y: 206, w: textWidth("FILMED ON LOCATION IN WOLLERAU", 1), h: 8 };
+      const portrait = { x: 14, y: 80, w: 100, h: 104 };
+      const inScreen = [start, music].every(function (b) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H; });
+      const clashes = [[start, badge], [start, vbox], [start, nbox], [start, filmed], [start, portrait], [music, vbox], [music, nbox], [music, badge], [music, filmed]]
+        .filter(function (pr) { return overlap(pr[0], pr[1]); }).length;
+      check("touch texts: title tap prompts inside the screen and clear of the other title elements", inScreen && clashes === 0, clashes + " overlaps");
+      ["TAP TO CONTINUE", "TAP II TO CONTINUE"].forEach(function (s) {
+        const w = textWidth(s, 1);
+        check("touch texts: '" + s + "' fits the screen", W / 2 - w / 2 >= 0 && W / 2 + w / 2 <= W);
+      });
+      Input.reset(); FX.clear(); Game.setState(STATE.TITLE);
+    });
   });
 
   safe("audio", function () {
@@ -2308,7 +2769,7 @@ function runTests() {
     const offAfterG = !Film.enabled;
     Game.render(); present();
     const sx = 100, sy = 100, sc = displayScale;
-    const raw = ctx.getImageData(sx, sy, 1, 1).data, shown = screenCtx.getImageData(sx * sc, sy * sc, 1, 1).data;
+    const raw = ctx.getImageData(sx, sy, 1, 1).data, shown = screenCtx.getImageData(Math.floor((sx + 0.5) * sc), Math.floor((sy + 0.5) * sc), 1, 1).data;
     check("film: G turns the filter off (screen shows the raw frame)", offAfterG && raw[0] === shown[0] && raw[1] === shown[1] && raw[2] === shown[2],
       Array.from(raw).join(",") + " vs " + Array.from(shown).join(","));
     tap("film");

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run the in-game scenario tests (src/test.js) in headless Chrome or Edge.
 
-Usage:  python tools/run_tests.py [--browser chrome|edge] [--size 1280,1000]
-Opens dist/buck_nukem.html#test, waits for the tests to finish and prints the report.
+Usage:  python tools/run_tests.py [--browser chrome|edge] [--size 1280,1000] [--hash touch]
+Opens dist/buck_nukem.html#test (plus "&" and --hash, e.g. #test&touch for touch mode), waits for the tests to finish and prints the report.
 Exit code 0 when every test passes.
 """
 import argparse
@@ -41,12 +41,13 @@ def main():
     ap.add_argument("--browser", default="chrome", choices=sorted(BROWSERS))
     ap.add_argument("--size", default="1280,1000", help="window size WIDTH,HEIGHT")
     ap.add_argument("--html", default=str(HTML))
+    ap.add_argument("--hash", default="", help="extra URL fragment parameters, e.g. touch")
     args = ap.parse_args()
     exe = find_browser(args.browser)
     if not exe:
         print(f"{args.browser} not found", file=sys.stderr)
         return 2
-    url = Path(args.html).resolve().as_uri() + "#test"
+    url = Path(args.html).resolve().as_uri() + "#test" + ("&" + args.hash if args.hash else "")
     with tempfile.TemporaryDirectory() as profile:
         cmd = [exe, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                f"--user-data-dir={profile}", f"--window-size={args.size}",
@@ -72,7 +73,7 @@ def main():
               .replace("&quot;", '"').replace("&#39;", "'"))
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")     # test output may contain the heart glyph
-    print(f"[{args.browser} {args.size}]")
+    print(f"[{args.browser} {args.size}" + (f" #{args.hash}" if args.hash else "") + "]")
     print(report)
     return 0 if "TESTS PASS" in report else 1
 

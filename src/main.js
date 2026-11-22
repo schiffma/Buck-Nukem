@@ -402,6 +402,7 @@ function frame(now) {
   }
   Game.render();
   present();
+  if (Touch.on) Touch.tick();
   fpsCount++;
   if (rateT >= 1) { Game.ups = upsCount; Game.fps = fpsCount; upsCount = fpsCount = 0; rateT -= 1; }
   if (!Game.headless) requestAnimationFrame(frame);
@@ -417,6 +418,7 @@ function startLevelFromHash(hash) {
 }
 
 function boot() {
+  Touch.init();             // touch mode on phones / #touch (src/touch.js)
   loadAssets(function () {
     buildSprites();
     booted = true;

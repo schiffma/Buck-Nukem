@@ -34,6 +34,14 @@ const Fullscreen = {
   },
   onChange() {
     const self = this, kb = navigator.keyboard;
+    if (Touch.on) {
+      // phones: no Windows key to lock (and no note about it); keep the picture in landscape
+      const o = screen.orientation;
+      if (this.isFull() && o && o.lock) {
+        try { const p = o.lock("landscape"); if (p && p.catch) p.catch(function () {}); } catch (e) { /* not allowed here */ }
+      }
+      return;
+    }
     if (this.isFull()) {
       const notLockable = function () { self.show("FULLSCREEN (WINDOWS KEY NOT LOCKABLE HERE)"); };
       if (kb && kb.lock) {
@@ -48,19 +56,32 @@ const Fullscreen = {
 };
 document.addEventListener("fullscreenchange", function () { Fullscreen.onChange(); });
 
+// Every action can be held by several sources at once: "kb" (keyboard), "sim" (Input.simulate:
+// test harness, promo bridge) and "t<pointerId>" (one per finger, src/touch.js). An action is
+// held while any source holds it; its press edge fires when the first source takes it.
 const Input = {
   held: {},
   edge: {},
+  src: {},              // action -> { source: true }
   anyKeyListeners: [],
   down(a) { return !!this.held[a]; },
   pressed(a) { return !!this.edge[a]; },
   endStep() { this.edge = {}; },
-  // used by the automated test harness
-  simulate(action, isDown) {
-    if (isDown && !this.held[action]) this.edge[action] = true;
-    this.held[action] = isDown;
+  set(action, source, isDown) {
+    const s = this.src[action] || (this.src[action] = {});
+    if (isDown) {
+      if (!this.held[action]) this.edge[action] = true;
+      s[source] = true;
+    } else delete s[source];
+    this.held[action] = Object.keys(s).length > 0;
   },
-  reset() { this.held = {}; this.edge = {}; },
+  // releases every action the source holds (keyboard on blur, a lifted finger)
+  releaseSource(source) {
+    for (const a in this.src) if (this.src[a][source]) this.set(a, source, false);
+  },
+  // used by the automated test harness and the promo bridge
+  simulate(action, isDown) { this.set(action, "sim", isDown); },
+  reset() { this.held = {}; this.edge = {}; this.src = {}; },
 };
 
 window.addEventListener("keydown", function (e) {
@@ -70,14 +91,13 @@ window.addEventListener("keydown", function (e) {
   if (!a) return;
   if (a === "fullscreen" && !e.repeat) Fullscreen.toggle();   // inside the key event: browsers require a user gesture
   e.preventDefault();              // no page scroll on Space/arrows, no browser menu on Alt
-  if (!Input.held[a]) Input.edge[a] = true;
-  Input.held[a] = true;
+  Input.set(a, "kb", true);
 });
 window.addEventListener("keyup", function (e) {
   if (e.code === "MetaLeft" || e.code === "MetaRight") { e.preventDefault(); return; }
   const a = KEYMAP[e.code];
   if (!a) return;
   e.preventDefault();              // Alt keyup would otherwise focus the browser menu
-  Input.held[a] = false;
+  Input.set(a, "kb", false);
 });
-window.addEventListener("blur", function () { Input.held = {}; });
+window.addEventListener("blur", function () { Input.releaseSource("kb"); });

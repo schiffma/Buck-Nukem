@@ -4,6 +4,25 @@ const TITLE_CONTROLS = [
   ["ARROWS/WASD", "MOVE"], ["UP/DOWN", "CLIMB/KNEEL"], ["SPACE", "JUMP"],
   ["X/CTRL/ALT", "FIRE"], ["P/ENTER", "PAUSE"], ["M", "MUTE"], ["G", "FILM FILTER"], ["F", "FULLSCREEN"],
 ];
+// touch mode (src/touch.js): the on-screen controls; the fullscreen line only where the button exists
+const TITLE_CONTROLS_TOUCH = [
+  ["PAD", "MOVE/CLIMB/KNEEL"], ["JUMP", "JUMP"], ["FIRE", "FIRE"], ["DOWN+JUMP", "DROP THROUGH"],
+  ["II", "PAUSE"], ["SPEAKER", "MUTE"], ["FILM", "FILM FILTER"], ["CORNERS", "FULLSCREEN"],
+];
+function titleControls() {
+  if (!Touch.on) return TITLE_CONTROLS;
+  return Touch.canFullscreen() ? TITLE_CONTROLS_TOUCH : TITLE_CONTROLS_TOUCH.slice(0, -1);
+}
+// Prompt texts for the input in use: keys on the desktop, taps in touch mode.
+const PROMPTS = {
+  start: ["PRESS ENTER", "TAP TO START"],
+  continue: ["PRESS ENTER", "TAP TO CONTINUE"],
+  paused: ["PRESS P TO CONTINUE", "TAP II TO CONTINUE"],
+  music: ["(ANY KEY STARTS THE MUSIC)", "(TAP STARTS THE MUSIC)"],
+  soundOn: ["SOUND ON (M)", "SOUND ON"],
+  soundOff: ["SOUND OFF (M)", "SOUND OFF"],
+};
+function promptText(kind) { return PROMPTS[kind][Touch.on ? 1 : 0]; }
 const TAGLINE = ["HE CAME FOR THE TENNIS.", "HE STAYED FOR THE CARNAGE."];
 
 // Records every string drawn while active (used by the tests to check screen content).
@@ -138,15 +157,15 @@ const Screens = {
     const x = 126;
     fillRect(x - 6, 78, 186, 104, "rgba(46,6,14,0.74)");
     drawText("CONTROLS", x, 82, "#ffd840");
-    TITLE_CONTROLS.forEach(function (l, i) {
+    titleControls().forEach(function (l, i) {
       drawText(l[0], x, 94 + i * 11, "#e8a860");
       drawText(l[1], x + 72, 94 + i * 11, "#f0e8d0");
     });
     drawBadge(250, 186);
-    if (blink(2)) drawText("PRESS ENTER", 130, 186, "#ff3a2a", { scale: 2, align: "center", shadow: "#000" });
+    if (blink(2)) drawText(promptText("start"), 130, 186, "#ff3a2a", { scale: 2, align: "center", shadow: "#000" });
     drawText("FILMED ON LOCATION IN WOLLERAU", 130, 206, "#c8b890", { align: "center", shadow: "#000" });
-    if (!Sound.ac) drawText("(ANY KEY STARTS THE MUSIC)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
-    else drawText(Sound.muted ? "SOUND OFF (M)" : "SOUND ON (M)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
+    if (!Sound.ac) drawText(promptText("music"), 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
+    else drawText(promptText(Sound.muted ? "soundOff" : "soundOn"), 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
     const note = titleStartNote();
     if (note) drawText(note, TITLE_START_POS.x, TITLE_START_POS.y, "#c8b890", { shadow: "#000" });
     drawText(BUILD_VERSION, TITLE_VERSION_POS.x, TITLE_VERSION_POS.y, "#c8b890", { align: "right", shadow: "#000" });
@@ -201,13 +220,13 @@ const Screens = {
       drawText(String(r[1]), 260, 86 + i * 16, i === 4 ? "#ffe860" : "#ffffff", { align: "right" });
     });
     drawText("SCORE " + Game.score, W / 2, 180, "#ffffff", { align: "center" });
-    if (t.done && blink(2)) drawText("PRESS ENTER", W / 2, 210, "#ffffff", { align: "center" });
+    if (t.done && blink(2)) drawText(promptText("continue"), W / 2, 210, "#ffffff", { align: "center" });
   },
 
   pause() {
     fillRect(0, HUD_H, W, VIEW_H, "rgba(0,0,0,0.5)");
     drawText("PAUSED", W / 2, 110, "#ffffff", { scale: 2, align: "center", shadow: "#000" });
-    drawText("PRESS P TO CONTINUE", W / 2, 132, "#c0c0c0", { align: "center" });
+    drawText(promptText("paused"), W / 2, 132, "#c0c0c0", { align: "center" });
   },
 
   gameOver() {
@@ -218,7 +237,7 @@ const Screens = {
     drawText("...OF BUCK NUKEM?", W / 2, 152, "#ff3a2a", { align: "center", shadow: "#000" });
     drawText("FINAL SCORE " + Game.score, W / 2, 172, "#f0e8d0", { align: "center" });
     drawText("THE LAWYERS WIN THIS ROUND...", W / 2, 188, "#c0a080", { align: "center" });
-    if (Game.stateT > 1 && blink(2)) drawText("PRESS ENTER", W / 2, 214, "#ffffff", { align: "center" });
+    if (Game.stateT > 1 && blink(2)) drawText(promptText("continue"), W / 2, 214, "#ffffff", { align: "center" });
   },
 
   victory() {
@@ -236,7 +255,7 @@ const Screens = {
     });
     drawText("FINAL SCORE " + Game.score, W / 2, 176, "#ffd840", { scale: 2, align: "center", shadow: "#000" });
     drawText("BUCK NUKEM WILL RETURN", W / 2, 200, "#ff5a3a", { align: "center", shadow: "#000" });
-    if (Game.stateT > 2 && blink(2)) drawText("PRESS ENTER", W / 2, 218, "#ffffff", { align: "center", shadow: "#000" });
+    if (Game.stateT > 2 && blink(2)) drawText(promptText("continue"), W / 2, 218, "#ffffff", { align: "center", shadow: "#000" });
     // fireworks
     if (Math.random() < 0.08) FX.explode(rnd(20, 300), rnd(20, 120), false);
     FX.draw(0, 0);

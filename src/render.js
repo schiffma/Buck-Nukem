@@ -6,18 +6,34 @@ buffer.width = W; buffer.height = H;
 const ctx = buffer.getContext("2d", { willReadFrequently: true });   // read back every frame by the film pass
 ctx.imageSmoothingEnabled = false;
 
-let displayScale = 1;
+let displayScale = 1;  // device px per game pixel on #screen
 let booted = false;     // set by boot() once all modules and assets are ready
+let displayLayout = null;   // touch mode (src/touch.js): returns the touch layout; null on the desktop
 
 function resizeScreen() {
-  const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
-  displayScale = s;
-  // Backing store at the scaled size: nearest-neighbour upscale done by us, so the
-  // result is sharp in every browser (CSS image-rendering is a second safeguard).
-  screenCanvas.width = W * s;
-  screenCanvas.height = H * s;
-  screenCanvas.style.width = (W * s) + "px";
-  screenCanvas.style.height = (H * s) + "px";
+  const L = displayLayout ? displayLayout() : null;
+  if (L) {
+    // touch mode: fractional fit between the control bars, backing store in device pixels
+    const dpr = window.devicePixelRatio || 1;
+    displayScale = L.s * dpr;
+    screenCanvas.width = Math.round(W * displayScale);
+    screenCanvas.height = Math.round(H * displayScale);
+    screenCanvas.style.width = L.pic.w + "px";
+    screenCanvas.style.height = L.pic.h + "px";
+    screenCanvas.style.position = "fixed";
+    screenCanvas.style.left = L.pic.x + "px";
+    screenCanvas.style.top = L.pic.y + "px";
+  } else {
+    const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
+    displayScale = s;
+    // Backing store at the scaled size: nearest-neighbour upscale done by us, so the
+    // result is sharp in every browser (CSS image-rendering is a second safeguard).
+    screenCanvas.width = W * s;
+    screenCanvas.height = H * s;
+    screenCanvas.style.width = (W * s) + "px";
+    screenCanvas.style.height = (H * s) + "px";
+    screenCanvas.style.position = screenCanvas.style.left = screenCanvas.style.top = "";
+  }
   screenCtx.imageSmoothingEnabled = false;
   if (booted) present();   // resizing clears the canvas
 }

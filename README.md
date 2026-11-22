@@ -4,9 +4,9 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.5** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
+Version **1.0.6** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
-Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
+Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. On a phone, hold it in landscape and use Chrome on Android or Safari on iOS: the same file switches to touch controls (see [Playing on a phone](#playing-on-a-phone)). Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
 **Direct level links:** add `#level=N` (N = 1–4, the reel number; 4 is the boss arena) to start every new game at that level, e.g. `buck_nukem.html#level=4` or online <https://schiffma.github.io/Buck-Nukem/dist/buck_nukem.html#level=4>. The title shows "STARTS AT REEL N" ("STARTS AT FINAL REEL"); Enter starts a fresh game there (score 0, 3 lives). It combines with other flags (`#debug&level=3`); invalid values start at level 1.
 
@@ -24,6 +24,18 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 | G | Film filter on/off (scratches, grain, colour grade) |
 | F | Fullscreen on/off. In Chrome and Edge the Windows key is locked while fullscreen, so it can't open the Start menu and interrupt firing (a web page cannot block it in a normal window). Esc also leaves fullscreen. |
 | F3 | Debug overlay (updates and frames per second) |
+
+## Playing on a phone
+
+The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartphone held in **landscape**, in current Chrome on Android and Safari on iOS. On a touch device the game switches to *touch mode* by itself. On a desktop, add `#touch` to the URL (`buck_nukem.html#touch`, or with other flags, e.g. `#level=4&touch`) to try it with the mouse. A touchscreen laptop switches on its first touch. A connected keyboard keeps working in touch mode.
+
+- The 4:3 picture fills the screen height. The controls sit in the black bars beside it, never over the action, and clear of the notch.
+- **Left bar:** the D-pad. Left/Right walk; Up/Down climb ladders; Down kneels; the diagonals combine (Down-Right kneels facing right). Slide your thumb between directions without lifting.
+- **Right bar:** **FIRE** (hold to keep firing) and **JUMP** (hold for higher jumps). Slide between them without lifting. Several fingers work at once: run, jump and fire together. Pad Down + JUMP drops through a platform.
+- **Top of the bars:** Pause (II), Mute (speaker), Film filter (film frame) and Fullscreen (corners). They act when you lift your finger on them. Fullscreen also locks the screen to landscape where the browser allows it. iPhone Safari has no fullscreen for web pages, so the button isn't shown there.
+- **Menus:** tap the picture to start ("TAP TO START"), skip the reel cards, continue the tally and the end cards, and resume from pause. The first tap also starts the music. During play, taps on the picture do nothing.
+- **Portrait:** the game pauses and asks you to turn the phone. Switching apps or locking the screen also pauses the game.
+- The page doesn't scroll, zoom, select text or open long-press menus.
 
 ## Game rules
 
@@ -68,9 +80,15 @@ Release steps:
 ```
 python tools/run_tests.py                 # in-game scenario tests, headless Chrome
 python tools/run_tests.py --browser edge  # same in headless Edge
+python tools/run_tests.py --size 844,390 --hash touch   # the whole suite in touch mode at phone size (landscape)
+python tools/run_tests.py --size 390,844 --hash touch   # ... in a portrait window
 python tools/check_levels.py              # every level completable, all pickups reachable
 python tools/screenshot.py out.png title play,0,40,13,60 play,3,24,9,150 sprites
+python tools/screenshot.py --touch out.png title play,0,40,13,60   # touch mode, whole 844x390 window with the control bars
+python tools/screenshot.py --touch 500x900 out.png title          # portrait card (headless Chrome windows are at least 500 px wide)
 ```
+
+`--hash` adds URL fragment parameters to `#test` (`#test&touch`). `--size` sets the browser window (headless Chrome keeps it at least 500 px wide and a little shorter than asked).
 
 Promo video (an AI plays the game; needs `pip install -r tools/promo/requirements.txt` once: Playwright, networkx, py_trees, imageio-ffmpeg):
 
@@ -89,8 +107,9 @@ cd tools/promo && python -m unittest discover -s tests -t .   # agent unit tests
 src/index.template.html  page shell (canvas, styles)
 src/config.js            constants and the CONFIG tuning table
 src/assets.js            decodes the embedded images
-src/render.js            320x240 back buffer, integer scaling
-src/input.js             keyboard
+src/render.js            320x240 back buffer, integer scaling (fractional between the control bars in touch mode)
+src/input.js             keyboard, fullscreen; actions held per source (keys, fingers, simulate)
+src/touch.js             touch mode: side-bar layout, on-screen controls, taps, portrait card
 src/font.js              5x7 bitmap font
 src/sprites.js           procedural pixel art (hero body, enemies, pickups)
 src/fx.js                particles, explosions, screen shake
