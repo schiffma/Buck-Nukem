@@ -297,7 +297,7 @@ class Agent:
             if self.lv and not self.lv.get("done"):
                 self.finish_level(snap, True)
             return [{"enter": 1}, {}] if snap["tallyDone"] and snap["stateT"] > 3.5 else [{}, {}]
-        if st not in ("PLAY", "BOSS"):
+        if st not in ("PLAY", "BOSS") or snap.get("reveal"):     # boss reveal pan: hands off
             return [{}, {}]
         if self.lv is None or self.lv.get("done") or self.lv["index"] != snap["levelIndex"]:
             self.begin_level(snap)

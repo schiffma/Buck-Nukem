@@ -103,6 +103,21 @@ class BossAgent(FakeAgent):
         return True
 
 
+class MegaCutter(unittest.TestCase):
+    def test_megacutter_cuts_ground_crayfish_like_the_cutter(self):
+        s = snap([cray(160)])
+        s["hero"]["weapon"] = "megacutter"
+        w = World(s, GRID)
+        self.assertTrue(w.hittable(s["enemies"][0], kneeling=False))   # blades span down to the knees
+        s["hero"]["weapon"] = "blaster"
+        self.assertFalse(World(s, GRID).hittable(s["enemies"][0], kneeling=False))
+
+    def test_megacutter_hits_the_raised_face(self):
+        s = boss_snap()
+        s["hero"]["weapon"] = "megacutter"
+        self.assertTrue(World(s, GRID).boss_face_hittable())
+
+
 class CoverAndDucking(unittest.TestCase):
     def test_crate_blocks_the_line_to_the_face(self):
         s = boss_snap()

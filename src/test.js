@@ -1672,6 +1672,167 @@ function runTests() {
     Game.godMode = false; Input.reset(); FX.clear();
   });
 
+  safe("mega cutter", function () {
+    function arena() {
+      Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+      Game.enemies = []; Game.enemyShots = []; Boss.state = "idle"; Boss.t = 999;
+    }
+    function upgrade() { return Game.pickups.filter(function (q) { return q.type === "w"; })[0]; }
+    function take() { const q = upgrade(); Game.collectPickup(q); Game.pickups.splice(Game.pickups.indexOf(q), 1); }
+    arena();
+    const up = upgrade();
+    check("mega cutter: the upgrade sits on the arena's top platform", !!up && Math.floor((up.x + up.w / 2) / TILE) === 13 && up.y + up.h <= 5 * TILE + 0.5,
+      up ? Math.floor((up.x + up.w / 2) / TILE) + "," + ((up.y + up.h) / TILE).toFixed(1) : "none");
+    check("mega cutter: the arena pickup looks different from the Mega Blaster", PICKUP_INFO.w.img() === SPR.megaCutter && SPR.megaCutter !== SPR.megagun);
+    take();
+    TEXT_LOG.active = true; TEXT_LOG.items = []; drawHud(); TEXT_LOG.active = false;
+    (function () {   // HUD label clear of the key-card slots
+      const end = 171 + textWidth("MEGA CUTTER", 1);
+      check("mega cutter: HUD label ends before the key-card slots", end < 240, "label ends at " + end);
+    })();
+    check("mega cutter: taking it gives the MEGA CUTTER (HUD)", Player.weapon === "megacutter" && TEXT_LOG.items.indexOf("MEGA CUTTER") >= 0, Player.weapon + " " + TEXT_LOG.items.join("|"));
+    // one shot: two 16 px blades, 5 damage each, the second rising
+    Game.shots.length = 0; Player.face = 1; Player.fireCd = 0; Player.fire();
+    const b1 = Game.shots[0] || {}, b2 = Game.shots[1] || {};
+    check("mega cutter: a shot fires two 16 px blades of 5 damage, the second angled upward",
+      Game.shots.length === 2 && b1.w >= 16 && b2.w >= 16 && b1.dmg === 5 && b2.dmg === 5 && !b1.vy && b2.vy < 0 && b1.mega && b2.mega,
+      Game.shots.length + " blades, dmg " + b1.dmg + "/" + b2.dmg + ", vy " + b1.vy + "/" + b2.vy);
+    Game.shots.length = 0; Game.stats.shots = 0;
+    press("fire"); steps(60); release("fire");
+    check("mega cutter: normal fire rate (at most 3 shots per second)", Game.stats.shots >= 2 && Game.stats.shots <= 3, Game.stats.shots + " shots");
+    // against the boss: 5 on the raised face, nothing on the shell
+    Game.shots.length = 0; Camera.x = Game.level.pxW - W;
+    Boss.raised = true; Boss.claw = 1;
+    const hp0 = Boss.hp, fb = Boss.face();
+    Game.shots.push({ x: fb.x + 2, y: fb.y + 20, w: 16, h: 16, vx: 190, dmg: CONFIG.megaCutterDmg, face: 1, spin: true, mega: true });
+    updateHeroShots(DT, Game.level);
+    check("mega cutter: a blade on the exposed face removes 5 boss health", Boss.hp === hp0 - 5, hp0 + " -> " + Boss.hp);
+    Boss.raised = false; Boss.claw = 0;
+    const sb = Boss.shell(), hp1 = Boss.hp;
+    Game.shots.push({ x: sb.x + 30, y: sb.y + 10, w: 16, h: 16, vx: -190, dmg: CONFIG.megaCutterDmg, face: -1, spin: true, mega: true });
+    updateHeroShots(DT, Game.level);
+    check("mega cutter: shell hits are still deflected, no damage", Boss.hp === hp1 && Game.shots.some(function (q) { return q.deflected; }));
+    // the pickup comes back after 20 s only while Buck lacks the upgrade
+    Game.shots.length = 0; Boss.state = "idle"; Boss.t = 999;
+    check("mega cutter: taken pickup is gone, its timer starts at 20 s", !upgrade() && Math.abs(Game.upgradeT - CONFIG.upgradeRespawn) < 0.5, Game.upgradeT);
+    steps(25 * 60, function () { Boss.t = 999; Boss.hp = Boss.maxHp; });
+    check("mega cutter: not back while Buck holds the Mega Cutter", !upgrade() && Player.weapon === "megacutter");
+    // losing a life drops the upgrade; then it comes back 20 s after it was taken
+    Game.godMode = false; Player.lives = 3; Game.onPlayerDeath(); Game.godMode = true;
+    check("mega cutter: lost with a life (plain disc cutter after respawn)", Player.weapon === "cutter", Player.weapon);
+    steps(19 * 60, function () { Boss.t = 999; Boss.hp = Boss.maxHp; });
+    const early = !!upgrade();
+    steps(2 * 60, function () { Boss.t = 999; Boss.hp = Boss.maxHp; });
+    check("mega cutter: the pickup comes back 20 s after it was taken (counting while Buck lacks it)", !early && !!upgrade(), "early " + early + ", later " + !!upgrade());
+    take();
+    check("mega cutter: taking it again restarts the timer", Player.weapon === "megacutter" && Math.abs(Game.upgradeT - CONFIG.upgradeRespawn) < 0.01);
+    // levels 1-3: the weapon pickup is still the Mega Blaster
+    load(grid(40, 12, [[3, 9, "P"], [6, 9, "w"]]));
+    Game.enemies = [];
+    press("right"); steps(60); release("right");
+    check("mega cutter: in levels 1-3 the weapon pickup stays the Mega Blaster", Player.weapon === "mega" && PICKUP_INFO.w.img() === SPR.megagun, Player.weapon);
+    // looks: 16 px glowing blades, spinning, outlined
+    function px(c) { return c.getContext("2d").getImageData(0, 0, c.width, c.height).data; }
+    function differ(a, b2) { if (a.length !== b2.length) return true; for (let i = 0; i < a.length; i++) if (a[i] !== b2[i]) return true; return false; }
+    const m0 = px(SPR.megaBlade[0]), m1 = px(SPR.megaBlade[1]);
+    let orange = 0, edge = 0, outlined = 0;
+    const w16 = SPR.megaBlade[0].width;
+    for (let i = 0; i < m0.length; i += 4) if (m0[i + 3] && m0[i] > 220 && m0[i + 1] > 80 && m0[i + 1] < 200 && m0[i + 2] < 80) orange++;
+    SPR.megaBlade.forEach(function (c) {
+      const d = px(c), A = function (x, y) { return x >= 0 && y >= 0 && x < c.width && y < c.height && d[(y * c.width + x) * 4 + 3] > 0; };
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        if (!A(x, y) || (A(x - 1, y) && A(x + 1, y) && A(x, y - 1) && A(x, y + 1))) continue;
+        edge++; const i = (y * c.width + x) * 4;
+        if (d[i] === OUTLINE_COLOR[0] && d[i + 1] === OUTLINE_COLOR[1] && d[i + 2] === OUTLINE_COLOR[2]) outlined++;
+      }
+    });
+    check("mega cutter: blades are 16 px, glow orange, spin and differ from the plain blade",
+      w16 >= 16 && orange >= 10 && differ(m0, m1) && differ(m0, px(SPR.sawBlade[0])), "w " + w16 + ", orange px " + orange);
+    check("mega cutter: blades outlined like the sprites", edge > 0 && outlined === edge, outlined + "/" + edge);
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
+  safe("boss reveal", function () {
+    // into the arena through its reel intro card, as in a real game
+    function enterArena() {
+      Player.resetForGame(); Game.loadLevel(3);
+      let g = 0;
+      while (Game.state === STATE.LEVEL_INTRO && g++ < 900) steps(1);
+    }
+    function bossInView() {
+      const L = Boss.ox - 36, R = Boss.ox + 130;
+      return L >= Camera.x - 0.5 && R <= Camera.x + W + 0.5;
+    }
+    enterArena();
+    check("reveal: starts when the arena's intro card ends", Game.state === STATE.BOSS && !!Game.reveal, Game.state);
+    const x0 = Player.x, hp0 = Boss.hp;
+    Boss.log = []; Game.stats.shots = 0;
+    press("right");                  // held movement must not move him (Fire would skip the reveal)
+    let seen = -1, n = 0;
+    while (Game.reveal && n < 6 * 60) { steps(1); n++; if (seen < 0 && bossInView()) seen = n; }
+    release("right");
+    check("reveal: the whole boss is in view within 1.5 s", seen >= 0 && seen <= 90, "after " + (seen / 60).toFixed(2) + " s");
+    check("reveal: about 3 s in all, then the camera is back on Buck",
+      n >= 2.6 * 60 && n <= 3.2 * 60 && Math.abs(Camera.x - clamp(Player.x + Player.w / 2 - Camera.anchorX, 0, Game.level.pxW - W)) < 2, (n / 60).toFixed(2) + " s, camera " + Math.round(Camera.x));
+    check("reveal: no movement, no shots and no boss attacks during it", Player.x === x0 && Game.stats.shots === 0 && Boss.log.length === 0 && Boss.hp === hp0,
+      "dx " + (Player.x - x0) + ", shots " + Game.stats.shots + ", attacks " + Boss.log.join(","));
+    steps(3 * 60);
+    check("reveal: normal play afterwards (the boss attacks)", !Game.reveal && Game.state === STATE.BOSS && Boss.log.length > 0, Boss.log.join(","));
+    // skipping with Jump
+    enterArena();
+    steps(40);
+    const tSkip = Game.reveal ? Game.reveal.t : -1;
+    tap("jump");
+    let m = 0;
+    while (Game.reveal && m < 120) { steps(1); m++; }
+    check("reveal: Jump skips it, play begins within 0.5 s", tSkip > 0 && !Game.reveal && m <= 30, "ended " + (m / 60).toFixed(2) + " s after the skip");
+    // no reveal on respawn
+    Game.godMode = false; Player.lives = 3; Game.onPlayerDeath();
+    steps(2);
+    check("reveal: not replayed when Buck respawns in the arena", !Game.reveal && Game.state === STATE.BOSS);
+    Input.reset(); FX.clear();
+  });
+
+  safe("boss camera", function () {
+    const sxOf = function () { return Player.x + Player.w / 2 - Camera.x; };
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Game.enemies = []; Game.enemyShots = []; Boss.state = "idle"; Boss.t = 999;
+    check("boss camera: the arena anchors Buck near the left edge", Camera.anchorX === CONFIG.bossCamX && CONFIG.bossCamX >= 60 && CONFIG.bossCamX <= 100);
+    // walk right along the floor from column 8 to column 20 (crates are jumped over)
+    Player.x = 8 * TILE; Player.y = 13 * TILE - Player.h; Player.vx = 0; Player.vy = 0;
+    Camera.snap(Player, Game.level);
+    let lo = 999, hi = -999, n = 0;
+    press("right");
+    while (Player.x < 20 * TILE && n++ < 8 * 60) {
+      if (n % 20 === 0) press("jump"); else if (n % 20 === 6) release("jump");
+      steps(1, function () { Boss.t = 999; });
+      if (Camera.x > 0.5 && Camera.x < Game.level.pxW - W - 0.5) { lo = Math.min(lo, sxOf()); hi = Math.max(hi, sxOf()); }
+    }
+    release("right"); release("jump");
+    check("boss camera: walking right, Buck stays 60-100 px from the left edge", Player.x >= 20 * TILE && lo >= 60 && hi <= 100,
+      "screen x " + Math.round(lo) + ".." + Math.round(hi) + ", reached col " + Math.floor(Player.x / TILE));
+    // turning to face left doesn't move the camera
+    steps(30); const camA = Camera.x;
+    tap("left"); steps(5);
+    check("boss camera: turning around keeps the framing", Math.abs(Camera.x - camA) <= 1 && Player.face < 0, camA + " -> " + Camera.x);
+    // respawn: same framing (or the camera at the map's left edge)
+    Game.godMode = false; Player.lives = 3; Game.onPlayerDeath(); Game.godMode = true;
+    check("boss camera: after a respawn Buck is framed on the left (or the camera is at 0)",
+      Camera.x === 0 || (sxOf() >= 60 && sxOf() <= 100), "camera " + Camera.x + ", screen x " + Math.round(sxOf()));
+    // right end: the camera stops at the map edge, Buck further right on the screen
+    Player.x = 30 * TILE; Player.y = 13 * TILE - Player.h; Camera.snap(Player, Game.level);
+    check("boss camera: at the right end the camera stops at the map edge", Camera.x === Game.level.pxW - W && sxOf() > 100, Camera.x + ", screen x " + Math.round(sxOf()));
+    // level 1 keeps the centred camera
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    Player.x = 40 * TILE; Camera.snap(Player, Game.level);
+    let off = 0;
+    press("right");
+    for (let i = 0; i < 120; i++) { steps(1); if (Camera.x > 0.5) off = Math.max(off, Math.abs(sxOf() - W / 2)); }
+    release("right");
+    check("boss camera: level 1 keeps Buck near the middle of the screen", Camera.anchorX === W / 2 && off <= 24 + Player.w, "max offset " + Math.round(off));
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
   safe("hearts", function () {
     ctx.clearRect(0, 0, W, 8);
     drawText("♥", 0, 0, "#ff3070");
@@ -2029,6 +2190,7 @@ function runShot(spec) {
     [tsI.wallpaper[0], tsI.wainscot, tsI.counter, tsI.table].forEach(function (img, i) { ctx.drawImage(img, 160 + i * 18, 138); });
     ctx.drawImage(tsI.counterTaps, 236, 130);
     [tsI.crateSturdy, tsI.crate, tsI.crateCracked].forEach(function (img, i) { ctx.drawImage(img, 262 + i * 18, 138); });   // cover crates
+    ctx.drawImage(SPR.megaCutter, 262, 100); ctx.drawImage(SPR.megaBlade[0], 284, 100); ctx.drawImage(SPR.megaBlade[2], 302, 100);   // Mega Cutter
     const ts = buildTileset("court"), ts2 = buildTileset("creek"), ts3 = buildTileset("hall");
     [ts, ts2, ts3].forEach(function (t, j) {
       [t.solidTop[0], t.solidTop[1], t.solidTop[2], t.solid[1], t.alt[2], t.plat[2], t.ladder, t.water[0], t.waterTop[0], t.door.R, t.door.U, t.door.G, t.deco.n, t.deco.f,

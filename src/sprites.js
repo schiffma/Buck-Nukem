@@ -324,6 +324,12 @@ const MEGAGUN = [
 ];
 const BLASTER_ICON = ["..........", ".vvvvvvvy.", ".vggggggk.", "..Gk......", "..Gk......"];
 const CUTTER_ICON = ["...ooo....", "..oVVVV...", "ggVvWvvV..", "GgVWkWvV..", "..VvvvV..."];
+const MEGA_CUTTER_ICON = ["...yyy....", "..yoooo...", "ggoyWyoo..", "GgoWkWyo..", "..oyyyo..."];
+// Mega Cutter pickup (boss arena): the disc cutter with a glowing orange blade
+const MEGACUTTER = [
+  "......yyyy......", "....yooooooy....", "...yoyWWWWyoy...", "ggggoWvkkvWo....",
+  "GGGgoWkkkkWoy...", "...ggoWvvWoy....", "...G.yooooy.....", "......yyyy......",
+];
 const MEGA_ICON = ["..........", "vvvvvvvvvy", "vuuuuuuuuv", "vvvvvvvvv.", ".VVk......"];
 const KEY_COLORS = { R: "#e02828", U: "#2878f0", G: "#28c040" };
 
@@ -353,6 +359,32 @@ function buildSawBlade(f) {
   }
   g.fillStyle = "#8a4a1a"; g.fillRect(9, 4, 1, 1); g.fillRect(4, 9, 1, 1);   // rust
   g.fillStyle = "#101018"; g.fillRect(6, 6, 2, 2);                          // arbor hole
+  return c;
+}
+
+// Mega Cutter blade: 16x16, orange-hot teeth and rim with a glow, outlined like the sprites.
+function buildMegaBlade(f) {
+  const c = makeCanvas(16, 16), g = c.getContext("2d");
+  const rot = f * Math.PI / 16;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const dx = x + 0.5 - 8, dy = y + 0.5 - 8, r = Math.sqrt(dx * dx + dy * dy);
+    let a = Math.atan2(dy, dx) - rot; a = ((a % (Math.PI / 4)) + Math.PI / 4) % (Math.PI / 4);
+    const tooth = a < Math.PI / 10;
+    let col = null;
+    if (r <= 1.6) col = "#3a2010";                                   // hub
+    else if (r <= 4.2) col = (Math.floor((Math.atan2(dy, dx) - rot) * 2) % 2) ? "#ffd070" : "#ff9a30";   // hot steel
+    else if (r <= 5.4) col = "#fff0b0";                              // white-hot rim
+    else if (r <= 7 && tooth) col = "#ffe060";                       // glowing teeth
+    else if (r <= 6.2) col = "#ff6a10";                              // orange glow
+    if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
+  }
+  g.fillStyle = "#101018"; g.fillRect(7, 7, 2, 2);                   // arbor hole
+  // dark outline around the disc
+  const d = g.getImageData(0, 0, 16, 16).data;
+  const A = function (x, y) { return x >= 0 && y >= 0 && x < 16 && y < 16 && d[(y * 16 + x) * 4 + 3] > 0; };
+  g.fillStyle = "rgb(" + OUTLINE_COLOR.join(",") + ")";
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++)
+    if (!A(x, y) && (A(x - 1, y) || A(x + 1, y) || A(x, y - 1) || A(x, y + 1))) g.fillRect(x, y, 1, 1);
   return c;
 }
 
@@ -408,6 +440,9 @@ function buildSprites() {
   SPR.shot = spriteFromRows(["..yyyy", "wwwwyy", "..yyyy"], Object.assign({}, PAL, { y: "#ffe860" }));
   SPR.shotUp = spriteFromRows(["..uuuuu.", ".uwwwwuu", "uwwwwwwu", ".uuuuuu."]);
   SPR.sawBlade = [0, 1, 2, 3].map(buildSawBlade);
+  SPR.megaBlade = [0, 1, 2, 3].map(buildMegaBlade);
+  SPR.megaCutter = shadeAndOutline(spriteFromRows(MEGACUTTER));
+  SPR.megaCutterIcon = spriteFromRows(MEGA_CUTTER_ICON);
   if (typeof buildFanSprites === "function") buildFanSprites();
   SPR.bubble = spriteFromRows(["..uuuu..", ".u....u.", "u.ww...u", "u.w....u", "u......u", "u......u", ".u....u.", "..uuuu.."],
     Object.assign({}, PAL, { u: "#9ad0ff", w: "#ffffff" }));

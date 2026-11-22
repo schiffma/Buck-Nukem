@@ -78,7 +78,7 @@ During play a HUD SHALL show score, health as a segmented bar, lives, the curren
 - **THEN** the health bar shows one segment fewer in the same frame
 
 ### Requirement: Title and end screens
-The game SHALL show a title screen styled as a 1970s exploitation-movie poster: the game name "BUCK NUKEM" in large distressed, outlined lettering, a tagline, a fake rating badge, the pixelated portrait from the hero photo, a controls summary and "PRESS ENTER". It SHALL also have level-complete, game-over and victory screens; game over and victory SHALL be styled as "THE END" film cards.
+The game SHALL show a title screen styled as a 1970s exploitation-movie poster: the game name "BUCK NUKEM" in large distressed, outlined lettering, a tagline, a fake rating badge, the pixelated portrait from the hero photo, a controls summary, "PRESS ENTER" and the build version in small print. It SHALL also have level-complete, game-over and victory screens; game over and victory SHALL be styled as "THE END" film cards.
 
 #### Scenario: Starting the game
 - **WHEN** the player presses Enter on the title screen
@@ -87,6 +87,10 @@ The game SHALL show a title screen styled as a 1970s exploitation-movie poster: 
 #### Scenario: Controls summary
 - **WHEN** the title screen is shown
 - **THEN** the controls list shows Space for jump, X/Ctrl/Alt for fire and Up/Down for climbing and kneeling
+
+#### Scenario: Version shown
+- **WHEN** the title screen is shown
+- **THEN** the version text embedded by the build (for example "V1.0.2" or "V1.0.2-3-GAB12CD3") is drawn in small print in a corner of the poster, fully inside the screen, readable on the poster tint and not overlapping the other title elements
 
 ### Requirement: Ride of the Valkyries soundtrack
 The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, during play. Because browsers block audio until the user interacts, music SHALL start on the first key press.
@@ -319,3 +323,44 @@ Every level SHALL show a crowd of adult female tennis players in the background 
 #### Scenario: Outlined pixel art
 - **WHEN** any fan frame is drawn, including the blow-a-kiss frame
 - **THEN** every opaque edge pixel borders a dark outline pixel, as for the other sprites
+
+### Requirement: Cover crates look
+Crates in the boss arena SHALL be drawn as outlined pixel-art wooden crates matching the creek theme. Sturdy crates SHALL look visibly reinforced (metal bands), so the player can tell them from breakable crates. A breakable crate SHALL show cracks as it takes damage and burst into wooden splinters with a crunch sound when it breaks.
+
+#### Scenario: Two kinds distinguishable
+- **WHEN** a sturdy and a breakable crate are drawn side by side
+- **THEN** their tiles differ, and the sturdy one shows metal bands
+
+#### Scenario: Damage and breaking visible
+- **WHEN** a breakable crate has lost at least half its strength
+- **THEN** it is drawn with cracks, and when it breaks splinter particles fly and a crate-break sound plays
+
+### Requirement: Start reel note on the title
+When the URL selects a start level other than level 1, the title screen SHALL show a small note naming it: "STARTS AT REEL N" for levels 2 and 3, "STARTS AT FINAL REEL" for the boss arena. Without a valid level parameter, or with `level=1`, no note SHALL be shown.
+
+#### Scenario: Note shown
+- **WHEN** the title screen is shown with `#level=3`
+- **THEN** the text "STARTS AT REEL 3" is drawn in small print, fully inside the screen, readable on the poster tint and not overlapping the other title elements (including the version text)
+
+#### Scenario: Boss arena note
+- **WHEN** the title screen is shown with `#level=4`
+- **THEN** the text "STARTS AT FINAL REEL" is drawn
+
+#### Scenario: No note by default
+- **WHEN** the title screen is shown without a level parameter, with `level=1` or with an invalid value
+- **THEN** no start-reel note is drawn
+
+### Requirement: Mega Cutter look
+The Mega Cutter's pickup and blades SHALL look distinct from the plain disc cutter: the pickup is an outlined pixel-art disc cutter with a glowing orange blade, and its blades are larger (at least 16 pixels) with an orange glow, still spinning. The HUD weapon label SHALL read "MEGA CUTTER" while it is active.
+
+#### Scenario: Distinct blades
+- **WHEN** a plain cutter blade and a Mega Cutter blade are drawn
+- **THEN** the Mega Cutter blade is at least 16 pixels wide, its frames differ from the plain blade's, and it contains orange glow pixels
+
+#### Scenario: HUD label
+- **WHEN** the hero has the Mega Cutter
+- **THEN** the HUD shows "MEGA CUTTER" with the upgraded weapon icon
+
+#### Scenario: Pickup readable
+- **WHEN** the upgrade pickup is drawn on the top platform
+- **THEN** it is outlined like the other pickups and differs from the Mega Blaster pickup

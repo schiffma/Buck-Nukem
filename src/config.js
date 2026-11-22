@@ -27,6 +27,8 @@ const CONFIG = {
   cutterRate: 2.5,               // saw blades per second, disc cutter (boss arena)
   cutterSpeed: 190,
   cutterDmg: 3,
+  megaCutterDmg: 5, megaCutterRise: 70,   // Mega Cutter (boss arena upgrade): twin blades, 5 damage, 2nd rises
+  upgradeRespawn: 20,            // s until the Mega Cutter pickup comes back (while Buck lacks it)
   // enemies
   activateMarginX: W,            // enemies update within one screen width of the view
   activateMarginY: VIEW_H,
@@ -35,7 +37,9 @@ const CONFIG = {
   punkHp: 5, punkSpeed: 24, punkChargeSpeed: 110, punkRange: 96, punkChargeMax: 128,
   punkRev: 0.5, punkCooldown: 2.0, punkPoints: 500,
   bossHp: 50, bossPoints: 10000,
-  bossSummons: 3,                // summon attacks per boss fight; then it alternates slam and bubbles
+  bossSummons: 3,
+  bossCamX: 80,                  // boss arena: the camera keeps Buck's centre about this far from the left edge
+  reveal: { pan: 0.8, hold: 1.2, back: 0.8, skipBack: 0.3 },   // boss reveal camera pan at arena start (s)                // summon attacks per boss fight; then it alternates slam and bubbles
   shockwaveCrateDmg: 3,
   ledgeKnockback: 25,            // hit while standing on a one-way platform: small stagger (80 elsewhere)          // claw-slam shockwave vs breakable crates
   // scoring

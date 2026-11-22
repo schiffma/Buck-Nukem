@@ -83,7 +83,7 @@ class World:
         'hittable', with a safety margin so the target is still in line a couple of steps later.
         kneeling: judge for a kneeling shot (default: the hero's current pose)."""
         h, f = self.hero, face or self.hero["face"]
-        cutter = h["weapon"] == "cutter"
+        cutter = h["weapon"] in ("cutter", "megacutter")
         kn = h.get("kneeling") if kneeling is None else kneeling
         if e["type"] == "cray" and not e["leaping"] and not cutter and not kn:
             return False                     # standing blaster shots fly over a crayfish on the ground

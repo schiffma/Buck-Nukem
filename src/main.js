@@ -5,7 +5,7 @@ const PICKUP_INFO = {
   h: { img: function () { return SPR.rivella; } },
   s: { img: function () { return SPR.cervelat; } },
   "+": { img: function () { return SPR.life; } },
-  w: { img: function () { return SPR.megagun; } },
+  w: { img: function () { return Game.level && Game.level.isBoss ? SPR.megaCutter : SPR.megagun; } },   // arena: Mega Cutter
   r: { img: function () { return SPR.keys.R; } },
   u: { img: function () { return SPR.keys.U; } },
   g: { img: function () { return SPR.keys.G; } },
@@ -25,6 +25,7 @@ const Game = {
   },
 
   startHash: null,           // tests: stands in for location.hash when set
+  reveal: null,              // boss reveal pan at arena start: { t, x0, xb, back }
 
   newGame() {
     this.score = 0;
@@ -36,9 +37,11 @@ const Game = {
   loadLevel(i, data) {       // data: optional map override (used by the test harness)
     this.levelIndex = i;
     const L = this.level = new Level(data || LEVEL_DATA[i], i);
+    Camera.anchorX = L.isBoss ? CONFIG.bossCamX : W / 2;   // boss arena: Buck on the left, the boss ahead
     this.fans = Fans.spawn(L, i);
     this.enemies = []; this.shots = []; this.enemyShots = []; this.pickups = []; this.checkpoints = [];
-    this.exit = null; this.boss = null; Boss.active = false; this.arenaHealthSpots = [];
+    this.reveal = null;
+    this.exit = null; this.boss = null; Boss.active = false; this.arenaHealthSpots = []; this.arenaUpgradeSpot = null; this.upgradeT = 0;
     this.stats = { shots: 0, kills: 0 }; this.levelTime = 0; this.hurtFlash = 0;
     FX.clear();
     Player.keys = {};
@@ -56,6 +59,7 @@ const Game = {
         case "E": self.exit = { x: s.tx * TILE, y: by - 32, w: 16, h: 32 }; break;
         case "F": break;                                   // cheering fans: see Fans.spawn
         case "h": if (L.isBoss) self.arenaHealthSpots.push({ x: bx, y: by }); self.addPickup(s.ch, bx, by); break;
+        case "w": if (L.isBoss) self.arenaUpgradeSpot = { x: bx, y: by }; self.addPickup(s.ch, bx, by); break;
         default: self.addPickup(s.ch, bx, by);
       }
     });
@@ -85,7 +89,11 @@ const Game = {
       case "h": P.heal(2); FX.text(cx, p.y, "RIVELLA +2", "#80ff80"); Sound.play("health"); break;
       case "s": P.heal(3); FX.text(cx, p.y, "CERVELAT +3", "#80ff80"); Sound.play("health"); break;
       case "+": P.lives++; FX.text(cx, p.y, "1UP", "#ffffff"); Sound.play("oneup"); break;
-      case "w": P.weapon = "mega"; FX.text(cx, p.y, "MEGA BLASTER!", "#60c0ff"); Sound.play("powerup"); break;
+      case "w":
+        if (this.level.isBoss) {            // boss arena: the disc cutter upgrade; comes back later
+          P.weapon = "megacutter"; FX.text(cx, p.y, "MEGA CUTTER!", "#ffb040"); this.upgradeT = CONFIG.upgradeRespawn;
+        } else { P.weapon = "mega"; FX.text(cx, p.y, "MEGA BLASTER!", "#60c0ff"); }
+        Sound.play("powerup"); break;
       default: {
         const k = p.type.toUpperCase();
         P.keys[k] = true; FX.text(cx, p.y, KEY_NAMES[k] + " KEY", KEY_COLORS[k]); Sound.play("key");
@@ -168,12 +176,15 @@ const Game = {
         if (Input.pressed("enter")) { Sound.play("select"); this.newGame(); }
         break;
       case STATE.LEVEL_INTRO:
-        if (this.stateT > introTotal(this.level.isBoss) || (this.stateT > 0.3 && (Input.pressed("enter") || Input.pressed("jump"))))
+        if (this.stateT > introTotal(this.level.isBoss) || (this.stateT > 0.3 && (Input.pressed("enter") || Input.pressed("jump")))) {
           this.setState(this.level.isBoss ? STATE.BOSS : STATE.PLAY);
+          if (this.level.isBoss) this.startReveal();
+        }
         break;
       case STATE.PLAY:
       case STATE.BOSS:
         if (Input.pressed("pause") || Input.pressed("enter")) { this.setState(STATE.PAUSE); break; }
+        if (this.reveal) { this.updateReveal(dt); break; }
         this.updateWorld(dt);
         break;
       case STATE.PAUSE:
@@ -199,6 +210,35 @@ const Game = {
     this.updateEngines();
   },
 
+  // Boss reveal (arena entry only, not on respawn): the camera pans to the boss, holds while it
+  // raises its claws, and pans back to Buck. No input, no attacks; Jump/Fire skip to a short pan back.
+  startReveal() {
+    Camera.snap(Player, this.level);
+    const xb = clamp(Boss.ox + 47 - W / 2, 0, this.level.pxW - W);     // the whole boss in view
+    this.reveal = { t: 0, x0: Camera.x, xb: xb, back: CONFIG.reveal.back };
+    Boss.state = "intro"; Boss.t = 99;
+  },
+  updateReveal(dt) {
+    const R = this.reveal, C = CONFIG.reveal, ease = function (u) { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
+    const backAt = C.pan + C.hold;
+    if (R.t < backAt && (Input.pressed("jump") || Input.pressed("fire"))) {          // skip
+      const fromX = Camera.x;
+      R.t = backAt; R.back = C.skipBack; R.xb = fromX;
+    }
+    R.t += dt;
+    Fans.update(dt); FX.update(dt);
+    Boss.anim += dt; Boss.t = 99;
+    Boss.raised = R.t > C.pan * 0.6 && R.t < backAt; Boss.claw += clamp((Boss.raised ? 1 : 0) - Boss.claw, -dt * 6, dt * 6);
+    if (R.t < C.pan) Camera.x = R.x0 + (R.xb - R.x0) * ease(R.t / C.pan);
+    else if (R.t < backAt) Camera.x = R.xb;
+    else Camera.x = R.xb + (R.x0 - R.xb) * ease((R.t - backAt) / R.back);
+    if (R.t >= backAt + R.back) {
+      this.reveal = null;
+      Camera.snap(Player, this.level);
+      Boss.raised = false; Boss.claw = 0; Boss.toIdle();
+    }
+  },
+
   updateWorld(dt) {
     const L = this.level;
     this.levelTime += dt;
@@ -212,6 +252,14 @@ const Game = {
     if (Boss.active) Boss.update(dt, L);
     updateEnemyShots(dt, L);
     for (const p of this.pickups) p.t += dt;
+    // boss arena: the Mega Cutter pickup comes back while Buck lacks the upgrade
+    if (this.arenaUpgradeSpot && Player.weapon !== "megacutter" && this.upgradeT > 0) {
+      this.upgradeT -= dt;
+      if (this.upgradeT <= 0 && !this.pickups.some(function (p) { return p.type === "w"; })) {
+        this.addPickup("w", this.arenaUpgradeSpot.x, this.arenaUpgradeSpot.y);
+        FX.spark(this.arenaUpgradeSpot.x, this.arenaUpgradeSpot.y - 8, "#ffb040", 12, 70, 0.5);
+      }
+    }
     if (!Player.dead) {
       for (let i = this.pickups.length - 1; i >= 0; i--) {
         if (overlap(this.pickups[i], Player)) { this.collectPickup(this.pickups[i]); this.pickups.splice(i, 1); }
@@ -272,7 +320,7 @@ const Game = {
     Player.draw(camX, camY);
     for (const s of this.shots) {
       ctx.globalAlpha = s.deflected ? 0.6 : 1;
-      const img = s.spin ? SPR.sawBlade[Math.floor(this.time * 24) % 4] : s.img;   // saw blades spin
+      const img = s.spin ? (s.mega ? SPR.megaBlade : SPR.sawBlade)[Math.floor(this.time * 24) % 4] : s.img;   // saw blades spin
       ctx.drawImage(s.face > 0 ? img : mirrorCache(img), Math.round(s.x - camX), Math.round(s.y - camY + HUD_H));
       ctx.globalAlpha = 1;
     }

@@ -403,15 +403,20 @@ class Level {
 }
 
 // Camera with a dead zone, clamped to the level bounds.
+// anchorX: where the target's centre is kept horizontally (the middle by default; the boss
+// arena keeps Buck near the left edge so the view shows the arena ahead, towards the boss).
 const Camera = {
-  x: 0, y: 0,
-  snap(target, level) { this.x = target.x - W / 2; this.y = target.y - VIEW_H / 2; this.clamp(level); },
+  x: 0, y: 0, anchorX: W / 2,
+  snap(target, level) {
+    this.x = this.anchorX === W / 2 ? target.x - W / 2 : target.x + target.w / 2 - this.anchorX;
+    this.y = target.y - VIEW_H / 2; this.clamp(level);
+  },
   follow(target, level) {
     const cx = target.x + target.w / 2, cy = target.y + target.h / 2;
-    const dzX = 24, top = 70, bottom = 140;
+    const ax = this.anchorX, dzX = ax === W / 2 ? 24 : 12, top = 70, bottom = 140;
     const sx = cx - this.x;
-    if (sx < W / 2 - dzX) this.x = cx - (W / 2 - dzX);
-    if (sx > W / 2 + dzX) this.x = cx - (W / 2 + dzX);
+    if (sx < ax - dzX) this.x = cx - (ax - dzX);
+    if (sx > ax + dzX) this.x = cx - (ax + dzX);
     const sy = cy - this.y;
     if (sy < top) this.y = cy - top;
     if (sy > bottom) this.y = cy - bottom;

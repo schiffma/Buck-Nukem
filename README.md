@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.3** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
+Version **1.0.4** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
@@ -31,7 +31,7 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 - 8 health points and 3 lives. The lives counter includes the current life, so the game ends when the counter would reach 0. You respawn at the last checkpoint (Swiss flag) with full health, but the Mega Blaster power-up is lost.
 - Pickups: tennis balls (50 points), trophies (1000), Rivella (+2 HP), Cervelat (+3 HP), extra life (hero head), key cards (red/blue/green open doors of the same colour), Mega Blaster (faster shots, double damage).
 - Enemies: lawyers (throw briefcases), mutant crayfish (realistic glossy red-brown crayfish; they leap and hide in the creek), gardener-punks with a petrol lawn mower (mohawk, blunt; its two-stroke engine putt-putts louder as you get closer and puffs exhaust smoke, revs in a black cloud and charges at full throttle, throwing grass and stones; it sputters and dies with the punk).
-- Boss: a giant red crayfish. In its arena Buck fights with a giant **disc cutter** that fires spinning saw blades (2.5 per second, 3 damage each; they also cut crayfish on the ground) and keeps it after respawning there. Blades bounce off the shell and closed claws in a shower of sparks: hit the face when the claws are raised. Below half health it attacks faster. It summons small crayfish only 3 times per fight; after that it alternates claw slams and bubble sprays. The arena is two screens wide. Platforms on three heights and two ladders take Buck above the floor shockwave, and the lowest ledge in front of the boss lines up with its face. Wooden cover crates stop the shockwave and bubbles, and Buck can kneel behind them or stand on them. They also block his own shots. Sturdy crates (metal bands) last forever; plain ones crack and burst after 6 blaster hits, 2 saw blades or 2 shockwaves. Summoned crayfish always appear on screen.
+- Boss: a giant red crayfish. In its arena Buck fights with a giant **disc cutter** that fires spinning saw blades (2.5 per second, 3 damage each; they also cut crayfish on the ground) and keeps it after respawning there. Blades bounce off the shell and closed claws in a shower of sparks: hit the face when the claws are raised. Below half health it attacks faster. It summons small crayfish only 3 times per fight; after that it alternates claw slams and bubble sprays. The arena is two screens wide, and the camera keeps Buck near the left edge so the view shows the arena ahead and the boss. Platforms on three heights and two ladders take Buck above the floor shockwave, and the lowest ledge in front of the boss lines up with its face. Wooden cover crates stop the shockwave and bubbles, and Buck can kneel behind them or stand on them. They also block his own shots. Sturdy crates (metal bands) last forever; plain ones crack and burst after 6 blaster hits, 2 saw blades or 2 shockwaves. Summoned crayfish always appear on screen. On the highest platform waits the **Mega Cutter**: every shot fires two glowing blades (one level, one angled up) of 5 damage each. It is lost with a life and comes back 20 s after it was taken. When the arena starts, the camera pans over to show the boss and back; Jump or Fire skips it.
 
 ## Look
 
@@ -121,7 +121,7 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 | `H` | ladder | `X` | boss |
 | `~` | creek water (toxic red in the Krebsbach level; hurts) | `o` `t` | tennis ball, trophy |
 | `R` `U` `G` | locked door red/blue/green | `h` `s` | Rivella, Cervelat |
-| `r` `u` `g` | key card red/blue/green | `+` `w` | extra life, Mega Blaster |
+| `r` `u` `g` | key card red/blue/green | `+` `w` | extra life, Mega Blaster (Mega Cutter in the boss arena) |
 | `n` `f` `l` `b` `v` | decoration: net, fence, lamp, bush, window | `a` `A` `T` | bar counter, counter with taps, table (one-way platforms) |
 | `c` `i` `q` | chair, bar stool, bottle shelf | `N` `$` | neon "BIER" sign (2×1), cash register |
 | `Z` `m` `k` | trophy cabinet (2×2), menu board (6×2), kitchen pass (3×2) | `p` `x` `j` | picture, tennis rackets, hanging lamp |

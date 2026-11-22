@@ -15,11 +15,12 @@ function drawHud() {
   drawHead(ctx, 120, 0);
   drawText("X" + Math.max(0, Player.lives), 137, 5, "#ffffff");
   // weapon
-  const mega = Player.weapon === "mega", cutter = Player.weapon === "cutter";
-  ctx.drawImage(cutter ? SPR.cutterIcon : mega ? SPR.megaIcon : SPR.blasterIcon, 158, 5);
-  drawText(cutter ? "DISC CUTTER" : mega ? "MEGA" : "BLASTER", 171, 5, cutter ? "#ff9a30" : mega ? "#60c0ff" : "#c0c4cc");
+  const mega = Player.weapon === "mega", cutter = Player.weapon === "cutter", megaCut = Player.weapon === "megacutter";
+  ctx.drawImage(megaCut ? SPR.megaCutterIcon : cutter ? SPR.cutterIcon : mega ? SPR.megaIcon : SPR.blasterIcon, 158, 5);
+  drawText(megaCut ? "MEGA CUTTER" : cutter ? "DISC CUTTER" : mega ? "MEGA" : "BLASTER", 171, 5,
+    megaCut ? "#ffb040" : cutter ? "#ff9a30" : mega ? "#60c0ff" : "#c0c4cc");
   // keys
-  let kx = cutter ? 240 : 222;                       // "DISC CUTTER" is a longer label
+  let kx = cutter || megaCut ? 240 : 222;            // "DISC CUTTER" / "MEGA CUTTER" are longer labels
   ["R", "U", "G"].forEach(function (k) {
     if (Player.keys[k]) ctx.drawImage(SPR.keysHud[k], kx, 4);
     else { ctx.strokeStyle = "#33333d"; ctx.strokeRect(kx + 0.5, 4.5, 9, 7); }

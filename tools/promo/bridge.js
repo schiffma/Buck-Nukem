@@ -48,7 +48,7 @@ const PromoBridge = {
     const P = Player, L = Game.level, self = this;
     const s = {
       state: Game.state, stateT: Game.stateT, levelIndex: Game.levelIndex, time: Game.time, steps: this.steps,
-      tallyDone: !!(Game.tally && Game.tally.done), score: Game.score, kills: Game.stats.kills, shots: Game.stats.shots, hits: this.hits,
+      tallyDone: !!(Game.tally && Game.tally.done), reveal: !!Game.reveal, score: Game.score, kills: Game.stats.kills, shots: Game.stats.shots, hits: this.hits,
       hero: { x: P.x, y: P.y, w: P.w, h: P.h, vx: P.vx, vy: P.vy, onGround: P.onGround, climbing: P.climbing, face: P.face,
         hp: P.hp, lives: P.lives, keys: { R: !!P.keys.R, U: !!P.keys.U, G: !!P.keys.G }, weapon: P.weapon, fireCd: P.fireCd,
         invuln: P.invuln, dead: P.dead, kneeling: !!P.kneeling, hurtT: P.hurtT, coyote: P.coyote, jumping: P.jumping, jumpHeld: Input.down("jump") },
@@ -105,9 +105,9 @@ const PromoBridge = {
     const P = Player, gy = P.gunY(), y0 = gy - 6, y1 = gy + 8, f = P.face, cx = P.cx();
     for (const e of Game.enemies) {
       if (e.dead || (e.T.hidden && e.T.hidden(e))) continue;
-      if (e.type === "cray" && !e.leaping && P.weapon !== "cutter" && !P.kneeling) continue;    // standing blaster shots fly over a crayfish on the ground
+      if (e.type === "cray" && !e.leaping && !P.isCutter() && !P.kneeling) continue;    // standing blaster shots fly over a crayfish on the ground
       const dx = (e.x + e.w / 2 - cx) * f;
-      if (dx > -4 && dx < 14 * TILE && e.y < y1 + (P.weapon === "cutter" ? 6 : 0) && e.y + e.h > y0) return true;
+      if (dx > -4 && dx < 14 * TILE && e.y < y1 + (P.isCutter() ? 6 : 0) && e.y + e.h > y0) return true;
     }
     if (Boss.active && Boss.raised && Boss.claw > 0.5) {
       const b = Boss.face(), dx = (b.x + b.w / 2 - cx) * f;

@@ -213,3 +213,141 @@ The hero SHALL drop through a one-way platform (clubhouse tables and bar counter
 #### Scenario: Levels stay completable
 - **WHEN** the level reachability check runs
 - **THEN** every level's exit, keys and pickups are reachable as before
+
+### Requirement: Wide tactical boss arena
+The boss arena SHALL be 40 x 15 tiles (two screens wide), with the hero starting at the left end and the boss holding the right part. The camera SHALL scroll with the hero and keep him near the left edge of the screen, so the view shows mostly the arena towards the boss. The arena SHALL offer one-way platforms on at least three heights, reachable by jumping or ladders, from which the boss's face can be hit, plus health spots on more than one height and 4–5 fans.
+
+#### Scenario: Arena size and scrolling
+- **WHEN** the boss arena starts
+- **THEN** its map is 40 x 15 tiles, the hero starts in the left screen, the boss starts in the right screen, and the camera follows the hero across both screens
+
+#### Scenario: Hero kept on the left
+- **WHEN** the hero walks right through the middle of the arena (away from both map edges)
+- **THEN** his centre stays between 60 and 100 pixels from the left edge of the screen, whichever way he faces
+
+#### Scenario: Same framing after respawn
+- **WHEN** the hero respawns in the boss arena
+- **THEN** the camera is placed with the hero at that left position (or as far as the map edge allows)
+
+#### Scenario: Map edge
+- **WHEN** the hero is near the right end of the arena
+- **THEN** the camera stops at the map edge and the hero moves further right on the screen
+
+#### Scenario: Other levels unchanged
+- **WHEN** the hero walks through levels 1 to 3
+- **THEN** the camera keeps him near the middle of the screen as before
+
+#### Scenario: Platforms on several heights
+- **WHEN** the arena map is inspected
+- **THEN** it has one-way platforms on at least three different rows above the floor, each reachable from the floor (checked by the level checker), and at least one platform tile within reach of a disc-cutter blade line that hits the boss's face
+
+#### Scenario: Above the shockwave
+- **WHEN** the boss's claw slam sends its shockwave while the hero stands on a platform
+- **THEN** the shockwave passes below him and he takes no damage
+
+#### Scenario: Still beatable
+- **WHEN** the level checker runs
+- **THEN** the boss is reachable from the start in the boss arena
+
+### Requirement: Cover crates
+The boss arena SHALL contain at least two sturdy and three breakable cover crates: solid one-tile blocks that stop movement, projectiles, shockwaves and minions, and that the hero can stand on. Sturdy crates can't be destroyed; breakable crates SHALL have 6 strength (blaster shot 1, saw blade 3, shockwave 3) and leave an empty tile when broken. The boss SHALL stay reachable even if no crate is ever broken.
+
+#### Scenario: Cover against the shockwave
+- **WHEN** the boss's shockwave runs into a crate
+- **THEN** the shockwave stops there and the hero behind the crate takes no damage
+
+#### Scenario: Kneeling behind a crate
+- **WHEN** the hero kneels directly behind a crate on the side away from the boss
+- **THEN** he is no taller than the crate, the shockwave stops at the crate, and his own low shots also hit the crate (to shoot past it he must stand on it or jump)
+
+#### Scenario: Breaking a crate
+- **WHEN** a breakable crate takes 6 damage in total from hero shots or shockwaves
+- **THEN** it breaks, its tile becomes empty and the hero can walk and shoot through that spot
+
+#### Scenario: Sturdy crate holds
+- **WHEN** a sturdy crate is hit by any number of shots or shockwaves
+- **THEN** it stays in place, and shots that hit it disappear
+
+#### Scenario: Crates reset
+- **WHEN** the hero loses a life in the boss arena and respawns
+- **THEN** crates that were broken stay broken (the arena is not reloaded), and restarting the game restores them
+
+### Requirement: Ledge stagger
+When the hero takes a hit while standing on a one-way platform, he SHALL only stagger back a short way (at most one tile) instead of the full knockback, so hits don't throw him off ledges. On solid ground the full knockback stays.
+
+#### Scenario: Hit on a ledge
+- **WHEN** the hero is hit while standing on a 3-tile one-way platform
+- **THEN** he is pushed back by at most 16 pixels and is still standing on the platform
+
+#### Scenario: Hit on the floor
+- **WHEN** the hero is hit while standing on solid ground
+- **THEN** he is knocked back as before, clearly further than on a ledge
+
+### Requirement: Start level from the URL
+The game SHALL accept a URL fragment parameter `level=N` (N = 1..4, the reel number: 1 courts, 2 creek, 3 clubhouse, 4 boss arena), also next to other fragment flags such as `debug`. While it is present and valid, every new game started from the title SHALL begin at that level with score 0, full health and 3 lives, with the weapon that level normally starts with. Missing or invalid values SHALL leave the normal start at level 1.
+
+#### Scenario: Starting at the boss arena
+- **WHEN** the game is opened with `#level=4` and the player presses Enter on the title screen
+- **THEN** the "MISSING REEL" and "FINAL REEL" cards play and the boss arena starts with score 0, full health, 3 lives and the disc cutter
+
+#### Scenario: Starting at a middle level
+- **WHEN** the game is opened with `#level=2` and the player presses Enter on the title screen
+- **THEN** the "REEL 2" card plays and level 2 starts with score 0, full health, 3 lives and the standard blaster
+
+#### Scenario: Next game starts there again
+- **WHEN** a game started via `#level=3` ends in game over or victory and the player starts a new game from the title
+- **THEN** the new game starts at level 3 again
+
+#### Scenario: Combined with other flags
+- **WHEN** the game is opened with `#debug&level=3`
+- **THEN** the debug overlay is on and new games start at level 3
+
+#### Scenario: Invalid values ignored
+- **WHEN** the fragment holds `level=0`, `level=5`, `level=x` or no level parameter
+- **THEN** new games start at level 1 as before
+
+#### Scenario: Progress continues normally
+- **WHEN** a game started at level 2 completes that level
+- **THEN** level 3 follows, and after level 3 the boss arena
+
+### Requirement: Mega Cutter upgrade
+The boss arena SHALL contain a disc-cutter upgrade on its highest platform. Touching it SHALL turn the disc cutter into the Mega Cutter until the hero loses a life: each shot fires two blades (one level, one angled slightly upward) dealing 5 damage each, at the normal cutter fire rate. While the hero lacks the upgrade, the pickup SHALL reappear at its spot 20 seconds after it was taken.
+
+#### Scenario: Collecting the upgrade
+- **WHEN** the hero touches the upgrade pickup on the top platform of the boss arena
+- **THEN** the HUD shows "MEGA CUTTER" and every following shot fires two blades of 5 damage each
+
+#### Scenario: Stronger against the boss
+- **WHEN** a Mega Cutter blade hits the boss's exposed face
+- **THEN** the boss loses 5 health; blades hitting the shell or closed claws are still deflected and do no damage
+
+#### Scenario: Lost with a life
+- **WHEN** the hero with the Mega Cutter loses a life in the boss arena and respawns
+- **THEN** he has the plain disc cutter again
+
+#### Scenario: Pickup comes back
+- **WHEN** 20 seconds have passed since the upgrade was taken and the hero does not have the Mega Cutter
+- **THEN** the upgrade pickup is back at its spot on the top platform
+
+#### Scenario: Other levels unchanged
+- **WHEN** the hero touches a weapon pickup in levels 1 to 3
+- **THEN** he gets the Mega Blaster as before
+
+### Requirement: Boss reveal at arena start
+When the boss arena starts after its reel intro card, the camera SHALL pan from the hero to the boss, hold on the boss while it raises its claws, and pan back, taking about 3 seconds. During the reveal the hero SHALL not move or shoot and the boss SHALL not attack. Pressing Jump or Fire SHALL skip the rest of the reveal. The reveal SHALL not play when the hero respawns in the arena.
+
+#### Scenario: Boss shown at the start
+- **WHEN** the boss arena's intro card ends
+- **THEN** within the next 1.5 seconds the whole boss is inside the camera view, and after about 3 seconds the camera is back on the hero and play begins
+
+#### Scenario: No attacks during the reveal
+- **WHEN** the reveal is running
+- **THEN** the boss makes no attack, the hero does not move although movement keys are held, and no shots are fired
+
+#### Scenario: Skipping the reveal
+- **WHEN** the player presses Jump or Fire during the reveal
+- **THEN** the camera returns to the hero and play begins within half a second
+
+#### Scenario: Not on respawn
+- **WHEN** the hero loses a life in the boss arena and respawns
+- **THEN** play continues at once without a reveal

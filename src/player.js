@@ -182,7 +182,7 @@ const Player = {
   gunY() { return this.kneeling ? this.y + this.h - 6 : this.y + 14; },
 
   fire() {
-    if (this.weapon === "cutter") { this.fireBlade(); return; }
+    if (this.isCutter()) { this.fireBlade(); return; }
     const up = this.weapon === "mega";
     this.fireCd = 1 / (up ? CONFIG.fireRateUp : CONFIG.fireRate);
     this.shootT = 0.15;
@@ -203,15 +203,20 @@ const Player = {
   fireBlade() {
     this.fireCd = 1 / CONFIG.cutterRate;
     this.shootT = 0.2;
-    const sz = 14;
+    const mega = this.weapon === "megacutter";
+    const sz = mega ? 16 : 14;
     const sx = this.face > 0 ? this.x + this.w + 6 : this.x - 6 - sz;
     Game.stats.shots++;
     Sound.play("grinder");
     const by = this.kneeling ? this.y + this.h - sz : this.y + 12;     // kneeling: the blade rolls along the floor
     if (this.muzzleBlocked(sx, sz, by + sz / 2)) return;
-    Game.shots.push({ x: sx, y: by, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: CONFIG.cutterDmg,
-      img: SPR.sawBlade[0], face: this.face, spin: true });
+    Game.shots.push({ x: sx, y: by, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: mega ? CONFIG.megaCutterDmg : CONFIG.cutterDmg,
+      img: SPR.sawBlade[0], face: this.face, spin: true, mega: mega });
+    if (mega)       // Mega Cutter: a second blade, angled slightly upward
+      Game.shots.push({ x: sx, y: by - 2, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, vy: -CONFIG.megaCutterRise, dmg: CONFIG.megaCutterDmg,
+        img: SPR.sawBlade[0], face: this.face, spin: true, mega: true });
   },
+  isCutter() { return this.weapon === "cutter" || this.weapon === "megacutter"; },
 
   // n: damage points. fromWater: no knockback (the water bounce handles movement).
   hurt(n, fromWater) {
@@ -253,7 +258,7 @@ const Player = {
   draw(camX, camY) {
     if (this.dead) return;
     if (this.invuln > 0 && Math.floor(this.invuln * 15) % 2 === 0) return;   // blink
-    const cutter = this.weapon === "cutter";
+    const cutter = this.isCutter();
     const S = cutter ? SPR.heroCutter : SPR.hero;
     let set;
     if (this.hurtT > 0) set = S.hurt;
