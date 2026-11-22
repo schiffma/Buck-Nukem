@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# build previews (python tools/build.py --debug)
+dist/debug_*.png
+
+# promo videos (large binaries; recreate with tools/promo/record_promo.py)
+recordings/
+
+# local editor / tool state
+.claude/settings.local.json
+.openspec-test-*
+.vscode/
+desktop.ini
+Thumbs.db
+.DS_Store

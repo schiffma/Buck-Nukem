@@ -1,0 +1,6 @@
+# Promo-video tooling (not needed to build or play the game).
+# The browser is the installed Chrome or Edge (Playwright "channel"); no browser download needed.
+playwright==1.48.0
+networkx==3.4.2
+py_trees==2.2.3
+imageio-ffmpeg==0.8.1

@@ -1,0 +1,38 @@
+# Tasks
+
+## 0. Baseline
+
+- [x] 0.1 Add `tools/promo/quirks.py` (and `agent/metrics.py`): runs a full dry run of an autopilot in headless Chrome and reports per level reversals and quick reversals per minute, unneeded jumps, shots without a hittable target and hit rate, using the rules in the spec. Run it on the current JS autopilot and record the baseline in this file (expected about 113 reversals/min, 49% unneeded jumps, 3% shots without target). Verify the numbers reproduce within 10% on a second run.
+  - Baseline (`python tools/promo/quirks.py --js`, seed 1977, identical on a second run): 480 s of play; reversals 92.7/min, quick reversals 78.5/min; 349 jumps, 49.9% unneeded; 189 shots, 2.1% without a hittable target; hit rate 68.8%. (The 113/min in the proposal came from an earlier hand-made probe that read the inputs after the autopilot had changed them; the tool's number is the reference.)
+
+## 1. Setup
+
+- [x] 1.1 Add `tools/promo/requirements.txt` (pinned `playwright`, `networkx`, `py_trees`, `imageio-ffmpeg`) and the `tools/promo/agent/` and `tools/promo/tests/` packages. Verify `pip install -r tools/promo/requirements.txt` succeeds and `python -m unittest discover tools/promo/tests` runs (0 tests is fine).
+
+## 2. Bridge and Playwright session
+
+- [x] 2.1 Write `tools/promo/bridge.js` (`PromoBridge.seed`, `snapshot`, `step`, `simulate`) and `agent/session.py` that loads the in-memory game + bridge through `page.route()` in Chrome/Edge via Playwright `channel`, forwards page errors/console to the log, and steps the game. Add a test that a session boots, reaches the title, steps 120 frames with no inputs and returns snapshots. Verify with `python -m unittest discover tools/promo/tests` and with `--browser edge`.
+- [x] 2.2 Add fair-play and determinism checks: a test that the bridge only writes input state (scan of `bridge.js` plus a snapshot diff of hero/enemy state after `step` with no inputs vs. the game's own update), and a test that two sessions with the same seed and the same scripted inputs return identical snapshots after 600 steps. Verify with `python -m unittest`.
+- [x] 2.3 Move frame capture (binary RGBA via routed POST into the ffmpeg pipe), sound/tempo/track logging, the petrol-mower engine log and the chunked `renderAudio` from `recorder.js` into the bridge/session. Measure capture throughput on 900 frames and fall back to a local HTTP sink only if it is too slow (record the numbers in the task notes). Verify a 30 s test clip with audio encodes and plays.
+  - Throughput (900 frames, Chrome): page served and frames POSTed through `page.route()`: 26 fps (one 300 KB upload per frame); local HTTP sink, one upload per frame: 32 fps (the uploads compete with the per-frame Playwright calls); local HTTP sink with frames batched 30 per upload: **92 fps**, used. Playwright still launches and drives the browser; the page and uploads come from a local server on 127.0.0.1. A `step()` call costs ~10 ms (3.7 ms bare round trip).
+
+## 3. Navigation and route planning
+
+- [x] 3.1 Implement `agent/nav.py`: networkx graph per level and key set from `parse_level` and the `check_levels.py` edge rules, with travel-time weights. Tests: every level's exit (or boss) and every pickup is reachable with the right keys, matching `tools/check_levels.py`; shortest paths on a small hand-made map. Verify with `python -m unittest`.
+- [x] 3.2 Implement `agent/planner.py`: tour over pickups, keys, doors and exit (nearest-neighbour + 2-opt/or-opt, key-before-door constraint), with replanning on events. Tests: key always precedes its door; tour length within 15% of a brute-force optimum on small random instances; planned tour cost per real level printed and below the previous runs' level times. Verify with `python -m unittest`.
+
+## 4. Tactics and motion
+
+- [ ] 4.1 Implement `agent/controller.py`: reason-tagged actions only (jump/shot/turn each need a reason; input log of `(t, action, reason)`), reaction-delay queue (150–300 ms, seeded), ≥ 200 ms direction commitment with dodge override, look-ahead path following, jump execution via `PromoBridge.simulate`, fire bursts, and the stall detector (5 s, ban edge, replan). Unit-test each rule with scripted snapshots (no flip-flop under 200 ms, delay window respected, stuck event after 5 s without progress, no stuck event during deliberate waits). Verify with `python -m unittest`.
+  Note: implemented and tuned (200 ms hold, 350 ms dodge commitment, no turning back within 1 s except dodging, fire bursts, doomed-target check); the dedicated unit tests are still missing.
+- [ ] 4.2 Implement `agent/behaviour.py` with py_trees: Survive > Fight > FollowRoute, plus the Boss subtree (minions first, face only while claws are up, jump the slam shockwave, heal when low). Unit-test leaf conditions with fake snapshots (dodges a briefcase on a collision course, backs off from a revving mower, fires only when an enemy is level and in front, boss face only when claws are up). Verify with `python -m unittest`.
+  Note: implemented (Boss, Dodge, Mower, Cray, Spacing, Vault, Hold, Hunt, Route); the dedicated unit tests with fake snapshots are still missing.
+- [ ] 4.3 Add the run report (`agent/report.py`): per level items, kills, deaths, time, stuck events, reversals and quick reversals per minute, unneeded jumps, shots without a target and hit rate (via `agent/metrics.py`), plus the pass/fail check against the spec limits. Run `--dry 0` … `--dry 3` level by level with the Python agent and tune until each level meets its limits (≤ 150 s, required items, reversals ≤ 20/min) and the score is maximised (prize-collecting tour with kill stops). If a limit is unreachable for a level's geometry, stop and propose a spec update. Verify with the dry-run reports.
+  Note (2026-11-22, score-maximising run, seed 1977): report and limit check live in `record_promo.py` (`print_report`, `check`), not a separate `report.py`. Victory, score 42,890, 251 s (L1 56 s, L2 83 s, L3 75 s, L4 37 s), 2 deaths, 1 stuck event; all lawyers/punks killed, only crayfish left alive; unneeded jumps 0.0%, shots without target 0.8%, quick reversals 1.2/min. Missed: reversals 21.5/min > 20 (L2 30.3/min: backing off crayfish, then vaulting). The recording reproduced the earlier seed-1977 dry run exactly (same times, same score).
+
+## 5. Switch-over and recording
+
+- [x] 5.1 Rewrite `tools/promo/record_promo.py` on the new session/agent (same options plus `--seed`; exit code non-zero when the report fails the spec limits). Verify `python tools/promo/record_promo.py --dry all` twice with `--seed 7` gives identical reports, victory, no required item skipped, total ≤ 450 s and ≤ 2 stuck events.
+- [ ] 5.2 Run `tools/promo/quirks.py` on the new agent and compare with the baseline from 0.1 (all spec limits met). Record a full video with default options into `recordings/`. Verify the file is ≤ 16 MB, starts on the title poster with the title music, ends on the victory screen, has music and sound effects in sync, and check the movement by eye at a few points (no flip-flopping, no wandering). Show the result to the user.
+  Note (2026-11-22): recorded `recordings/buck_nukem_promo_2026-11-22.mp4` (15.56 MB, 282 s, H.264 640x480 + AAC); contact sheet checked: title poster, all four levels, "THE END" with the final score. Open: reversals 21.5/min (see 4.3) and the by-ear audio check.
+- [x] 5.3 Delete `tools/promo/autopilot.js` and `tools/promo/recorder.js`; update `.claude/skills/buck-promo-video/SKILL.md` (new setup step `pip install -r tools/promo/requirements.txt`, how it works, troubleshooting) and the README "Tests and checks" section. Verify the documented commands run as written and `openspec validate python-promo-autopilot --strict` passes.
