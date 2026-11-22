@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.1.0** (see `VERSION`; releases are git tags `vX.Y.Z`).
+Version **1.0.2** (see `VERSION`; releases are git tags `vX.Y.Z`).
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
