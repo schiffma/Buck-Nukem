@@ -15,7 +15,7 @@ import networkx as nx
 TILE = 16
 RUN, CLIMB = 96.0, 64.0                     # px/s (src/config.js runSpeed, climbSpeed)
 MAX_DX = {0: 4, 1: 3, 2: 3, 3: 2}
-SOLID = set("#B")
+SOLID = set("#BDd")                 # cover crates are walls (broken ones stay "solid": conservative)
 DOORS = {"R": "r", "U": "u", "G": "g"}
 ONE_WAY = set("=aAT")
 OFF_LADDER_PENALTY = 3.0                    # leaving a ladder sideways mid-climb is awkward; avoid it

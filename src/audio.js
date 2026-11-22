@@ -381,6 +381,7 @@ const Sound = {
       case "powerup": for (let i = 0; i < 8; i++) this.tone("square", 300 + i * 120, t + i * 0.04, 0.05, 0.2); break;
       case "key": this.tone("square", 988, t, 0.08, 0.2); this.tone("square", 1319, t + 0.08, 0.15, 0.2); break;
       case "hurt": this.sweep("sawtooth", 420, 90, t, 0.25, 0.35); break;
+      case "crate": this.noise(t, 0.25, 0.5, 1600, null, 400); this.sweep("square", 220, 70, t, 0.12, 0.25); this.noise(t + 0.08, 0.15, 0.3, 3500); break;
       case "door": this.sweep("square", 140, 60, t, 0.35, 0.3); this.noise(t, 0.3, 0.25, 900); break;
       case "locked": this.tone("square", 110, t, 0.12, 0.3); this.tone("square", 90, t + 0.12, 0.15, 0.3); break;
       case "throw": this.sweep("triangle", 500, 900, t, 0.08, 0.25); break;

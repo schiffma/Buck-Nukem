@@ -6,6 +6,7 @@ const GORE = {
   spark: ["#ffd040", "#fff4a0", "#ff9a20"],
   metal: ["#6c7484", "#b8c0cc", "#3a404e"],
   suit: ["#5a6272", "#3a404e", "#e8a880"],
+  wood: ["#a8743a", "#c8904a", "#6e4420", "#8c949e"],
   shell: ["#8c2c1c", "#561810", "#b84a32", "#e8c8b0"],
   punk: ["#40e040", "#e8a880", "#1a1414", "#3858a8"],
   maxStains: 64, stainLife: 20, stainFade: 3,

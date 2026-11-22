@@ -1,4 +1,5 @@
-"""Tactics with fake snapshots (no browser): the Kneel leaf and the kneeling shot rules."""
+"""Tactics with fake snapshots (no browser): the Kneel leaf, the kneeling shot rules and the
+boss-arena tactics (crates block the line, ducking under bubbles on the firing ledge)."""
 import unittest
 
 from tests import _path  # noqa: F401
@@ -69,6 +70,70 @@ class KneelingShot(unittest.TestCase):
         e = cray(175)
         self.assertFalse(World(snap([e]), GRID).hittable(e))
         self.assertTrue(World(snap([e], kneeling=True), GRID).hittable(e))
+
+
+
+def boss_snap(bubbles=(), raised=True, t=1.0):
+    s = snap([])
+    s["boss"] = {"state": "bubbles", "phase": "spit", "hp": 50, "maxHp": 50, "raised": raised, "claw": 1.0 if raised else 0.0,
+                 "ox": 300, "homeX": 300, "floor": FLOOR + 32, "t": t,
+                 "face": {"x": 300, "y": FLOOR - 40, "w": 26, "h": 62}, "shell": {}, "claws": {"x": 270, "y": 0, "w": 36, "h": 46}}
+    s["enemyShots"] = list(bubbles)
+    s["hero"]["weapon"] = "cutter"
+    return s
+
+
+def bubble(x, y, vx, vy, grav=0.0):
+    return {"kind": "bubble", "x": x, "y": y, "w": 8, "h": 8, "vx": vx, "vy": vy, "grav": grav}
+
+
+class BossAgent(FakeAgent):
+    def __init__(self, s, grid=GRID):
+        super().__init__(s)
+        self.world = World(s, grid)
+        self.boss_level = True
+
+    def reacted(self, key, delay=None):
+        return True
+
+    def tour_left(self):
+        return False
+
+    def at_perch(self):
+        return True
+
+
+class CoverAndDucking(unittest.TestCase):
+    def test_crate_blocks_the_line_to_the_face(self):
+        s = boss_snap()
+        self.assertTrue(World(s, GRID).boss_face_hittable())
+        gy = int((FLOOR - 28 + 14) // 16)                  # gun row standing
+        g = list(GRID)
+        g[gy] = g[gy][:12] + "D" + g[gy][13:]
+        self.assertFalse(World(s, g).boss_face_hittable())
+
+    def test_no_shot_as_the_claws_drop(self):
+        s = boss_snap(t=0.05)
+        s["boss"]["state"], s["boss"]["phase"] = "slam", "raise"
+        self.assertFalse(World(s, GRID).boss_face_hittable())
+
+    def test_kneeling_ducks_a_head_high_bubble(self):
+        b = bubble(140, FLOOR - 26, -120, 0)              # flying level at head height, toward Buck
+        w = World(boss_snap([b]), GRID)
+        self.assertTrue(w.will_hit(b, 24, kneeling=False))
+        self.assertFalse(w.will_hit(b, 24, kneeling=True))
+
+    def test_boss_leaf_ducks_instead_of_stepping(self):
+        b = bubble(140, FLOOR - 26, -120, 0)
+        want = behaviour.boss(BossAgent(boss_snap([b])))
+        self.assertEqual((want["dir"], want.get("down"), want["why"]), (0, True, "dodge"))
+
+    def test_boss_leaf_steps_aside_from_a_low_bubble(self):
+        b = bubble(140, FLOOR - 8, -120, 0)               # at knee height: ducking won't help
+        want = behaviour.boss(BossAgent(boss_snap([b])))
+        self.assertEqual(want["why"], "sidestep")   # soft: the 1 s settle rule applies
+        self.assertNotEqual(want["dir"], 0)
+        self.assertFalse(want.get("down"))
 
 
 if __name__ == "__main__":

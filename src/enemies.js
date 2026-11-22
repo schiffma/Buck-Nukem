@@ -259,6 +259,13 @@ function updateEnemyShots(dt, level) {
       s.x += s.vx * dt; s.life -= dt;
       if (Math.random() < 0.6) FX.parts.push({ x: s.x + s.w / 2, y: s.y + s.h, vx: rnd(-20, 20), vy: rnd(-80, -30), life: 0.3, max: 0.3, color: "#c8a070", grav: 300 });
       if (s.life <= 0 || s.x < -20 || s.x > level.pxW + 20) remove = true;
+      // stopped by the first solid tile or crate at floor height; wears down breakable crates
+      const lx = s.vx < 0 ? s.x : s.x + s.w, ltx = Math.floor(lx / TILE), lty = Math.floor((s.y + s.h - 1) / TILE);
+      if (!remove && level.isSolid(ltx, lty)) {
+        remove = true;
+        FX.spark(lx, s.y + s.h - 2, "#c8a070", 14, 90, 0.5, 300);
+        if (level.at(ltx, lty) === "d") level.hitCrate(ltx, lty, CONFIG.shockwaveCrateDmg);
+      }
     } else {
       s.vy += (s.grav || 0) * dt;
       s.x += s.vx * dt; s.y += s.vy * dt; s.t = (s.t || 0) + dt;
@@ -288,8 +295,11 @@ function updateHeroShots(dt, level) {
       s.life -= dt; if (s.life <= 0) remove = true;
     } else {
       const fx = s.vx > 0 ? s.x + s.w : s.x;
-      const t = level.at(Math.floor(fx / TILE), Math.floor((s.y + s.h / 2) / TILE));
-      if (SOLID_CH.indexOf(t) >= 0) { remove = true; FX.spark(fx, s.y + s.h / 2, "#ffe860", 5, 50, 0.25); }
+      const ttx = Math.floor(fx / TILE), tty = Math.floor((s.y + s.h / 2) / TILE), t = level.at(ttx, tty);
+      if (SOLID_CH.indexOf(t) >= 0) {
+        remove = true; FX.spark(fx, s.y + s.h / 2, "#ffe860", 5, 50, 0.25);
+        if (t === "d") level.hitCrate(ttx, tty, s.dmg || 1);
+      }
       if (!remove) {
         for (const e of Game.enemies) {
           if (e.dead || !e.active || (e.T.hidden && e.T.hidden(e))) continue;

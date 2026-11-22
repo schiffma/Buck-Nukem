@@ -18,6 +18,7 @@ const Boss = {
     this.active = true;
     this.ox = px; this.homeX = px; this.floor = floorY;
     this.hp = CONFIG.bossHp; this.maxHp = CONFIG.bossHp;
+    this.summons = 0;              // summon attacks so far (limited per fight, not reset on respawn)
     this.state = "intro"; this.t = 1.5; this.attackIdx = 0; this.raised = false; this.claw = 0; // 0 down .. 1 up
     this.flash = 0; this.anim = 0; this.dir = -1; this.dying = 0; this.fired = 0;
     this.healthTimer = 12;
@@ -66,7 +67,7 @@ const Boss = {
         const want = clamp(Player.cx() + 90, this.homeX - 50, this.homeX + 10);
         const sp = this.enraged() ? 30 : 18;
         if (Math.abs(want - this.ox) > 2) this.ox += Math.sign(want - this.ox) * sp * dt;
-        if (this.t <= 0) this.startAttack(BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length]);
+        if (this.t <= 0) this.startAttack(this.nextAttack());
         break;
       }
       case "slam":
@@ -98,9 +99,12 @@ const Boss = {
       case "summon":
         if (this.t <= 0) {
           const minions = Game.enemies.filter(function (e) { return e.type === "cray" && !e.dead; }).length;
-          const n = Math.min(2, 4 - minions);
+          const n = this.summons < CONFIG.bossSummons ? Math.min(2, 4 - minions) : 0;
+          this.summons++;
+          // inside the camera view, left of the boss (clamped when the view is tight)
+          const lo = Math.max(Camera.x + 24, 40), hi = Math.max(lo, Math.min(this.ox - 60, Camera.x + W - 24));
           for (let i = 0; i < n; i++) {
-            const x = rnd(40, this.ox - 60);
+            const x = rnd(lo, hi);
             Game.enemies.push(makeEnemy("cray", x, 40, level, 1));
             FX.spark(x, 32, "#ff8060", 10, 60, 0.4);
           }
@@ -126,6 +130,13 @@ const Boss = {
     }
   },
 
+  // Next attack of the slam -> bubbles -> summon cycle; once the summons are used up the
+  // summon slot is skipped (slam -> bubbles -> slam ...).
+  nextAttack() {
+    let a = BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length];
+    if (a === "summon" && this.summons >= CONFIG.bossSummons) a = BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length];
+    return a;
+  },
   toIdle() { this.state = "idle"; this.raised = false; this.t = this.idleTime(); this.phase = null; },
   startAttack(name) {
     this.state = name; this.phase = "raise"; this.raised = true;

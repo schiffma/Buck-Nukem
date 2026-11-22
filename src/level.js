@@ -7,6 +7,7 @@
 //  L  lawyer          K  crayfish       M  gardener-punk   X  boss
 //  o  tennis ball     t  trophy         h  Rivella         s  Cervelat
 //  +  extra life      w  weapon power-up
+//  D  sturdy crate (solid, indestructible)   d  breakable crate (solid, CRATE_HP strength)
 //  n  net  f  fence  l  lamp  b  bush  v  window   (background decoration)
 //  Clubhouse: a bar counter, A counter with taps, T table (one-way platforms);
 //  props (decoration, anchored top-left): c chair, i stool, q bottle shelf, N neon sign,
@@ -14,7 +15,8 @@
 //  x rackets, j hanging lamp, y plant, Y club plaque. Header "interior: x0-x1" gives
 //  the column range drawn with the clubhouse wall backdrop instead of the photo.
 
-const SOLID_CH = "#BRUG";
+const SOLID_CH = "#BRUGDd";
+const CRATE_HP = 6;               // breakable crate strength (blaster 1, blade 3, shockwave 3)
 const DECO_CH = "nflbv";
 const PLATFORM_CH = "=aAT";
 const ENTITY_CH = "PLKMXortuhsg+wCEF";
@@ -102,6 +104,30 @@ function buildTileset(themeName) {
   ts.solidTop = [0, 1, 2].map(function (v) { return tile(function (g) { solidBase(g); wear(g, v, false); solidTopDeco(g); }); });
   ts.alt = [0, 1, 2].map(function (v) { return tile(function (g) { altBase(g); wear(g, v, metal); }); });
   ts.plat = [0, 1, 2].map(function (v) { return tile(function (g) { platBase(g); platWear(g, v); }); });
+  // cover crates (boss arena): wooden planks with a dark outline; sturdy ones with metal
+  // bands and rivets; breakable ones get a cracked variant once half their strength is gone
+  function crateBase(g) {
+    g.fillStyle = "#a8743a"; g.fillRect(1, 1, 14, 14);
+    g.fillStyle = "#c8904a"; for (let y = 1; y < 15; y += 5) g.fillRect(1, y, 14, 1);       // plank highlights
+    g.fillStyle = "#6e4420"; for (let y = 5; y < 15; y += 5) g.fillRect(1, y, 14, 1);       // plank seams
+    g.fillStyle = "#8a5a2a"; for (let i = 0; i < 12; i++) g.fillRect(2 + i, 2 + i, 1, 1);  // diagonal brace
+    for (let i = 0; i < 12; i++) g.fillRect(3 + i, 2 + i, 1, 1);
+    g.fillStyle = "rgb(" + OUTLINE_COLOR.join(",") + ")";
+    g.fillRect(0, 0, 16, 1); g.fillRect(0, 15, 16, 1); g.fillRect(0, 0, 1, 16); g.fillRect(15, 0, 1, 16);
+  }
+  ts.crateSturdy = tile(function (g) {
+    crateBase(g);
+    g.fillStyle = "#8c949e"; g.fillRect(1, 2, 14, 2); g.fillRect(1, 12, 14, 2); g.fillRect(2, 1, 2, 14); g.fillRect(12, 1, 2, 14);
+    g.fillStyle = "#c8d0d8"; g.fillRect(1, 2, 14, 1); g.fillRect(1, 12, 14, 1);
+    g.fillStyle = "#3a404e"; [[2, 3], [12, 3], [2, 13], [12, 13], [7, 3], [7, 13]].forEach(function (p) { g.fillRect(p[0], p[1], 1, 1); });
+  });
+  ts.crate = tile(crateBase);
+  ts.crateCracked = tile(function (g) {
+    crateBase(g);
+    g.fillStyle = "#2a160a";
+    [[9, 1], [9, 2], [8, 3], [8, 4], [9, 5], [10, 6], [10, 7], [9, 8], [4, 9], [5, 10], [5, 11], [6, 12], [6, 13], [3, 6], [4, 7]].forEach(function (p) { g.fillRect(p[0], p[1], 1, 1); });
+    g.fillStyle = "#5a3818"; g.fillRect(11, 10, 3, 2); g.fillRect(2, 2, 2, 2);             // splintered gaps
+  });
   // clubhouse interior tiles (theme independent)
   ts.wallpaper = [0, 1].map(function (v) {
     return tile(function (g) {
@@ -248,6 +274,7 @@ class Level {
     this.pxH = this.h * TILE;
     this.spawns = [];
     this.openDoors = {};
+    this.crateHp = {};             // "tx,ty" -> strength of breakable crates (reset on load)
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
       const ch = this.rows[y][x];
       if (ENTITY_CH.indexOf(ch) >= 0) {
@@ -275,6 +302,25 @@ class Level {
   isLadderTop(tx, ty) { return this.isLadder(tx, ty) && !this.isLadder(tx, ty - 1); }
   isWater(tx, ty) { return this.at(tx, ty) === "~"; }
   isDoor(tx, ty) { return "RUG".indexOf(this.at(tx, ty)) >= 0; }
+  isCrate(tx, ty) { const c = this.at(tx, ty); return c === "D" || c === "d"; }
+  crateStrength(tx, ty) {
+    if (this.at(tx, ty) !== "d") return 0;
+    const k = tx + "," + ty;
+    return k in this.crateHp ? this.crateHp[k] : CRATE_HP;
+  }
+  // Damages a breakable crate; returns true when it broke. Sturdy crates ignore damage.
+  hitCrate(tx, ty, dmg) {
+    if (this.at(tx, ty) !== "d") return false;
+    const k = tx + "," + ty, hp = this.crateStrength(tx, ty) - dmg;
+    if (hp > 0) { this.crateHp[k] = hp; return false; }
+    delete this.crateHp[k];
+    this.rows[ty][tx] = ".";
+    const cx = tx * TILE + 8, cy = ty * TILE + 8;
+    FX.gibs(cx, cy, GORE.wood, 10, false);
+    FX.spark(cx, cy, "#c8904a", 10, 90, 0.5, 300);
+    Sound.play("crate");
+    return true;
+  }
   // standable from above (for one-way collision and enemy ledge checks)
   isFloor(tx, ty) { return this.isSolid(tx, ty) || this.isPlatform(tx, ty) || this.isLadderTop(tx, ty); }
 
@@ -323,7 +369,9 @@ class Level {
         else if (PROP_DEFS[ch]) img = propCanvas(ch, time);
       } else if (layer === "main") {
         const v = tileVariant(tx, ty);
-        if (ch === "#") img = this.isSolid(tx, ty - 1) ? ts.solid[v] : ts.solidTop[v];
+        if (ch === "#") img = this.isSolid(tx, ty - 1) && !this.isCrate(tx, ty - 1) ? ts.solid[v] : ts.solidTop[v];
+        else if (ch === "D") img = ts.crateSturdy;
+        else if (ch === "d") img = this.crateStrength(tx, ty) <= CRATE_HP / 2 ? ts.crateCracked : ts.crate;
         else if (ch === "B") img = ts.alt[v];
         else if (ch === "=") img = ts.plat[v];
         else if (ch === "a") img = ts.counter;

@@ -14,6 +14,7 @@ import base64
 import hashlib
 import io
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -309,6 +310,28 @@ def load_levels():
     return levels
 
 
+def build_version():
+    """Version text for the title screen, git-describe style, ignoring dist/ (the build output
+    itself): "v1.0.2" on the tagged release (also after committing the rebuilt dist/ on top),
+    "v1.0.2-3-gab12cd3" for later commits, "-dirty" for uncommitted changes outside dist/.
+    Falls back to "v" + VERSION when git or the tags are not available."""
+    fallback = "v" + (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True,
+                              check=True, timeout=20).stdout.strip()
+    try:
+        tag = git("describe", "--tags", "--match", "v*", "--abbrev=0")
+        outside = [".", ":(exclude)dist"]
+        n = int(git("rev-list", "--count", f"{tag}..HEAD", "--", *outside))
+        dirty = git("status", "--porcelain", "--", *outside) != ""
+    except (OSError, subprocess.SubprocessError, ValueError):
+        print(f"Version: git not available, using VERSION ({fallback})")
+        return fallback
+    base = tag if n == 0 else f"{tag}-{n}-g{git('rev-parse', '--short=7', 'HEAD')}"
+    return base + ("-dirty" if dirty else "")
+
+
 def main():
     debug = "--debug" in sys.argv
     missing = [n for n in REQUIRED_IMAGES if not (IMG / n).is_file()]
@@ -344,12 +367,15 @@ def main():
     add("portrait", make_portrait())
 
     levels = load_levels()
+    version = build_version()
+    print(f"Version: {version}")
     script = "\n".join(f"// ---- {n} ----\n" + (SRC / n).read_text(encoding="utf-8") for n in JS_ORDER)
     template = (SRC / "index.template.html").read_text(encoding="utf-8")
     html = (template
             .replace("{{ASSETS}}", json.dumps(assets, indent=0))
             .replace("{{LEVELS}}", json.dumps(levels, indent=0))
-            .replace("{{META}}", json.dumps({"heroPalette": hero_pal, "heroHeadRows": HEAD_ROWS, "heroFixed": FIXED_COLOURS}))
+            .replace("{{META}}", json.dumps({"heroPalette": hero_pal, "heroHeadRows": HEAD_ROWS, "heroFixed": FIXED_COLOURS,
+                                             "version": version}))
             .replace("{{SCRIPT}}", script))
     data = html.encode("utf-8")
     OUT.write_bytes(data)

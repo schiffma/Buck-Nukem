@@ -24,10 +24,13 @@ const Game = {
     if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); } else Sound.setTrack("valkyries");
   },
 
+  startHash: null,           // tests: stands in for location.hash when set
+
   newGame() {
     this.score = 0;
     Player.resetForGame();
-    this.loadLevel(0);
+    // a link like buck_nukem.html#level=4 starts every new game at that reel
+    this.loadLevel(startLevelFromHash(this.startHash !== null ? this.startHash : location.hash));
   },
 
   loadLevel(i, data) {       // data: optional map override (used by the test harness)
@@ -346,6 +349,15 @@ function frame(now) {
   fpsCount++;
   if (rateT >= 1) { Game.ups = upsCount; Game.fps = fpsCount; upsCount = fpsCount = 0; rateT -= 1; }
   if (!Game.headless) requestAnimationFrame(frame);
+}
+
+// Start level from the URL fragment: "level=N" (N = 1..number of levels, the reel number) as
+// its own parameter, e.g. "#level=4" or "#debug&level=3". Returns the 0-based level index;
+// 0 (level 1) when it is missing or invalid.
+function startLevelFromHash(hash) {
+  const m = /(?:^#|[#&])level=(\d+)(?:&|$)/.exec(hash || "");
+  const n = m ? parseInt(m[1], 10) : 0;
+  return n >= 1 && n <= LEVEL_DATA.length ? n - 1 : 0;
 }
 
 function boot() {

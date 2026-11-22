@@ -4,9 +4,11 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.2** (see `VERSION`; releases are git tags `vX.Y.Z`).
+Version **1.0.3** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
+
+**Direct level links:** add `#level=N` (N = 1–4, the reel number; 4 is the boss arena) to start every new game at that level, e.g. `buck_nukem.html#level=4` or online <https://schiffma.github.io/Buck-Nukem/dist/buck_nukem.html#level=4>. The title shows "STARTS AT REEL N" ("STARTS AT FINAL REEL"); Enter starts a fresh game there (score 0, 3 lives). It combines with other flags (`#debug&level=3`); invalid values start at level 1.
 
 ## Controls
 
@@ -29,7 +31,7 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 - 8 health points and 3 lives. The lives counter includes the current life, so the game ends when the counter would reach 0. You respawn at the last checkpoint (Swiss flag) with full health, but the Mega Blaster power-up is lost.
 - Pickups: tennis balls (50 points), trophies (1000), Rivella (+2 HP), Cervelat (+3 HP), extra life (hero head), key cards (red/blue/green open doors of the same colour), Mega Blaster (faster shots, double damage).
 - Enemies: lawyers (throw briefcases), mutant crayfish (realistic glossy red-brown crayfish; they leap and hide in the creek), gardener-punks with a petrol lawn mower (mohawk, blunt; its two-stroke engine putt-putts louder as you get closer and puffs exhaust smoke, revs in a black cloud and charges at full throttle, throwing grass and stones; it sputters and dies with the punk).
-- Boss: a giant red crayfish. In its arena Buck fights with a giant **disc cutter** that fires spinning saw blades (2.5 per second, 3 damage each; they also cut crayfish on the ground) and keeps it after respawning there. Blades bounce off the shell and closed claws in a shower of sparks: hit the face when the claws are raised. Below half health it attacks faster.
+- Boss: a giant red crayfish. In its arena Buck fights with a giant **disc cutter** that fires spinning saw blades (2.5 per second, 3 damage each; they also cut crayfish on the ground) and keeps it after respawning there. Blades bounce off the shell and closed claws in a shower of sparks: hit the face when the claws are raised. Below half health it attacks faster. It summons small crayfish only 3 times per fight; after that it alternates claw slams and bubble sprays. The arena is two screens wide. Platforms on three heights and two ladders take Buck above the floor shockwave, and the lowest ledge in front of the boss lines up with its face. Wooden cover crates stop the shockwave and bubbles, and Buck can kneel behind them or stand on them. They also block his own shots. Sturdy crates (metal bands) last forever; plain ones crack and burst after 6 blaster hits, 2 saw blades or 2 shockwaves. Summoned crayfish always appear on screen.
 
 ## Look
 
@@ -52,7 +54,14 @@ python tools/build.py            # writes dist/buck_nukem.html (fails above 2 MB
 python tools/build.py --debug    # also writes dist/debug_*.png previews of the processed images
 ```
 
-The build crops, resizes and colour-reduces the photos in `assets/img/` (`assets/img/` itself is never modified) and embeds them as base64 PNGs. It also embeds the level maps from `src/levels/*.txt` and inlines `src/*.js` into `src/index.template.html`. The output is deterministic: two builds from the same sources are byte-identical.
+The build crops, resizes and colour-reduces the photos in `assets/img/` (`assets/img/` itself is never modified) and embeds them as base64 PNGs. It also embeds the level maps from `src/levels/*.txt` and inlines `src/*.js` into `src/index.template.html`. The output is deterministic: two builds from the same sources are byte-identical. The build also embeds the version text from git (`git describe` style, ignoring `dist/`; falls back to `VERSION` without git) and prints it.
+
+Release steps:
+1. Bump `VERSION` and commit.
+2. Tag: `git tag -a vX.Y.Z -m "Buck Nukem X.Y.Z"`.
+3. Run `python tools/build.py`. It now prints `vX.Y.Z`.
+4. Commit `dist/buck_nukem.html`. The version stays `vX.Y.Z`, because `dist/` doesn't count.
+5. Push with `git push origin main vX.Y.Z main:gh-pages`. The `gh-pages` branch is the playable GitHub Pages copy.
 
 ## Tests and checks
 
@@ -60,7 +69,7 @@ The build crops, resizes and colour-reduces the photos in `assets/img/` (`assets
 python tools/run_tests.py                 # in-game scenario tests, headless Chrome
 python tools/run_tests.py --browser edge  # same in headless Edge
 python tools/check_levels.py              # every level completable, all pickups reachable
-python tools/screenshot.py out.png title play,0,40,13,60 boss,3,3,12,200 sprites
+python tools/screenshot.py out.png title play,0,40,13,60 play,3,24,9,150 sprites
 ```
 
 Promo video (an AI plays the game; needs `pip install -r tools/promo/requirements.txt` once: Playwright, networkx, py_trees, imageio-ffmpeg):
@@ -119,7 +128,7 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 | `y` `Y` | potted plant (1×2), club plaque (4×2) | | |
 | `Q` `@` `%` | umpire chair (2×3), ball machine (2×1), ball basket | `V` `z` `[` | racket bag (2×1), player bench (2×1), scoreboard (5×2) |
 | `J` `&` | court drag brush (2×1), water cooler (1×2) | `*` `^` | toxic waste drum, skull "TOXIC" warning sign (2×2) |
-| `F` | cheering tennis fan (background, stands on floor or a platform; 8–10 per level, 4–5 in the arena) | | |
+| `F` | cheering tennis fan (background, stands on floor or a platform; 8–10 per level, 4–5 in the arena) | `D` `d` | cover crate: sturdy (indestructible), breakable (6 strength) |
 
 Multi-tile props are placed by their top-left cell; the rest of their footprint must be `.` (the build warns otherwise). The header line `interior: x0-x1` draws columns x0–x1 as the clubhouse interior (wallpaper and wood panelling instead of the photo; windows still show the photo).
 

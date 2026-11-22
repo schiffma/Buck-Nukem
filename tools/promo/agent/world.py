@@ -7,7 +7,7 @@ hero.y + 12 .. + 26 (disc cutter), TILE = 16, fixed step DT = 1/60.
 from .nav import TILE, hero_node
 
 DT = 1 / 60
-SOLID, PLATFORM = set("#BRUG"), set("=aAT")
+SOLID, PLATFORM = set("#BRUGDd"), set("=aAT")      # D/d: cover crates
 
 
 class World:
@@ -99,10 +99,14 @@ class World:
         b = self.s.get("boss")
         if not b or not b["raised"] or b["claw"] <= 0.5:
             return False
+        if b["state"] in ("slam", "bubbles") and b.get("phase") != "spit" and b["t"] < 0.12:
+            return False                     # the claws drop before a shot would leave the barrel
         h, f = self.hero, face or self.hero["face"]
         fb = b["face"]
         y0, y1 = h["y"] + 11, h["y"] + 19
-        return (fb["x"] + fb["w"] / 2 - self.cx()) * f > 0 and fb["y"] < y1 and fb["y"] + fb["h"] > y0
+        fx = fb["x"] + fb["w"] / 2
+        return ((fx - self.cx()) * f > 0 and fb["y"] < y1 and fb["y"] + fb["h"] > y0
+                and self.line_clear(self.cx(), fx, int(self.gun_y() // TILE)))       # crates block the line
 
     def doomed(self, e):
         """Shots already in flight will finish this enemy: more shots would only miss."""
@@ -117,14 +121,23 @@ class World:
         """A hittable target ahead (not already doomed by shots in flight): (kind, id) or None."""
         for e in self.enemies():
             if e["active"] and self.hittable(e, face) and not self.doomed(e):
+                if e["leaping"]:             # a leaping minion: still in line where it will be in 2 frames?
+                    ahead = dict(e, x=e["x"] + e["vx"] * 2 * DT, y=e["y"] + e["vy"] * 2 * DT)
+                    if not self.hittable(ahead, face):
+                        continue
                 return ("enemy", e["id"])
         if self.boss_face_hittable(face):
             return ("boss", 0)
         return None
 
     # ---- projectiles ----
-    def will_hit(self, b, frames=30, margin=2):
+    def will_hit(self, b, frames=30, margin=2, kneeling=None):
+        """Will projectile b hit the hero within `frames` steps? kneeling: judge for that pose
+        (feet fixed, 16 px tall kneeling, 28 px standing); default: his current pose."""
         h = self.hero
+        if kneeling is not None and bool(kneeling) != bool(h.get("kneeling")):
+            hh = 16 if kneeling else 28
+            h = dict(h, y=h["y"] + h["h"] - hh, h=hh)
         x, y, vx, vy = b["x"], b["y"], b["vx"], b["vy"]
         for _ in range(frames):
             vy += b["grav"] * DT

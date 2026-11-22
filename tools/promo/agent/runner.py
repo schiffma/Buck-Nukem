@@ -105,6 +105,7 @@ class Agent:
         if self.planner.skipped:
             self.log("  skipping (not worth the detour): %s" % ", ".join(repr(it) for it in self.planner.skipped))
         self.stop = 0
+        self._perch = None
         self.follower.set_route([])
         self.best, self.best_t = None, snap["time"]
 
@@ -159,15 +160,17 @@ class Agent:
             if self.boss_level:
                 b = w.s.get("boss")
                 if b:
-                    floor_row = int((b["floor"] - 1) // TILE)
-                    if self.follower.done() and h["onGround"] and w.node()[1] != floor_row:
-                        nav = self.nav()
-                        goals = {n for n in nav.graph().nodes if n[1] == floor_row}
-                        p = nav.path(w.node(), goals, self.banned)
+                    perch = self.boss_perch()
+                    if perch and self.follower.done() and h["onGround"] and not self.at_perch():
+                        p = self.nav().path(w.node(), {perch}, self.banned)
                         if p:
                             self.follower.set_route(p[1])
                     if not self.follower.done():
-                        return self.follower.want(w, self.ctrl)
+                        want = self.follower.want(w, self.ctrl)
+                        if want.get("failed"):
+                            self.banned.add(edge_key(want["failed"]))
+                            self.follower.set_route([])
+                        return want
             return {"dir": 0, "why": "route"}
         if st["item"] is not None and st["item"].kind in KILL_STOPS.values() and self.track_kill_stop(st):
             return {"dir": 0, "why": "route"}
@@ -193,6 +196,46 @@ class Agent:
         if want.get("timeout"):
             self.stuck("move timeout")
         return want
+
+    def boss_perch(self):
+        """The boss-fight firing spot: a stand node whose gun line meets the boss's face with no
+        solid tile (crate) in between, in front of the claws; platforms first (the claw-slam
+        shockwave runs along the floor), then the one nearest the boss."""
+        if getattr(self, "_perch", None) is not None:
+            return self._perch
+        w = self.world
+        b = w.s.get("boss")
+        if not b:
+            return None
+        self._perch_span = set()
+        face = b["face"]
+        floor_row = int((b["floor"] - 1) // TILE)
+        reach_x = b["homeX"] - 36 - 2 * TILE                  # stay clear of the claws' reach
+        best, ok = None, set()
+        for (x, y) in self.nav().graph().nodes:
+            gy = (y + 1) * TILE - 14                          # gun height standing on that node
+            if not (face["y"] + 2 < gy < face["y"] + face["h"] - 6) or (x + 1) * TILE > reach_x:
+                continue
+            if w.at(x, y + 1) == "d":                         # a breakable crate won't last as a perch
+                continue
+            if not w.line_clear(x * TILE + 8, face["x"] + 4, int(gy // TILE)):
+                continue
+            ok.add((x, y))
+            key = (y != floor_row, x)
+            if best is None or key > best[0]:
+                best = (key, (x, y))
+        self._perch = best[1] if best else None
+        if self._perch:                                       # the perch's stretch of the same row: any of it will do
+            px, py = self._perch
+            x = px
+            while (x, py) in ok:                              # the whole ledge: dodges stay where they land
+                self._perch_span.add((x, py)); x -= 1
+        self.log("  boss perch %s" % (self._perch,))
+        return self._perch
+
+    def at_perch(self):
+        perch = self.boss_perch()
+        return perch is None or self.world.node() in self._perch_span
 
     def track_kill_stop(self, st):
         """A kill stop follows its enemy (they walk). Returns True when the stop was dropped."""

@@ -12,7 +12,7 @@ Row: [level, t, dir, why, jumpStart, onGround, x, y, shot, hittable, threat, pic
 """
 DT = 1 / 60
 HERO_W, HERO_H, TILE = 10, 28, 16
-SOLID, PLATFORM = set("#BRUG"), set("=aAT")
+SOLID, PLATFORM = set("#BRUGDd"), set("=aAT")      # D/d: cover crates
 R_LEVEL, R_T, R_DIR, R_WHY, R_JUMP, R_GROUND, R_X, R_Y, R_SHOT, R_HIT, R_THREAT, R_PICK, R_CLIMB, R_HITS = range(14)
 
 

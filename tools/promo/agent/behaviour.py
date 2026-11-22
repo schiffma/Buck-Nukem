@@ -273,25 +273,37 @@ def boss(a):
     h = w.hero
     if a.ctrl.busy():
         return {"dir": 0, "why": "dodge"}
+    floor_row = int((b["floor"] - 1) // TILE)
+    on_floor = w.node()[1] == floor_row
     for s in w.s.get("enemyShots") or []:
-        if s["kind"] == "shockwave" and h["onGround"] and s["x"] > h["x"] - 10 and s["x"] - (h["x"] + h["w"]) < 42 and a.reacted(("wave", 0), 0.1):
+        if s["kind"] == "shockwave" and h["onGround"] and on_floor and s["x"] > h["x"] - 10 and s["x"] - (h["x"] + h["w"]) < 42 and a.reacted(("wave", 0), 0.1):
             a.ctrl.start_plan(a.ctrl.hop_steps("dodge"), "dodge")
             return {"dir": 0, "why": "dodge"}
-        if s["kind"] == "bubble" and h["onGround"] and w.will_hit(s, 24) and a.reacted(("bubble", 0), 0.15):
-            land = bubble_land_x(s, b["floor"])
-            return {"dir": -1 if land > w.cx() else 1, "why": "dodge"}
+        if s["kind"] == "bubble" and h["onGround"] and w.will_hit(s, 24, kneeling=False) and a.reacted(("bubble", 0), 0.15):
+            if not w.will_hit(s, 24, kneeling=True) and not any(
+                    o is not s and o["kind"] == "bubble" and w.will_hit(o, 24, kneeling=True) for o in w.s["enemyShots"]):
+                return {"dir": 0, "down": True, "why": "dodge"}      # duck under it: no step, no turn
+            now = w.s["time"]
+            sticky = getattr(a, "bubble_dodge", None)
+            if sticky and now < sticky[1]:
+                d = sticky[0]                    # keep the chosen side for the whole volley
+            else:
+                land = bubble_land_x(s, b["floor"])
+                d = -1 if land > w.cx() else 1
+                rd = a.route_dir() if not a.at_perch() else 0
+                if rd and rd != d and abs(land - w.cx()) > 10:
+                    d = rd                       # on the way: keep going rather than turn back (it lands behind)
+                a.bubble_dodge = (d, now + 0.6)
+            if w.ground_ahead(d):               # never step off the perch's platform to dodge
+                return {"dir": d, "why": "sidestep"}   # soft: the 1 s settle rule applies
     for e in w.enemies():                       # minions leaping at Buck: step back
         dx = w.cx() - (e["x"] + e["w"] / 2)
         if e["leaping"] and abs(dx) < 80 and (e["vx"] > 0) == (dx > 0) and w.ground_ahead(1 if dx > 0 else -1):
-            return {"dir": 1 if dx > 0 else -1, "why": "dodge"}
+            return {"dir": 1 if dx > 0 else -1, "why": "sidestep"}
     if a.tour_left():                           # the arena's Rivellas first, then fight
         return None
-    floor_row = int((b["floor"] - 1) // TILE)
-    if h["onGround"] and w.node()[1] != floor_row:
-        return None                             # Route brings him down (a.boss_floor_route)
-    want_x = min(max(b["claws"]["x"] - 70, 20), 200)
-    if h["onGround"] and abs(w.cx() - want_x) > 8:
-        return {"dir": 1 if w.cx() < want_x else -1, "why": "position"}
+    if h["onGround"] and not a.at_perch():
+        return None                             # Route takes him to the firing spot (a.boss_perch)
     if h["face"] < 0:
         return {"dir": 1, "why": "position"}
     return {"dir": 0, "why": "position"}

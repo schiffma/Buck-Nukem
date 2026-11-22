@@ -113,6 +113,17 @@ function introPhaseAt(isBoss, t) {
   return { name: "done" };
 }
 
+// Build version (git describe style, embedded by tools/build.py), small print bottom right.
+const BUILD_VERSION = String((typeof ASSETS_META !== "undefined" && ASSETS_META.version) || "dev").toUpperCase();
+const TITLE_VERSION_POS = { x: 314, y: 230 };   // right-aligned
+const TITLE_START_POS = { x: 6, y: 230 };       // "STARTS AT REEL n" note (level links), left-aligned
+// The title's start-reel note for a level link, or "" when new games start at level 1.
+function titleStartNote() {
+  const i = startLevelFromHash(Game.startHash !== null ? Game.startHash : location.hash);
+  if (i <= 0) return "";
+  return LEVEL_DATA[i].boss === "1" ? "STARTS AT FINAL REEL" : "STARTS AT REEL " + (i + 1);
+}
+
 const Screens = {
   title() {
     ctx.drawImage(IMG.bg_title, 0, 0);
@@ -136,6 +147,9 @@ const Screens = {
     drawText("FILMED ON LOCATION IN WOLLERAU", 130, 206, "#c8b890", { align: "center", shadow: "#000" });
     if (!Sound.ac) drawText("(ANY KEY STARTS THE MUSIC)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
     else drawText(Sound.muted ? "SOUND OFF (M)" : "SOUND ON (M)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
+    const note = titleStartNote();
+    if (note) drawText(note, TITLE_START_POS.x, TITLE_START_POS.y, "#c8b890", { shadow: "#000" });
+    drawText(BUILD_VERSION, TITLE_VERSION_POS.x, TITLE_VERSION_POS.y, "#c8b890", { align: "right", shadow: "#000" });
   },
 
   levelIntro() {

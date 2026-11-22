@@ -35,6 +35,9 @@ const CONFIG = {
   punkHp: 5, punkSpeed: 24, punkChargeSpeed: 110, punkRange: 96, punkChargeMax: 128,
   punkRev: 0.5, punkCooldown: 2.0, punkPoints: 500,
   bossHp: 50, bossPoints: 10000,
+  bossSummons: 3,                // summon attacks per boss fight; then it alternates slam and bubbles
+  shockwaveCrateDmg: 3,
+  ledgeKnockback: 25,            // hit while standing on a one-way platform: small stagger (80 elsewhere)          // claw-slam shockwave vs breakable crates
   // scoring
   ballPoints: 50, trophyPoints: 1000, levelBonus: 2500,
   waterDamage: 2,

@@ -220,7 +220,10 @@ const Player = {
     this.invuln = CONFIG.invuln;
     this.hurtT = 0.3;
     this.climbing = false;
-    if (!fromWater) { this.vx = -this.face * 80; this.vy = -150; }
+    // knockback; standing on a one-way platform (a ledge) only a small stagger, so a hit
+    // doesn't throw him off it
+    const ledge = this.onGround && Game.level && this.onOneWay(Game.level);
+    if (!fromWater) { this.vx = -this.face * (ledge ? CONFIG.ledgeKnockback : 80); this.vy = ledge ? -60 : -150; }
     Sound.play("hurt");
     Game.hurtFlash = 0.25;            // red screen-edge flash
     FX.blood(this.cx(), this.cy(), -this.face, 5);

@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from build import SRC, parse_level  # noqa: E402
 
-SOLID = set("#B")
+SOLID = set("#BDd")                  # crates count as solid (breakable ones may never be broken)
 DOORS = {"R": "r", "U": "u", "G": "g"}       # door -> key
 MAX_DX = {0: 4, 1: 3, 2: 3, 3: 2}            # max horizontal tiles for a jump rising h tiles
 ONE_WAY = set("=aAT")                         # one-way platforms (shelves, bar counter, tables)

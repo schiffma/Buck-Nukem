@@ -68,7 +68,7 @@ const PromoBridge = {
       const key = L.rows.map(function (r) { return r.join(""); }).join("\n");
       if (full || key !== this.gridSent) { s.grid = L.rows.map(function (r) { return r.join(""); }); this.gridSent = key; }
       if (Boss.active) {
-        s.boss = { state: Boss.state, hp: Boss.hp, maxHp: Boss.maxHp, raised: !!Boss.raised, claw: Boss.claw, ox: Boss.ox, floor: Boss.floor,
+        s.boss = { state: Boss.state, hp: Boss.hp, maxHp: Boss.maxHp, raised: !!Boss.raised, claw: Boss.claw, ox: Boss.ox, homeX: Boss.homeX, floor: Boss.floor, phase: Boss.phase || null,
           face: Boss.face(), shell: Boss.shell(), claws: Boss.claws(), t: Boss.t || 0 };
       }
     }
@@ -99,7 +99,7 @@ const PromoBridge = {
   },
 
   // ---------------- play-quality metrics log ----------------
-  preRow() { return { g: Player.onGround, x: Player.x, y: Player.y, shots: Game.stats.shots, c: Player.climbing }; },
+  preRow() { return { g: Player.onGround, x: Player.x, y: Player.y, shots: Game.stats.shots, c: Player.climbing, hits: this.hits }; },
   // the band a shot fired now would sweep: around the gun row (chest standing, knee kneeling)
   hittableInLine() {
     const P = Player, gy = P.gunY(), y0 = gy - 6, y1 = gy + 8, f = P.face, cx = P.cx();
@@ -130,7 +130,8 @@ const PromoBridge = {
     const jumpStart = inp.jump && pre.g && !P.onGround && P.vy < -100 && !P.climbing && !pre.c ? 1 : 0;
     const shot = Game.stats.shots > pre.shots ? 1 : 0;
     this.rows.push([Game.levelIndex, +Game.time.toFixed(4), dir, inp.why || "", jumpStart, P.onGround ? 1 : 0, Math.round(P.x * 10) / 10,
-      Math.round(P.y * 10) / 10, shot, shot ? (this.hittableInLine() ? 1 : 0) : 0, (jumpStart || shot) ? (this.threatNear() ? 1 : 0) : 0,
+      Math.round(P.y * 10) / 10, shot, shot ? ((this.hittableInLine() || this.hits > pre.hits) ? 1 : 0) : 0,   // a point-blank kill in the same step had a target too
+      (jumpStart || shot) ? (this.threatNear() ? 1 : 0) : 0,
       Game.pickups.length, P.climbing ? 1 : 0, this.hits, inp.fire ? 1 : 0]);
   },
   takeRows() { const r = this.rows; this.rows = []; return r; },
