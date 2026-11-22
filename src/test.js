@@ -20,7 +20,8 @@ const OLD_MALE_LAWYER_TOP = [
 
 function runTests() {
   const R = TEST.results;
-  function check(name, cond, info) { R.push({ name: name, ok: !!cond, info: info === undefined ? "" : String(info) }); }
+  let checkSuffix = "";           // set by bothFilmPaths: " [gl film]" / " [cpu film]"
+  function check(name, cond, info) { R.push({ name: name + checkSuffix, ok: !!cond, info: info === undefined ? "" : String(info) }); }
   function steps(n, each) { for (let i = 0; i < n; i++) { Game.update(DT); Input.endStep(); if (each) each(i); } }
   function press(a) { Input.simulate(a, true); }
   function release(a) { Input.simulate(a, false); }
@@ -51,6 +52,17 @@ function runTests() {
   function safe(name, fn) {
     try { fn(); } catch (ex) { check(name + " (exception)", false, ex.stack || ex); }
   }
+  // runs a block of film checks once on the GPU grade and once on the CPU grade
+  function bothFilmPaths(name, fn) {
+    ["gl", "cpu"].forEach(function (m) {
+      safe(name + " " + m, function () {
+        const was = Film.mode;
+        if (Film.setMode(m) !== m) { check(name + ": " + m + " film path available", false); return; }
+        checkSuffix = " [" + m + " film]";
+        try { fn(); } finally { checkSuffix = ""; Film.setMode(was); }
+      });
+    });
+  }
 
   // ---------------- rendering / engine ----------------
   safe("display", function () {
@@ -64,23 +76,35 @@ function runTests() {
         "window " + window.innerWidth + "x" + window.innerHeight + " -> canvas " + screenCanvas.width + "x" + screenCanvas.height);
     }
     check("display: back buffer is 320x240", buffer.width === 320 && buffer.height === 240);
+    check("film: GPU path available in the test browser", !!filmGL,
+      filmGL ? filmGLRenderer() : "no WebGL (run_tests.py starts Chrome/Edge with --enable-unsafe-swiftshader for software WebGL)");
     check("display: smoothing disabled", ctx.imageSmoothingEnabled === false && screenCtx.imageSmoothingEnabled === false);
   });
 
   safe("timestep", function () {
+    const draws = {};
     function simulate(hz) {
-      const real = Game.update.bind(Game);
-      let n = 0;
-      Game.update = function (dt) { n++; real(dt); };
+      const real = Game.update.bind(Game), realRender = Game.render.bind(Game);
+      let n = 0, r = 0, stale = 0, lastUpdT = 0;
+      Game.update = function (dt) { n++; real(dt); lastUpdT = Game.time; };
+      Game.render = function () { r++; if (Game.time !== lastUpdT) stale++; realRender(); };
       Game.headless = true; Game.setState(STATE.TITLE);
-      lastTime = 0; acc = 0;
+      lastTime = 0; acc = 0; rateT = 0; fpsCount = 0; upsCount = 0;
       for (let i = 0; i <= hz; i++) frame(1000 + i * 1000 / hz);
-      Game.update = real;
-      return n;
+      const upd = n, ren = r;
+      for (let i = hz + 1; i <= hz + 3; i++) frame(1000 + i * 1000 / hz);   // complete the 1 s FPS window
+      Game.update = real; Game.render = realRender;
+      draws[hz] = { renders: ren, stale: stale, fps: Game.fps, updates: upd };
+      return upd;
     }
-    const n60 = simulate(60), n144 = simulate(144), n30 = simulate(30);
-    check("timestep: 60 updates/s at 60, 144 and 30 Hz", Math.abs(n60 - 60) <= 1 && Math.abs(n144 - 60) <= 1 && Math.abs(n30 - 60) <= 1,
-      "60Hz:" + n60 + " 144Hz:" + n144 + " 30Hz:" + n30);
+    const n60 = simulate(60), n144 = simulate(144), n30 = simulate(30), n120 = simulate(120);
+    check("timestep: 60 updates/s at 60, 120, 144 and 30 Hz", Math.abs(n60 - 60) <= 1 && Math.abs(n144 - 60) <= 1 && Math.abs(n30 - 60) <= 1 && Math.abs(n120 - 60) <= 1,
+      "60Hz:" + n60 + " 120Hz:" + n120 + " 144Hz:" + n144 + " 30Hz:" + n30);
+    check("timestep: at 120 and 144 Hz at most 61 frames drawn per second, debug FPS at most 61",
+      draws[144].renders <= 61 && draws[120].renders <= 61 && draws[144].fps <= 61 && draws[120].fps <= 61, JSON.stringify(draws[144]) + " " + JSON.stringify(draws[120]));
+    check("timestep: at 60 Hz a frame is drawn on (about) every update", draws[60].renders >= draws[60].updates - 2 && draws[60].renders >= 58, JSON.stringify(draws[60]));
+    check("timestep: every drawn frame shows the state after the latest update",
+      [60, 120, 144, 30].every(function (h) { return draws[h].stale === 0; }), JSON.stringify(draws));
   });
 
   safe("input", function () {
@@ -2589,7 +2613,7 @@ function runTests() {
     if (!wasPlaying) Sound.stopMusic();
   });
 
-  safe("benchmark scenes", function () {
+  bothFilmPaths("benchmark scenes", function () {
     // Brightness / colourfulness of the final (film-filtered) frame on fixed scenes.
     // Each scene is averaged over 4 frames to smooth out grain and flicker.
     const filmWas = Film.enabled, godWas = Game.godMode;
@@ -2722,7 +2746,84 @@ function runTests() {
     Game.godMode = false; Sound.setEngines([]); Input.reset();
   });
 
-  safe("film", function () {
+  safe("film random order", function () {
+    // seeded promo runs replay only if every film frame draws the same random numbers in the
+    // same order on every grade path: 2 (flicker) + 1 (grain frame) + 1 (grain row) + 2 (jitter),
+    // plus whatever the scratches and dust draw
+    const realRandom = Math.random, realDamage = Film.drawDamage;
+    const modeWas = Film.mode;
+    const perMode = {};
+    try {
+      ["cpu", "gl"].forEach(function (m) {
+        if (Film.setMode(m) !== m) return;
+        let calls = 0, inDamage = 0, damaging = false;
+        Math.random = function () { calls++; if (damaging) inDamage++; return realRandom(); };
+        Film.drawDamage = function () { damaging = true; realDamage.call(Film); damaging = false; };
+        const counts = [];
+        for (let i = 0; i < 20; i++) { calls = 0; inDamage = 0; Film.apply(); counts.push(calls - inDamage); }
+        perMode[m] = counts;
+        Math.random = realRandom; Film.drawDamage = realDamage;
+      });
+    } finally { Math.random = realRandom; Film.drawDamage = realDamage; Film.setMode(modeWas); }
+    const ok = Object.keys(perMode).length > 0 && Object.keys(perMode).every(function (m) { return perMode[m].every(function (c) { return c === 6; }); });
+    check("film: 6 random draws per frame outside scratches and dust, on every grade path", ok, JSON.stringify(perMode));
+  });
+
+  safe("film gpu", function () {
+    const modeWas = Film.setMode(Film.mode);
+    check("film: GPU grade in use where WebGL works", Film.glReady && Film.setMode("gl") === "gl", filmGLRenderer());
+    check("film: #film=cpu parsing", filmCpuForced("#film=cpu") && filmCpuForced("#level=2&film=cpu") && filmCpuForced("#film=cpu&touch") &&
+      !filmCpuForced("#film=cpux") && !filmCpuForced("#film=gl") && !filmCpuForced(""));
+    // same look: one frame, fixed inputs, both paths
+    function graded(m, f, g, r) { Film.setMode(m); Film.grade(f, g, r); return filmCtx.getImageData(0, 0, W, H).data.slice(); }
+    const scenes = [
+      function () { Game.setState(STATE.TITLE); Game.stateT = 3; Game.render(); },
+      function () { Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY); Game.godMode = true; Game.render(); },
+      function () { fillRect(0, 0, W, H, "#808080"); },
+      function () { for (let i = 0; i < 256; i++) fillRect(i % 32 * 10, Math.floor(i / 32) * 30, 10, 30, "rgb(" + i + "," + ((i * 7) & 255) + "," + (255 - i) + ")"); },
+    ];
+    let worst = 0, cases = 0;
+    scenes.forEach(function (draw, si) {
+      draw();
+      [[0, 0, 0], [3, 1, 57], [7, 3, H - 1], [si % 8, 2, 120]].forEach(function (p) {
+        const a = graded("cpu", p[0], p[1], p[2]), b = graded("gl", p[0], p[1], p[2]);
+        for (let i = 0; i < a.length; i++) { const d = Math.abs(a[i] - b[i]); if (d > worst) worst = d; }
+        cases++;
+      });
+    });
+    check("film: GPU and CPU grades match (every channel within 2 levels)", Film.glReady && worst <= 2, cases + " frames, max difference " + worst);
+    // whole film frames (grade, scratches, dust, jitter) with the same seeded random numbers
+    const realRandom = Math.random;
+    function seededFrames(m) {
+      Film.setMode(m);
+      Math.random = makeRng(4242);
+      Film.flick = 4; Film.scratches = [];
+      Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Game.render();
+      const out = [];
+      for (let f = 0; f < 12; f++) { Film.apply(); out.push(filmCtx.getImageData(0, 0, W, H).data.slice(), [Film.jx, Film.jy, Film.flick]); }
+      Math.random = realRandom;
+      return out;
+    }
+    let fworst = 0, same = true;
+    try {
+      const a = seededFrames("cpu"), b = seededFrames("gl");
+      for (let k = 0; k < a.length; k += 2) {
+        for (let i = 0; i < a[k].length; i++) { const d = Math.abs(a[k][i] - b[k][i]); if (d > fworst) fworst = d; }
+        if (a[k + 1].join() !== b[k + 1].join()) same = false;
+      }
+    } finally { Math.random = realRandom; }
+    check("film: seeded film frames identical on both paths (grade, flicker, scratches, dust, jitter)", fworst <= 2 && same, "max difference " + fworst + ", jitter/flicker same " + same);
+    // no readback of the scene during a GPU-path frame
+    Film.setMode("gl");
+    const realGet = ctx.getImageData;
+    let reads = 0;
+    ctx.getImageData = function () { reads++; return realGet.apply(ctx, arguments); };
+    try { Game.render(); present(); } finally { ctx.getImageData = realGet; }
+    check("film: no pixel readback of the scene during a GPU-path frame", reads === 0 && Film.mode === "gl", reads + " reads");
+    Game.godMode = false; Film.setMode(modeWas); Game.setState(STATE.TITLE);
+  });
+
+  bothFilmPaths("film", function () {
     Film.enabled = true;
     // uniform mid-grey frame: corners must come out darker than the centre (vignette)
     function lum(c2d, x, y, w, h) {
@@ -2777,16 +2878,35 @@ function runTests() {
   });
 
   safe("performance", function () {
+    // CPU timings mean nothing on software WebGL (headless SwiftShader): measure the CPU grade there
+    const perfMode = Film.mode;
+    if (/swiftshader/i.test(filmGLRenderer())) Film.setMode("cpu");
     Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
     const t0 = performance.now();
     for (let i = 0; i < 300; i++) { Game.update(DT); Game.render(); present(); }
     const ms = (performance.now() - t0) / 300;
-    check("performance: update+render+film filter under 8 ms per frame", Film.enabled && ms < 8, ms.toFixed(2) + " ms/frame, film " + Film.enabled);
+    check("performance: update+render+film filter under 8 ms per frame", Film.enabled && ms < 8, ms.toFixed(2) + " ms/frame, film " + Film.enabled + " (" + Film.mode + ")");
     Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
     const t1 = performance.now();
     for (let i = 0; i < 300; i++) { Game.update(DT); Game.render(); present(); }
     const ms2 = (performance.now() - t1) / 300; Game.godMode = false;
-    check("performance: boss arena under 8 ms per frame", Film.enabled && ms2 < 8, ms2.toFixed(2) + " ms/frame");
+    check("performance: boss arena under 8 ms per frame", Film.enabled && ms2 < 8, ms2.toFixed(2) + " ms/frame, " + Film.mode + " film");
+    Film.setMode(perfMode);
+  });
+
+  // last: it really loses the WebGL context, so no GPU test can follow
+  safe("film context loss", function () {
+    if (!Film.glReady) { check("film: context loss switches to the CPU grade", false, "no GPU grade to lose"); return; }
+    Film.setMode("gl"); Film.enabled = true;
+    const ext = filmGL.getExtension("WEBGL_lose_context");
+    ext.loseContext();
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    let frames = 0;
+    for (let i = 0; i < 5; i++) { Game.update(DT); Input.endStep(); Game.render(); present(); frames++; }
+    const d = filmCtx.getImageData(150, 110, 20, 20).data; let lit = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 0) lit++;
+    check("film: context loss switches to the CPU grade and frames keep coming", Film.mode === "cpu" && !Film.glReady && frames === 5 && lit > 300, Film.mode + ", " + lit + " lit px");
+    Game.setState(STATE.TITLE);
   });
 
   // ---------------- report ----------------

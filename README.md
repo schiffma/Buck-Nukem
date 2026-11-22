@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.6** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
+Version **1.0.7** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. On a phone, hold it in landscape and use Chrome on Android or Safari on iOS: the same file switches to touch controls (see [Playing on a phone](#playing-on-a-phone)). Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
@@ -48,7 +48,7 @@ The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartph
 ## Look
 
 The game is styled like a 1970s grindhouse movie on a lurid, saturated colour print:
-- **Film filter:** a bright colour-print grade (boosted saturation, warm highlights, teal-tinted shadows) with grain, scratches, dust, a light vignette, gate weave and flicker. G toggles it.
+- **Film filter:** a bright colour-print grade (boosted saturation, warm highlights, teal-tinted shadows) with grain, scratches, dust, a light vignette, gate weave and flicker. G toggles it. The grade runs on the GPU (WebGL) where the browser offers it, which keeps phones smooth. Otherwise, or when the GPU context is lost, an identical CPU version takes over. Add `#film=cpu` to the URL to force the CPU version, for comparisons. The game draws at most one frame per 60 Hz game update, so 120/144 Hz displays don't redraw the same frame twice.
 - **Sprites:** outlined and shaded.
 - **Tiles:** bright clay, grass and brick colours, worn and cracked.
 - **Backgrounds:** the photos, graded at build time to vivid, warm 70s colours and dithered to a 32-colour palette.
@@ -88,7 +88,16 @@ python tools/screenshot.py --touch out.png title play,0,40,13,60   # touch mode,
 python tools/screenshot.py --touch 500x900 out.png title          # portrait card (headless Chrome windows are at least 500 px wide)
 ```
 
-`--hash` adds URL fragment parameters to `#test` (`#test&touch`). `--size` sets the browser window (headless Chrome keeps it at least 500 px wide and a little shorter than asked).
+`--hash` adds URL fragment parameters to `#test` (`#test&touch`). `--size` sets the browser window (headless Chrome keeps it at least 500 px wide and a little shorter than asked). The tests run the film checks on both the GPU and the CPU grade. Headless Chrome only offers software WebGL (SwiftShader), so `run_tests.py` and `screenshot.py` start it with `--enable-unsafe-swiftshader`.
+
+Phone performance (needs Playwright, see the promo tools below):
+
+```
+python tools/perf_phone.py            # CPU ms per frame and stage in phone emulation (987x444 @2.75, CPU 1x and 4x), GPU vs CPU film grade
+python tools/perf_phone.py --headed   # same with a visible window, if headless only gets software WebGL
+```
+
+It exits with 1 if the GPU path misses its budgets: under 5 ms per frame at 4× CPU slowdown, and at most 60% of the CPU path's time.
 
 Promo video (an AI plays the game; needs `pip install -r tools/promo/requirements.txt` once: Playwright, networkx, py_trees, imageio-ffmpeg):
 
@@ -107,7 +116,8 @@ cd tools/promo && python -m unittest discover -s tests -t .   # agent unit tests
 src/index.template.html  page shell (canvas, styles)
 src/config.js            constants and the CONFIG tuning table
 src/assets.js            decodes the embedded images
-src/render.js            320x240 back buffer, integer scaling (fractional between the control bars in touch mode)
+src/render.js            320x240 back buffer, integer scaling (fractional between the control bars in touch mode), WebGL probe
+src/film.js              film filter: colour-print grade on the GPU (WebGL shader) or CPU, grain, scratches, dust, jitter
 src/input.js             keyboard, fullscreen; actions held per source (keys, fingers, simulate)
 src/touch.js             touch mode: side-bar layout, on-screen controls, taps, portrait card
 src/font.js              5x7 bitmap font

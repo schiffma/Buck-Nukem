@@ -56,18 +56,145 @@ const Film = {
     }
     this.img = filmCtx.createImageData(W, H);
     this.ready = true;
+    try { this.glReady = this.initGL(); } catch (e) { this.glReady = false; }
+    this.mode = this.glReady ? "gl" : "cpu";
   },
 
+  // One film frame. The random draws (flicker step, grain frame, grain row, then damage and
+  // jitter) keep their order and count on every grade path, so seeded runs replay the same.
   apply() {
     if (!this.ready) this.init();
+    // flicker drifts between neighbouring levels
+    this.flick = clamp(this.flick + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.6 ? 1 : 0), 0, FILM.flickerLevels - 1);
+    const grainIndex = (Math.random() * 4) | 0;
+    const row = (Math.random() * H) | 0;
+    this.grade(this.flick, grainIndex, row);
+    this.drawDamage();
+    // gate weave
+    this.jx = Math.random() < FILM.jitterChance * 0.3 ? 1 : 0;
+    this.jy = Math.random() < FILM.jitterChance ? 1 : 0;
+  },
+
+  // Grades the scene buffer into filmCanvas: saturation boost, colour curve of flicker level
+  // `flick`, grain frame `grainIndex` read from row `row` on, vignette. No damage, no jitter.
+  mode: "cpu",           // "gl" (src/film.js WebGL pass) or "cpu"
+  grade(flick, grainIndex, row) {
+    if (!this.ready) this.init();
+    if (this.mode === "gl" && filmGL && filmGL.isContextLost()) this.dropGL();
+    if (this.mode === "gl") this.gradeGL(flick, grainIndex, row);
+    else this.gradeCPU(flick, grainIndex, row);
+  },
+  // tests only: pick the grade path ("gl" only where it works)
+  setMode(m) { if (!this.ready) this.init(); this.mode = m === "gl" && this.glReady ? "gl" : "cpu"; return this.mode; },
+  glReady: false, gl: null,
+
+  // ---------------- GPU grade (WebGL) ----------------
+  // Same integer maths as gradeCPU: `x >> 8` is floor(x / 256) on integer-valued highp floats,
+  // and every table goes in as exact bytes (colour curves, grain + 128, vignette as 2 bytes).
+  initGL() {
+    const gl = filmGL;
+    if (!gl || gl.isContextLost()) return false;
+    const hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    if (!hp || hp.precision < 23 || gl.getParameter(gl.MAX_TEXTURE_SIZE) < 8 * H) return false;
+    const VS = "attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }";
+    const FS = [
+      "precision highp float;",
+      "uniform sampler2D scene, curve, grain, vig;",
+      "uniform float flick, levels, grainRow, keep, ds;",
+      "const vec2 SIZE = vec2(" + W + ".0, " + H + ".0);",
+      "float byteOf(float v) { return floor(v * 255.0 + 0.5); }",
+      "float curveOf(float v, int ch) {",
+      "  vec3 t = texture2D(curve, vec2((v + 0.5) / 256.0, (flick + 0.5) / levels)).rgb;",
+      "  return byteOf(ch == 0 ? t.r : ch == 1 ? t.g : t.b);",
+      "}",
+      "void main() {",
+      "  float x = floor(gl_FragCoord.x), y = SIZE.y - 1.0 - floor(gl_FragCoord.y);",   // y = row from the top
+      "  vec2 uv = vec2((x + 0.5) / SIZE.x, (y + 0.5) / SIZE.y);",
+      "  vec3 c = floor(texture2D(scene, uv).rgb * 255.0 + 0.5);",
+      "  float l = floor((c.r * 77.0 + c.g * 150.0 + c.b * 29.0) / 256.0);",
+      "  vec3 m = clamp(floor((c * keep + l * ds) / 256.0), 0.0, 255.0);",
+      "  float n = byteOf(texture2D(grain, vec2((x + 0.5) / SIZE.x, (grainRow + y + 0.5) / (8.0 * SIZE.y))).r) - 128.0;",
+      "  vec4 vv = texture2D(vig, uv);",
+      "  float v = byteOf(vv.a) * 256.0 + byteOf(vv.r);",                                 // LUMINANCE_ALPHA: lo in rgb, hi in a
+      "  vec3 o = floor((vec3(curveOf(m.r, 0), curveOf(m.g, 1), curveOf(m.b, 2)) + n) * v / 256.0);",
+      "  gl_FragColor = vec4(clamp(o, 0.0, 255.0) / 255.0, 1.0);",
+      "}",
+    ].join("\n");
+    function shader(type, src) {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    }
+    const vs = shader(gl.VERTEX_SHADER, VS), fs = shader(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return false;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return false;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);   // one full-screen triangle
+    const loc = gl.getAttribLocation(prog, "p");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    function texture(unit, name) {
+      const t = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.uniform1i(gl.getUniformLocation(prog, name), unit);
+      return t;
+    }
+    const L = FILM.flickerLevels, N = W * H;
+    // colour curves: 256 x levels, RGB
+    const curve = new Uint8Array(256 * L * 3);
+    for (let f = 0; f < L; f++) for (let c = 0; c < 256; c++) for (let ch = 0; ch < 3; ch++) curve[(f * 256 + c) * 3 + ch] = this.tables[f][ch][c];
+    texture(1, "curve");
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 256, L, 0, gl.RGB, gl.UNSIGNED_BYTE, curve);
+    // grain: the 4 noise frames (2H rows each) stacked, value + 128
+    const grain = new Uint8Array(N * 8);
+    for (let k = 0; k < 4; k++) { const g = this.grain[k]; for (let i = 0; i < N * 2; i++) grain[k * N * 2 + i] = g[i] + 128; }
+    texture(2, "grain");
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, W, 8 * H, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, grain);
+    // vignette 0..256 as two bytes (lo, hi)
+    const vig = new Uint8Array(N * 2);
+    for (let i = 0; i < N; i++) { vig[i * 2] = this.vig[i] & 255; vig[i * 2 + 1] = this.vig[i] >> 8; }
+    texture(3, "vig");
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE_ALPHA, W, H, 0, gl.LUMINANCE_ALPHA, gl.UNSIGNED_BYTE, vig);
+    this.sceneTex = texture(0, "scene");                // stays bound on unit 0, re-uploaded every frame
+    this.u = { flick: gl.getUniformLocation(prog, "flick"), grainRow: gl.getUniformLocation(prog, "grainRow") };
+    gl.uniform1f(gl.getUniformLocation(prog, "levels"), L);
+    gl.uniform1f(gl.getUniformLocation(prog, "keep"), 256 - FILM.desat);
+    gl.uniform1f(gl.getUniformLocation(prog, "ds"), FILM.desat);
+    gl.viewport(0, 0, W, H);
+    if (gl.getError() !== gl.NO_ERROR) return false;
+    const self = this;
+    filmGLCanvas.addEventListener("webglcontextlost", function () { self.dropGL(); });
+    this.gl = gl;
+    return true;
+  },
+  gradeGL(flick, grainIndex, row) {
+    const gl = this.gl;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, buffer);   // unit 0: the scene
+    gl.uniform1f(this.u.flick, flick);
+    gl.uniform1f(this.u.grainRow, grainIndex * 2 * H + row);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    filmCtx.drawImage(filmGLCanvas, 0, 0);
+  },
+  // GPU context lost (or unusable): the CPU grade for the rest of the session
+  dropGL() { this.glReady = false; this.mode = "cpu"; this.gl = null; },
+
+  gradeCPU(flick, grainIndex, row) {
     const N = W * H;
     const src = ctx.getImageData(0, 0, W, H).data;
     const out = this.img.data;
-    // flicker drifts between neighbouring levels
-    this.flick = clamp(this.flick + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.6 ? 1 : 0), 0, FILM.flickerLevels - 1);
-    const T = this.tables[this.flick], tr = T[0], tg = T[1], tb = T[2];
-    const gr = this.grain[(Math.random() * 4) | 0];
-    const go = ((Math.random() * H) | 0) * W;
+    const T = this.tables[flick], tr = T[0], tg = T[1], tb = T[2];
+    const gr = this.grain[grainIndex];
+    const go = row * W;
     const vig = this.vig, ds = FILM.desat, keep = 256 - ds;
     for (let i = 0, p = 0; i < N; i++, p += 4) {
       const r = src[p], g = src[p + 1], b = src[p + 2];
@@ -81,10 +208,6 @@ const Film = {
       out[p + 3] = 255;
     }
     filmCtx.putImageData(this.img, 0, 0);
-    this.drawDamage();
-    // gate weave
-    this.jx = Math.random() < FILM.jitterChance * 0.3 ? 1 : 0;
-    this.jy = Math.random() < FILM.jitterChance ? 1 : 0;
   },
 
   drawDamage() {

@@ -51,7 +51,7 @@ def main():
     with tempfile.TemporaryDirectory() as profile:
         cmd = [exe, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                f"--user-data-dir={profile}", f"--window-size={args.size}",
-               "--autoplay-policy=no-user-gesture-required",
+               "--autoplay-policy=no-user-gesture-required", "--enable-unsafe-swiftshader",
                "--virtual-time-budget=30000", "--dump-dom", url]
         # Edge on Windows only writes --dump-dom output to a real file handle, not a pipe.
         dump = Path(profile) / "dom.html"

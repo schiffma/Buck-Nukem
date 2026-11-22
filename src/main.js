@@ -395,15 +395,23 @@ function frame(now) {
   lastTime = now;
   if (d > 0.25) d = 0.25;                 // avoid spiral after tab switch
   acc += d; rateT += d;
-  while (acc >= DT) {
+  // An update may run up to a quarter step early (acc carries the difference, so the
+  // average stays exactly 60/s): refresh timestamps jitter around 1/60 s, and without
+  // this slack a 60 Hz display alternates 0 and 2 updates per refresh.
+  let stepped = 0;
+  while (acc >= DT * 0.75) {
     Game.update(DT);
     Input.endStep();
-    acc -= DT; upsCount++;
+    acc -= DT; upsCount++; stepped++;
   }
-  Game.render();
-  present();
+  // draw only when the state changed: a 120/144 Hz display would otherwise draw (and
+  // film-filter) the same state 2-3 times
+  if (stepped > 0) {
+    Game.render();
+    present();
+    fpsCount++;
+  }
   if (Touch.on) Touch.tick();
-  fpsCount++;
   if (rateT >= 1) { Game.ups = upsCount; Game.fps = fpsCount; upsCount = fpsCount = 0; rateT -= 1; }
   if (!Game.headless) requestAnimationFrame(frame);
 }

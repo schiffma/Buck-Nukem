@@ -23,7 +23,7 @@ def shoot(spec, out, touch=None):
     url = HTML.resolve().as_uri() + "#shot=" + spec + ("&touch" if touch else "")
     size = touch.replace("x", ",") if touch else "660,500"
     with tempfile.TemporaryDirectory() as profile:
-        subprocess.run([exe, "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--user-data-dir={profile}",
+        subprocess.run([exe, "--headless=new", "--disable-gpu", "--enable-unsafe-swiftshader", "--hide-scrollbars", f"--user-data-dir={profile}",
                         f"--window-size={size}", "--virtual-time-budget=5000", f"--screenshot={out}", url],
                        capture_output=True, timeout=120)
     img = Image.open(out).convert("RGB")

@@ -3,7 +3,25 @@ const screenCanvas = document.getElementById("screen");
 const screenCtx = screenCanvas.getContext("2d");
 const buffer = document.createElement("canvas");
 buffer.width = W; buffer.height = H;
-const ctx = buffer.getContext("2d", { willReadFrequently: true });   // read back every frame by the film pass
+// WebGL for the film grade (src/film.js), probed before the scene buffer's context exists:
+// with a GPU film pass the scene stays on the GPU; the CPU film pass reads it back every
+// frame and wants it in memory (willReadFrequently).
+// "#film=cpu" forces the CPU film pass (comparisons on a device).
+function filmCpuForced(hash) { return /(?:^#|[#&])film=cpu(?:&|$)/.test(hash || ""); }
+const filmGLCanvas = document.createElement("canvas");
+filmGLCanvas.width = W; filmGLCanvas.height = H;
+let filmGL = null;
+if (!filmCpuForced(location.hash)) try {
+  filmGL = filmGLCanvas.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false,
+    premultipliedAlpha: false, preserveDrawingBuffer: false }) || null;
+} catch (e) { filmGL = null; }
+const ctx = buffer.getContext("2d", { willReadFrequently: !filmGL });
+// "SwiftShader ..." for software WebGL (headless tests), else the GPU's name where the browser tells it
+function filmGLRenderer() {
+  if (!filmGL) return "";
+  const ext = filmGL.getExtension("WEBGL_debug_renderer_info");
+  return String(filmGL.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : filmGL.RENDERER));
+}
 ctx.imageSmoothingEnabled = false;
 
 let displayScale = 1;  // device px per game pixel on #screen
