@@ -104,7 +104,10 @@ class Controller:
                 inp = self.steer(want)
             d = (1 if inp.get("right") else 0) - (1 if inp.get("left") else 0)
             turning = d and d != world.hero["face"]          # the shot would leave the other way
-            if want.get("fire") and not turning and self.fire_ok():
+            h = world.hero
+            # kneeling down or standing up this step: the shot would leave at the other height
+            pose_change = h["onGround"] and not h["climbing"] and bool(inp.get("down")) != bool(h.get("kneeling"))
+            if want.get("fire") and not turning and not pose_change and self.fire_ok():
                 inp["fire"] = 1
                 inp["fire_why"] = want.get("fire_why", "target")
             out.append(inp)

@@ -1,7 +1,7 @@
 // Grindhouse-styled screens: exploitation-poster title, film-reel intro cards (countdown
 // leader, "REEL n", "MISSING REEL"), level complete, pause and "THE END" cards.
 const TITLE_CONTROLS = [
-  ["ARROWS/WASD", "MOVE"], ["UP/DOWN", "CLIMB LADDER"], ["SPACE", "JUMP"],
+  ["ARROWS/WASD", "MOVE"], ["UP/DOWN", "CLIMB/KNEEL"], ["SPACE", "JUMP"],
   ["X/CTRL/ALT", "FIRE"], ["P/ENTER", "PAUSE"], ["M", "MUTE"], ["G", "FILM FILTER"], ["F", "FULLSCREEN"],
 ];
 const TAGLINE = ["HE CAME FOR THE TENNIS.", "HE STAYED FOR THE CARNAGE."];

@@ -44,7 +44,7 @@ const Game = {
     L.spawns.forEach(function (s) {
       const bx = s.tx * TILE + TILE / 2, by = (s.ty + 1) * TILE;
       switch (s.ch) {
-        case "P": start = { x: bx - Player.w / 2, y: by - Player.h }; break;
+        case "P": start = { x: bx - Player.w / 2, y: by - STAND_H }; break;
         case "L": self.enemies.push(makeEnemy("lawyer", bx, by, L, -1)); break;
         case "K": self.enemies.push(makeEnemy("cray", bx, by, L, -1)); break;
         case "M": self.enemies.push(makeEnemy("punk", bx, by, L, -1)); break;
@@ -216,7 +216,7 @@ const Game = {
       for (const c of this.checkpoints) {
         if (!c.on && overlap(c, Player)) {
           c.on = true;
-          Player.setCheckpoint(c.x + c.w / 2 - Player.w / 2, c.y + c.h - Player.h);
+          Player.setCheckpoint(c.x + c.w / 2 - Player.w / 2, c.y + c.h - STAND_H);
           FX.text(c.x + 4, c.y - 6, "CHECKPOINT", "#ffffff");
           Sound.play("checkpoint");
           Fans.react(c.x + c.w / 2, c.y + c.h / 2, "checkpoint");
@@ -275,6 +275,7 @@ const Game = {
     }
     drawEnemyShots(camX, camY);
     FX.draw(camX, camY - HUD_H);
+    Fans.drawHearts(camX, camY);                         // hearts under the bubbles: text stays readable
     Fans.drawBubble(camX, camY);
     L.drawTiles(camX, camY, this.time, "water");
     if (this.hurtFlash > 0) {

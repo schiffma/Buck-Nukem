@@ -1,4 +1,5 @@
-// Buck Nukem: movement, ladders, shooting, health, lives and respawn.
+// Buck Nukem: movement, ladders, kneeling, shooting, health, lives and respawn.
+const STAND_H = 28, KNEEL_H = 16;      // body height standing / kneeling (feet stay put)
 const Player = {
   x: 0, y: 0, w: 10, h: 28, vx: 0, vy: 0,
   face: 1, onGround: false, coyote: 0, jumping: false,
@@ -6,18 +7,44 @@ const Player = {
   hp: CONFIG.maxHp, lives: CONFIG.startLives,
   invuln: 0, hurtT: 0, dead: false, deathT: 0,
   weapon: "blaster", keys: {}, fireCd: 0, shootT: 0, animT: 0,
-  spawnX: 0, spawnY: 0, waterCd: 0,
+  spawnX: 0, spawnY: 0, waterCd: 0, kneeling: false, dropT: 0,
 
   resetForGame() {
     this.hp = CONFIG.maxHp; this.lives = CONFIG.startLives; this.weapon = "blaster"; this.keys = {};
   },
   placeAt(px, py) {
+    this.h = STAND_H; this.kneeling = false; this.dropT = 0;
     this.x = px; this.y = py; this.vx = 0; this.vy = 0;
     this.climbing = false; this.dead = false; this.onGround = false; this.jumping = false;
     this.hurtT = 0; this.fireCd = 0; this.shootT = 0;
   },
   setCheckpoint(px, py) { this.spawnX = px; this.spawnY = py; },
   cx() { return this.x + this.w / 2; },
+  // Kneel down / stand up with the feet in place. Standing up needs room above the
+  // kneeling body; returns false (still kneeling) when a solid tile is in the way.
+  setKneel(on, level) {
+    if (on === this.kneeling) return true;
+    const d = STAND_H - KNEEL_H;
+    if (on) { this.y += d; this.h = KNEEL_H; this.kneeling = true; return true; }
+    if (level) {
+      const tx0 = Math.floor(this.x / TILE), tx1 = Math.floor((this.x + this.w - 1) / TILE);
+      for (let ty = Math.floor((this.y - d) / TILE); ty <= Math.floor((this.y - 1) / TILE); ty++)
+        for (let tx = tx0; tx <= tx1; tx++) if (level.isSolid(tx, ty)) return false;
+    }
+    this.y -= d; this.h = STAND_H; this.kneeling = false;
+    return true;
+  },
+  // standing on a one-way platform (not on solid ground)?
+  onOneWay(level) {
+    const ty = Math.floor((this.y + this.h + 1) / TILE);
+    const tx0 = Math.floor(this.x / TILE), tx1 = Math.floor((this.x + this.w - 1) / TILE);
+    let plat = false;
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (level.isSolid(tx, ty)) return false;
+      if (level.isPlatform(tx, ty)) plat = true;
+    }
+    return plat;
+  },
   cy() { return this.y + this.h / 2; },
 
   update(dt, level) {
@@ -31,6 +58,7 @@ const Player = {
     if (this.fireCd > 0) this.fireCd -= dt;
     if (this.shootT > 0) this.shootT -= dt;
     if (this.waterCd > 0) this.waterCd -= dt;
+    if (this.dropT > 0) this.dropT -= dt;
 
     const dir = (Input.down("right") ? 1 : 0) - (Input.down("left") ? 1 : 0);
     const ctx_ = Math.floor(this.cx() / TILE);
@@ -40,7 +68,7 @@ const Player = {
 
     // enter ladder
     if (!this.climbing && this.hurtT <= 0) {
-      if ((Input.down("up") && ladderBody) || (Input.down("down") && this.onGround && ladderBelow)) {
+      if (((Input.down("up") && ladderBody) || (Input.down("down") && this.onGround && ladderBelow)) && this.setKneel(false, level)) {
         this.climbing = true; this.vx = 0; this.vy = 0;
         this.x = ctx_ * TILE + TILE / 2 - this.w / 2;
         if (!ladderBody) this.y += 3;   // step down into the ladder top
@@ -71,8 +99,11 @@ const Player = {
       }
       this.onGround = res.ground;
     } else {
-      // horizontal
-      const target = dir * CONFIG.runSpeed;
+      // kneel: Down on the ground (a ladder top is entered instead, above)
+      if (Input.down("down") && this.onGround && !ladderBelow && this.hurtT <= 0) this.setKneel(true, level);
+      else if (this.kneeling) this.setKneel(false, level);          // stays down under a low ceiling
+      // horizontal (kneeling: no walking, Left/Right only turn)
+      const target = (this.kneeling ? 0 : dir) * CONFIG.runSpeed;
       const a = CONFIG.accel * dt * (this.onGround ? 1 : 0.7);
       if (this.hurtT <= 0) {
         if (this.vx < target) this.vx = Math.min(target, this.vx + a);
@@ -81,15 +112,17 @@ const Player = {
       }
       // jump
       if (this.onGround) this.coyote = CONFIG.coyoteTime; else this.coyote -= dt;
-      if (Input.pressed("jump") && this.coyote > 0 && this.hurtT <= 0) {
+      if (this.kneeling && Input.pressed("jump") && this.onGround && this.onOneWay(level)) {
+        this.dropT = 0.2; this.coyote = 0;                         // Down + Jump: drop through the platform
+        this.setKneel(false, level);
+      } else if (Input.pressed("jump") && this.coyote > 0 && this.hurtT <= 0 && this.setKneel(false, level)) {
         this.vy = CONFIG.jumpVel; this.jumping = true; this.coyote = 0; this.onGround = false;
         Sound.play("jump");
       }
       if (this.jumping && !Input.down("jump") && this.vy < 0) { this.vy *= CONFIG.jumpCut; this.jumping = false; }
       if (this.vy >= 0) this.jumping = false;
       this.vy = Math.min(CONFIG.maxFall, this.vy + CONFIG.gravity * dt);
-      const drop = Input.down("down") && !ladderBelow;
-      const res = moveBody(this, dt, level, { platforms: true, dropThrough: drop && this.onGround });
+      const res = moveBody(this, dt, level, { platforms: true, dropThrough: this.dropT > 0 });
       this.onGround = res.ground;
       if (res.wallTile) Game.touchTile(res.wallTile[0], res.wallTile[1]);
       if (res.ceilTile) Game.touchTile(res.ceilTile[0], res.ceilTile[1]);
@@ -144,6 +177,10 @@ const Player = {
     return false;
   },
 
+  // Shot row: chest height standing (top + 14); kneeling, 6 px above the floor, low enough
+  // to hit a crayfish on the ground.
+  gunY() { return this.kneeling ? this.y + this.h - 6 : this.y + 14; },
+
   fire() {
     if (this.weapon === "cutter") { this.fireBlade(); return; }
     const up = this.weapon === "mega";
@@ -153,9 +190,10 @@ const Player = {
     const sx = this.face > 0 ? this.x + this.w + 9 : this.x - 9 - img.width;   // muzzle of the big gun
     Game.stats.shots++;
     Sound.play(up ? "shotUp" : "shot");
-    if (this.muzzleBlocked(sx, img.width, this.y + 14)) return;     // pressed against a wall
+    const gy = this.gunY();
+    if (this.muzzleBlocked(sx, img.width, gy)) return;     // pressed against a wall
     Game.shots.push({
-      x: sx, y: this.y + 14 - Math.floor(img.height / 2), w: img.width, h: img.height,
+      x: sx, y: gy - Math.floor(img.height / 2), w: img.width, h: img.height,
       vx: this.face * CONFIG.shotSpeed * (up ? 1.2 : 1), dmg: up ? CONFIG.shotDmgUp : CONFIG.shotDmg, img: img, face: this.face,
     });
   },
@@ -169,8 +207,9 @@ const Player = {
     const sx = this.face > 0 ? this.x + this.w + 6 : this.x - 6 - sz;
     Game.stats.shots++;
     Sound.play("grinder");
-    if (this.muzzleBlocked(sx, sz, this.y + 12 + sz / 2)) return;
-    Game.shots.push({ x: sx, y: this.y + 12, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: CONFIG.cutterDmg,
+    const by = this.kneeling ? this.y + this.h - sz : this.y + 12;     // kneeling: the blade rolls along the floor
+    if (this.muzzleBlocked(sx, sz, by + sz / 2)) return;
+    Game.shots.push({ x: sx, y: by, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: CONFIG.cutterDmg,
       img: SPR.sawBlade[0], face: this.face, spin: true });
   },
 
@@ -216,6 +255,7 @@ const Player = {
     let set;
     if (this.hurtT > 0) set = S.hurt;
     else if (this.climbing) set = this.shootT > 0 ? S.shoot : S.climb[Math.floor(this.climbAnim * 8) % 2];   // shooting pose on a ladder
+    else if (this.kneeling) set = this.shootT > 0 ? S.kneelShoot : S.kneel;
     else if (!this.onGround) set = this.shootT > 0 ? S.shootJump : S.jump;
     else if (Math.abs(this.vx) > 10) set = (this.shootT > 0 ? S.shootRun : S.run)[Math.floor(this.animT * 10) % 4];
     else set = this.shootT > 0 ? S.shoot : S.idle;
@@ -227,15 +267,16 @@ const Player = {
     const px = Math.round(this.x + this.w / 2 - ox - camX);
     const py = Math.round(this.y + this.h - HERO_H - camY + HUD_H);
     ctx.drawImage(img, px - set.pad, py - set.pad);
+    const gy = py + (this.kneeling ? KNEEL_DROP - 2 : 0);   // kneeling: the gun row is lowered (2 belly rows less)
     if (cutter && this.shootT > 0.05) {   // grinder sparks off the disc
       const dx = right ? px + 20 : px + HERO_W - 21;
-      for (let i = 0; i < 4; i++) fillRect(dx + (right ? 1 : -1) * (2 + ((Game.time * 97 + i * 3) % 5 | 0)), py + 14 + i * 2, 1, 1, i % 2 ? "#ffd040" : "#fff4a0");
+      for (let i = 0; i < 4; i++) fillRect(dx + (right ? 1 : -1) * (2 + ((Game.time * 97 + i * 3) % 5 | 0)), gy + 14 + i * 2, 1, 1, i % 2 ? "#ffd040" : "#fff4a0");
     } else if (this.shootT > 0.1) {   // muzzle flash
       const mx = right ? px + HERO_W : px - 7;
-      fillRect(mx, py + 15, 7, 7, "rgba(255,150,30,0.55)");
-      fillRect(mx + 1, py + 16, 5, 5, "rgba(255,210,80,0.85)");
-      fillRect(mx + (right ? 1 : 2), py + 17, 4, 3, "#fffbe0");
-      fillRect(mx + (right ? 6 : -1), py + 18, 2, 1, "#ffffff");
+      fillRect(mx, gy + 15, 7, 7, "rgba(255,150,30,0.55)");
+      fillRect(mx + 1, gy + 16, 5, 5, "rgba(255,210,80,0.85)");
+      fillRect(mx + (right ? 1 : 2), gy + 17, 4, 3, "#fffbe0");
+      fillRect(mx + (right ? 6 : -1), gy + 18, 2, 1, "#ffffff");
     }
   },
 };

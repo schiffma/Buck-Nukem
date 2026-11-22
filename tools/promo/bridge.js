@@ -51,7 +51,7 @@ const PromoBridge = {
       tallyDone: !!(Game.tally && Game.tally.done), score: Game.score, kills: Game.stats.kills, shots: Game.stats.shots, hits: this.hits,
       hero: { x: P.x, y: P.y, w: P.w, h: P.h, vx: P.vx, vy: P.vy, onGround: P.onGround, climbing: P.climbing, face: P.face,
         hp: P.hp, lives: P.lives, keys: { R: !!P.keys.R, U: !!P.keys.U, G: !!P.keys.G }, weapon: P.weapon, fireCd: P.fireCd,
-        invuln: P.invuln, dead: P.dead, hurtT: P.hurtT, coyote: P.coyote, jumping: P.jumping, jumpHeld: Input.down("jump") },
+        invuln: P.invuln, dead: P.dead, kneeling: !!P.kneeling, hurtT: P.hurtT, coyote: P.coyote, jumping: P.jumping, jumpHeld: Input.down("jump") },
     };
     if (L && (Game.state === STATE.PLAY || Game.state === STATE.BOSS || Game.state === STATE.LEVEL_INTRO || Game.state === STATE.PAUSE)) {
       s.enemies = Game.enemies.filter(function (e) { return !e.dead; }).map(function (e) {
@@ -100,11 +100,12 @@ const PromoBridge = {
 
   // ---------------- play-quality metrics log ----------------
   preRow() { return { g: Player.onGround, x: Player.x, y: Player.y, shots: Game.stats.shots, c: Player.climbing }; },
+  // the band a shot fired now would sweep: around the gun row (chest standing, knee kneeling)
   hittableInLine() {
-    const P = Player, y0 = P.y + 8, y1 = P.y + 22, f = P.face, cx = P.cx();
+    const P = Player, gy = P.gunY(), y0 = gy - 6, y1 = gy + 8, f = P.face, cx = P.cx();
     for (const e of Game.enemies) {
       if (e.dead || (e.T.hidden && e.T.hidden(e))) continue;
-      if (e.type === "cray" && !e.leaping && P.weapon !== "cutter") continue;    // blaster shots fly over a crayfish on the ground
+      if (e.type === "cray" && !e.leaping && P.weapon !== "cutter" && !P.kneeling) continue;    // standing blaster shots fly over a crayfish on the ground
       const dx = (e.x + e.w / 2 - cx) * f;
       if (dx > -4 && dx < 14 * TILE && e.y < y1 + (P.weapon === "cutter" ? 6 : 0) && e.y + e.h > y0) return true;
     }

@@ -19,14 +19,14 @@ Produce an MP4 promo video of `dist/buck_nukem.html` played automatically by an 
   - stands and fights an enemy on its route instead of walking into it
   - jumps over or backs away from briefcases, mower clippings, bubbles and shockwaves
   - retreats from a revving punk mower
-  - backs off from leaping crayfish and vaults over crayfish blocking its way
+  - kneels (Down) to shoot crayfish on the ground ahead at knee height, backs off from leaping crayfish and vaults over crayfish too close to shoot
   - grabs the nearest health when low
   - boss: shoots the face only while the claws are raised and jumps the claw-slam shockwave
 - **Best score, not every item**: each level's route is planned as a whole (networkx). Each stop is worth its points against the level-end time bonus its detour costs (10 points per second):
   - ball 50, trophy 1000, lawyer 200, punk 500 points; health is worth its HP bonus and survival
   - key cards, the Mega Blaster, extra lives and the boss arena's Rivellas are always collected
   - skipped items are listed in the report as "not worth the detour"
-- **Kills**: lawyers and gardener-punks are tour stops and are hunted down; a stop follows its enemy as it walks. Mutant crayfish can only be hit while they leap (a standing shot flies over a crayfish on the ground, by game design), so they're shot opportunistically, not hunted.
+- **Kills**: lawyers and gardener-punks are tour stops and are hunted down; a stop follows its enemy as it walks. Mutant crayfish on the ground are only hit by a kneeling shot (a standing shot flies over them): the agent kneels and shoots those ahead on its route, and shoots leaping ones standing. It doesn't turn back or detour for crayfish.
 - **Complete run**: from the title poster to the victory screen, with the game's own music and sound effects.
 
 ## Steps
@@ -70,7 +70,7 @@ Produce an MP4 promo video of `dist/buck_nukem.html` played automatically by an 
 - **Agent:** the Python agent (`tools/promo/agent/`) decides once per video frame (2 game steps):
   - `nav.py`: a networkx graph of the cells Buck can stand on, with walk, drop, climb and jump moves weighted by travel time
   - `planner.py`: the route over a level, built in key stages, ordered by nearest neighbour then 2-opt/or-opt, and pruned to the stops worth their detour
-  - `behaviour.py`: the tactics as a py_trees tree (Boss, Dodge, Mower, Cray, Spacing, Vault, Hold, Hunt, Route)
+  - `behaviour.py`: the tactics as a py_trees tree (Boss, Dodge, Mower, Cray, Spacing, Kneel, Vault, Hold, Hunt, Route)
   - `controller.py`: human-like motion control and execution of jump plans
   - `metrics.py`: reversals, unneeded jumps, shots without a target and hit rate
 - **Video:** the 320×240 frames (film filter on, with grain reduced so it compresses well) are posted in batches and piped into ffmpeg. The ffmpeg binary comes from the `imageio_ffmpeg` package.

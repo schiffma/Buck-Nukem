@@ -40,7 +40,7 @@ const LEVEL_DATA = [
 "..........................................................................................BB....................................................................................................",
 "..........................................................................................BB....................................................................................................",
 "..........................................................................................BB....................................................................................................",
-"..............................................t...........................................BB............................................o.o.o.o.....L....+......................................",
+"..............................................t...........................................BB............................................o.o.o.o..F..L....+......................................",
 ".............................................===...................................r......BB.........................................HBBBBBBBBBBBBBBBBBBBBB.....................................",
 "..................................................................................===.....BB.........................................H..........................................................",
 "...................o.o.o..................................................................BB.........................w...............H..........................................................",
@@ -49,7 +49,7 @@ const LEVEL_DATA = [
 ".............o.o.o..................................o.o.o.o...............................BB..................o.o.o..................H...............................................BBB........",
 ".....l......======......l...........=====...Q......========..fff..........===.............BB.................======..................H............................................BBBBBB........",
 ".....l.[................l.........................BB....&....fff..........................RR.........................................H.........................................BBBBBBBBB........",
-".P...l.......@..%...%...l...L..V...L...F...n......BB.z....MJ.fff..C....h.......L..z...F...RR..L.....K.......%.....M.........L.J...F..H.....s.V.....M............z...L...F...M..BBBBBBBBB....E...",
+".P..Fl.......@..%...%F..l...L..V...L...F...n......BB.z....MJ.fff..C....h.......L..z...F...RR..L.....K......F%F....M.........L.J...F..H.....s.V.....M............z...L...F...M..BBBBBBBBB....E...",
 "########################################################################################################...#########...#########################################################################",
 "########################################################################################################...#########...#########################################################################",
 "########################################################################################################...#########...#########################################################################"
@@ -67,7 +67,7 @@ const LEVEL_DATA = [
 "..........................................................................u.........................................BB..........................................",
 ".........................................................................===........................................BB..........................................",
 "....................................................................................................................BB..........................................",
-"..........................................................o.o.....C..L.........K.......h............................BB..........................................",
+"..........................................................o.o.....C..L....F.F..K.......h............................BB..........................................",
 "...................................................H####################################............................BB..........................................",
 "...................................................H####################################............................BB..........................................",
 "...................................................H####################################............................BB..........................................",
@@ -86,7 +86,7 @@ const LEVEL_DATA = [
 "..........o.o.o....................................H####################################.................o.o.o......BB.....................t....................",
 ".........=======...................................H####################################................=======.....BB....................===...........w.......",
 "....................^..............................H####################################.................^..........UU.................................===......",
-".P.....b*....*....L......b....F........M......F....H####################################.....M.....L*..........F....UU...M....F...C...L.......s....M........E...",
+".P..F.Fb*....*....L......b....F........M......F....H####################################.F...M.....L*..........F....UU...M....F...C...L.......s....M........E...",
 "#########~K~###########~K~###########################################################################~K~########################################################",
 "#########~~~###########~~~###########################################################################~~~########################################################",
 "################################################################################################################################################################"
@@ -104,11 +104,11 @@ const LEVEL_DATA = [
 "B...........................................................BBBB.................w..............................BB.............................................B",
 "B....v.v...p.x.p.........v.v........v.v.....p.x.....v.v.....BBBB...............=====............................BB.............................................B",
 "B....v.v.................v.v........v.v.............v.v.....BBBB................................................BB.............................................B",
-"B.......................................................r...BBBB..........................g.....................BB.............................................B",
+"B.......................................................r...BBBB..........................g..F..................BB.............................................B",
 "B..........o.o.o.......................................===..BBBB...........=====.........=====..................BB.............................................B",
 "B.........=======...........................................BBBB................................................BB.............................................B",
 "B.y......................Z........y...............===.......BBBB................................................BB.............................................B",
-"B...h.......L....F.....M..............o.o.....M.............BBBB.......=====........=====.......................BB.............................................B",
+"B...h.......L....F.....M..............o.o.....M........F.F..BBBB.......=====........=====.......................BB.............................................B",
 "############################H#############...###################................................................BB.............................................B",
 "B.......j....j.........j....H.......j......j.....j..B...........................................................BB.............................................B",
 "B...v.v..m.......p.x........H............N..........B.............=====.........=====...........................BB.............................................B",
@@ -116,7 +116,7 @@ const LEVEL_DATA = [
 "B...................k.......H...........qqqqqq......R.................................................s.........GG.......+.....................................B",
 "B...........................H.......................R.................=====..........=====..........=====.......GG......===....................................B",
 "B.........................y.H...............$.......R.........y.................................................GG..........................BB.................B",
-"B.PcTc...L.cTc.....K.cTc....H....F....L.aaAAaati.i..R....M.......C.......L....F....M.........s.....M.....K...F..GG...L.....M......C......L..BB..M.....F....E...B",
+"B.PcTc...L.cTc.....K.cTc....H....F....L.aaAAaati.i..R....M.......C.......L....F....M.........s.....M.....K...F..GG...L.....M...F..C......L..BB..M.....F....E...B",
 "################################################################################################################################################################",
 "################################################################################################################################################################",
 "################################################################################################################################################################"
@@ -138,10 +138,10 @@ const LEVEL_DATA = [
 "B..h.F.............B",
 "B.====.............B",
 "B..................B",
-"B......h...........B",
+"B......h.F.........B",
 "B.....====.........B",
 "B..................B",
-"B.P...F....X.......B",
+"B.P.F.F....X.......B",
 "####################"
 ]
 }
@@ -540,6 +540,7 @@ const GLYPHS = {
   "(": [2, 4, 8, 8, 8, 4, 2], ")": [8, 4, 2, 2, 2, 4, 8], "+": [0, 4, 4, 31, 4, 4, 0],
   "=": [0, 0, 31, 0, 31, 0, 0], ">": [8, 4, 2, 1, 2, 4, 8], "<": [2, 4, 8, 16, 8, 4, 2],
   "%": [24, 25, 2, 4, 8, 19, 3], '"': [10, 10, 0, 0, 0, 0, 0], "*": [0, 21, 14, 31, 14, 21, 0],
+  "♥": [0, 10, 31, 31, 14, 4, 0],
 };
 const FONT_CHARS = Object.keys(GLYPHS).join("");
 const fontAtlases = {};
@@ -739,6 +740,13 @@ const LEGS = {
     ".........PPP", ".........FFF", ".........FFF", ".........dDD"],
 };
 
+// Kneeling (hitbox 16 px): head and torso drawn KNEEL_DROP px lower, two belly rows and the
+// waist row taken out so the gun row lands 6 px above the feet (the kneeling shot height),
+// and 3 rows of legs: the back knee and clog on the ground, the front leg bent forward.
+const KNEEL_DROP = 10;
+function kneelTorso(t) { return t.filter(function (r, i) { return i !== 4 && i !== 5 && i !== 12; }); }
+const LEGS_KNEEL = ["....PPPPPPPPPPPp", "..FPPPPp.....PPP", "dDDDPPP.....FFFFf"];
+
 function padRows(rows, w) { return rows.map(function (r) { return r.length < w ? r + ".".repeat(w - r.length) : r; }); }
 function setCh(rows, y, x, ch) { rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1); }
 
@@ -756,11 +764,12 @@ function heroPalette() {
   });
 }
 
-function buildHeroFrame(torso, legs, back) {
+function buildHeroFrame(torso, legs, back, drop) {
+  drop = drop || 0;
   const c = makeCanvas(HERO_W, HERO_H);
   const g = c.getContext("2d");
-  g.drawImage(spriteFromRows(padRows(torso.concat(legs), HERO_W), heroPalette()), 0, BODY_Y);
-  g.drawImage(back ? SPR.headBack : IMG.head, HEAD_X, 0);
+  g.drawImage(spriteFromRows(padRows(torso.concat(legs), HERO_W), heroPalette()), 0, BODY_Y + drop);
+  g.drawImage(back ? SPR.headBack : IMG.head, HEAD_X, drop);
   return makeSet(c);
 }
 
@@ -940,12 +949,16 @@ function buildSprites() {
     shootJump: buildHeroFrame(HERO_TORSO_SHOOT, LEGS.jump),
     hurt: buildHeroFrame(HERO_TORSO_HURT, LEGS.jump),
     climb: [buildHeroFrame(HERO_TORSO_CLIMB[0], LEGS.climb1, true), buildHeroFrame(HERO_TORSO_CLIMB[1], LEGS.climb2, true)],
+    kneel: buildHeroFrame(kneelTorso(HERO_TORSO), LEGS_KNEEL, false, KNEEL_DROP),
+    kneelShoot: buildHeroFrame(kneelTorso(HERO_TORSO_SHOOT), LEGS_KNEEL, false, KNEEL_DROP),
   };
   SPR.heroCutter = Object.assign({}, SPR.hero, {
     idle: buildHeroFrame(HERO_TORSO_CUTTER, LEGS.idle),
     run: [LEGS.run1, LEGS.run2, LEGS.run3, LEGS.run2].map(function (l) { return buildHeroFrame(HERO_TORSO_CUTTER, l); }),
     jump: buildHeroFrame(HERO_TORSO_CUTTER, LEGS.jump),
+    kneel: buildHeroFrame(kneelTorso(HERO_TORSO_CUTTER), LEGS_KNEEL, false, KNEEL_DROP),
   });
+  SPR.heroCutter.kneelShoot = SPR.heroCutter.kneel;
   SPR.heroCutter.shoot = SPR.heroCutter.idle; SPR.heroCutter.shootRun = SPR.heroCutter.run; SPR.heroCutter.shootJump = SPR.heroCutter.jump;
   SPR.cutterIcon = spriteFromRows(CUTTER_ICON);
   SPR.lawyer = [makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS1))), makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS2)))];
@@ -1489,6 +1502,13 @@ const Sound = {
         this.sweep("sine", 320 * k, 560 * k, t, 0.45, 0.12); this.sweep("triangle", 400 * k, 660 * k, t + 0.04, 0.4, 0.08);
         this.noise(t, 0.6, 0.12, 2400, null, 1200);
         this.tone("square", 1600 * k, t + 0.1, 0.08, 0.05); this.tone("square", 2100 * k, t + 0.2, 0.14, 0.05);
+        break;
+      }
+      case "whistle": {   // wolf whistle: a quick rising "whee", then a long rise-and-fall "whee-oo"
+        const k = 0.96 + Math.random() * 0.08;
+        this.sweep("sine", 1100 * k, 2300 * k, t, 0.16, 0.1);
+        this.sweep("sine", 1300 * k, 2500 * k, t + 0.28, 0.14, 0.1);
+        this.sweep("sine", 2500 * k, 1050 * k, t + 0.42, 0.42, 0.1);
         break;
       }
       case "pullstart":   // petrol mower: rope pull, three sputters, then the engine catches
@@ -2165,7 +2185,8 @@ function propCanvas(ch, time) {
 }
 
 // ---- player.js ----
-// Buck Nukem: movement, ladders, shooting, health, lives and respawn.
+// Buck Nukem: movement, ladders, kneeling, shooting, health, lives and respawn.
+const STAND_H = 28, KNEEL_H = 16;      // body height standing / kneeling (feet stay put)
 const Player = {
   x: 0, y: 0, w: 10, h: 28, vx: 0, vy: 0,
   face: 1, onGround: false, coyote: 0, jumping: false,
@@ -2173,18 +2194,44 @@ const Player = {
   hp: CONFIG.maxHp, lives: CONFIG.startLives,
   invuln: 0, hurtT: 0, dead: false, deathT: 0,
   weapon: "blaster", keys: {}, fireCd: 0, shootT: 0, animT: 0,
-  spawnX: 0, spawnY: 0, waterCd: 0,
+  spawnX: 0, spawnY: 0, waterCd: 0, kneeling: false, dropT: 0,
 
   resetForGame() {
     this.hp = CONFIG.maxHp; this.lives = CONFIG.startLives; this.weapon = "blaster"; this.keys = {};
   },
   placeAt(px, py) {
+    this.h = STAND_H; this.kneeling = false; this.dropT = 0;
     this.x = px; this.y = py; this.vx = 0; this.vy = 0;
     this.climbing = false; this.dead = false; this.onGround = false; this.jumping = false;
     this.hurtT = 0; this.fireCd = 0; this.shootT = 0;
   },
   setCheckpoint(px, py) { this.spawnX = px; this.spawnY = py; },
   cx() { return this.x + this.w / 2; },
+  // Kneel down / stand up with the feet in place. Standing up needs room above the
+  // kneeling body; returns false (still kneeling) when a solid tile is in the way.
+  setKneel(on, level) {
+    if (on === this.kneeling) return true;
+    const d = STAND_H - KNEEL_H;
+    if (on) { this.y += d; this.h = KNEEL_H; this.kneeling = true; return true; }
+    if (level) {
+      const tx0 = Math.floor(this.x / TILE), tx1 = Math.floor((this.x + this.w - 1) / TILE);
+      for (let ty = Math.floor((this.y - d) / TILE); ty <= Math.floor((this.y - 1) / TILE); ty++)
+        for (let tx = tx0; tx <= tx1; tx++) if (level.isSolid(tx, ty)) return false;
+    }
+    this.y -= d; this.h = STAND_H; this.kneeling = false;
+    return true;
+  },
+  // standing on a one-way platform (not on solid ground)?
+  onOneWay(level) {
+    const ty = Math.floor((this.y + this.h + 1) / TILE);
+    const tx0 = Math.floor(this.x / TILE), tx1 = Math.floor((this.x + this.w - 1) / TILE);
+    let plat = false;
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (level.isSolid(tx, ty)) return false;
+      if (level.isPlatform(tx, ty)) plat = true;
+    }
+    return plat;
+  },
   cy() { return this.y + this.h / 2; },
 
   update(dt, level) {
@@ -2198,6 +2245,7 @@ const Player = {
     if (this.fireCd > 0) this.fireCd -= dt;
     if (this.shootT > 0) this.shootT -= dt;
     if (this.waterCd > 0) this.waterCd -= dt;
+    if (this.dropT > 0) this.dropT -= dt;
 
     const dir = (Input.down("right") ? 1 : 0) - (Input.down("left") ? 1 : 0);
     const ctx_ = Math.floor(this.cx() / TILE);
@@ -2207,7 +2255,7 @@ const Player = {
 
     // enter ladder
     if (!this.climbing && this.hurtT <= 0) {
-      if ((Input.down("up") && ladderBody) || (Input.down("down") && this.onGround && ladderBelow)) {
+      if (((Input.down("up") && ladderBody) || (Input.down("down") && this.onGround && ladderBelow)) && this.setKneel(false, level)) {
         this.climbing = true; this.vx = 0; this.vy = 0;
         this.x = ctx_ * TILE + TILE / 2 - this.w / 2;
         if (!ladderBody) this.y += 3;   // step down into the ladder top
@@ -2238,8 +2286,11 @@ const Player = {
       }
       this.onGround = res.ground;
     } else {
-      // horizontal
-      const target = dir * CONFIG.runSpeed;
+      // kneel: Down on the ground (a ladder top is entered instead, above)
+      if (Input.down("down") && this.onGround && !ladderBelow && this.hurtT <= 0) this.setKneel(true, level);
+      else if (this.kneeling) this.setKneel(false, level);          // stays down under a low ceiling
+      // horizontal (kneeling: no walking, Left/Right only turn)
+      const target = (this.kneeling ? 0 : dir) * CONFIG.runSpeed;
       const a = CONFIG.accel * dt * (this.onGround ? 1 : 0.7);
       if (this.hurtT <= 0) {
         if (this.vx < target) this.vx = Math.min(target, this.vx + a);
@@ -2248,15 +2299,17 @@ const Player = {
       }
       // jump
       if (this.onGround) this.coyote = CONFIG.coyoteTime; else this.coyote -= dt;
-      if (Input.pressed("jump") && this.coyote > 0 && this.hurtT <= 0) {
+      if (this.kneeling && Input.pressed("jump") && this.onGround && this.onOneWay(level)) {
+        this.dropT = 0.2; this.coyote = 0;                         // Down + Jump: drop through the platform
+        this.setKneel(false, level);
+      } else if (Input.pressed("jump") && this.coyote > 0 && this.hurtT <= 0 && this.setKneel(false, level)) {
         this.vy = CONFIG.jumpVel; this.jumping = true; this.coyote = 0; this.onGround = false;
         Sound.play("jump");
       }
       if (this.jumping && !Input.down("jump") && this.vy < 0) { this.vy *= CONFIG.jumpCut; this.jumping = false; }
       if (this.vy >= 0) this.jumping = false;
       this.vy = Math.min(CONFIG.maxFall, this.vy + CONFIG.gravity * dt);
-      const drop = Input.down("down") && !ladderBelow;
-      const res = moveBody(this, dt, level, { platforms: true, dropThrough: drop && this.onGround });
+      const res = moveBody(this, dt, level, { platforms: true, dropThrough: this.dropT > 0 });
       this.onGround = res.ground;
       if (res.wallTile) Game.touchTile(res.wallTile[0], res.wallTile[1]);
       if (res.ceilTile) Game.touchTile(res.ceilTile[0], res.ceilTile[1]);
@@ -2311,6 +2364,10 @@ const Player = {
     return false;
   },
 
+  // Shot row: chest height standing (top + 14); kneeling, 6 px above the floor, low enough
+  // to hit a crayfish on the ground.
+  gunY() { return this.kneeling ? this.y + this.h - 6 : this.y + 14; },
+
   fire() {
     if (this.weapon === "cutter") { this.fireBlade(); return; }
     const up = this.weapon === "mega";
@@ -2320,9 +2377,10 @@ const Player = {
     const sx = this.face > 0 ? this.x + this.w + 9 : this.x - 9 - img.width;   // muzzle of the big gun
     Game.stats.shots++;
     Sound.play(up ? "shotUp" : "shot");
-    if (this.muzzleBlocked(sx, img.width, this.y + 14)) return;     // pressed against a wall
+    const gy = this.gunY();
+    if (this.muzzleBlocked(sx, img.width, gy)) return;     // pressed against a wall
     Game.shots.push({
-      x: sx, y: this.y + 14 - Math.floor(img.height / 2), w: img.width, h: img.height,
+      x: sx, y: gy - Math.floor(img.height / 2), w: img.width, h: img.height,
       vx: this.face * CONFIG.shotSpeed * (up ? 1.2 : 1), dmg: up ? CONFIG.shotDmgUp : CONFIG.shotDmg, img: img, face: this.face,
     });
   },
@@ -2336,8 +2394,9 @@ const Player = {
     const sx = this.face > 0 ? this.x + this.w + 6 : this.x - 6 - sz;
     Game.stats.shots++;
     Sound.play("grinder");
-    if (this.muzzleBlocked(sx, sz, this.y + 12 + sz / 2)) return;
-    Game.shots.push({ x: sx, y: this.y + 12, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: CONFIG.cutterDmg,
+    const by = this.kneeling ? this.y + this.h - sz : this.y + 12;     // kneeling: the blade rolls along the floor
+    if (this.muzzleBlocked(sx, sz, by + sz / 2)) return;
+    Game.shots.push({ x: sx, y: by, w: sz, h: sz, vx: this.face * CONFIG.cutterSpeed, dmg: CONFIG.cutterDmg,
       img: SPR.sawBlade[0], face: this.face, spin: true });
   },
 
@@ -2383,6 +2442,7 @@ const Player = {
     let set;
     if (this.hurtT > 0) set = S.hurt;
     else if (this.climbing) set = this.shootT > 0 ? S.shoot : S.climb[Math.floor(this.climbAnim * 8) % 2];   // shooting pose on a ladder
+    else if (this.kneeling) set = this.shootT > 0 ? S.kneelShoot : S.kneel;
     else if (!this.onGround) set = this.shootT > 0 ? S.shootJump : S.jump;
     else if (Math.abs(this.vx) > 10) set = (this.shootT > 0 ? S.shootRun : S.run)[Math.floor(this.animT * 10) % 4];
     else set = this.shootT > 0 ? S.shoot : S.idle;
@@ -2394,15 +2454,16 @@ const Player = {
     const px = Math.round(this.x + this.w / 2 - ox - camX);
     const py = Math.round(this.y + this.h - HERO_H - camY + HUD_H);
     ctx.drawImage(img, px - set.pad, py - set.pad);
+    const gy = py + (this.kneeling ? KNEEL_DROP - 2 : 0);   // kneeling: the gun row is lowered (2 belly rows less)
     if (cutter && this.shootT > 0.05) {   // grinder sparks off the disc
       const dx = right ? px + 20 : px + HERO_W - 21;
-      for (let i = 0; i < 4; i++) fillRect(dx + (right ? 1 : -1) * (2 + ((Game.time * 97 + i * 3) % 5 | 0)), py + 14 + i * 2, 1, 1, i % 2 ? "#ffd040" : "#fff4a0");
+      for (let i = 0; i < 4; i++) fillRect(dx + (right ? 1 : -1) * (2 + ((Game.time * 97 + i * 3) % 5 | 0)), gy + 14 + i * 2, 1, 1, i % 2 ? "#ffd040" : "#fff4a0");
     } else if (this.shootT > 0.1) {   // muzzle flash
       const mx = right ? px + HERO_W : px - 7;
-      fillRect(mx, py + 15, 7, 7, "rgba(255,150,30,0.55)");
-      fillRect(mx + 1, py + 16, 5, 5, "rgba(255,210,80,0.85)");
-      fillRect(mx + (right ? 1 : 2), py + 17, 4, 3, "#fffbe0");
-      fillRect(mx + (right ? 6 : -1), py + 18, 2, 1, "#ffffff");
+      fillRect(mx, gy + 15, 7, 7, "rgba(255,150,30,0.55)");
+      fillRect(mx + 1, gy + 16, 5, 5, "rgba(255,210,80,0.85)");
+      fillRect(mx + (right ? 1 : 2), gy + 17, 4, 3, "#fffbe0");
+      fillRect(mx + (right ? 6 : -1), gy + 18, 2, 1, "#ffffff");
     }
   },
 };
@@ -3027,7 +3088,8 @@ const Boss = {
 // character F; each fan in a level gets a different look (hair, skin, accent, accessory).
 const FAN_SKIN = { light: "#f0c8a8", tan: "#d8a070", brown: "#a86a40", dark: "#6e4428" };
 const FAN_HAIR = { blonde: "#f0d060", brown: "#7a4a22", black: "#201814", red: "#c84a20", ash: "#d8c8a0", auburn: "#8a3018" };
-const FAN_ACCENT = { red: "#d02020", blue: "#2060d0", green: "#20a040", orange: "#f08020", purple: "#8040c0", pink: "#e05090" };
+const FAN_ACCENT = { red: "#d02020", blue: "#2060d0", green: "#20a040", orange: "#f08020", purple: "#8040c0", pink: "#e05090",
+  teal: "#109890", yellow: "#e8c010" };
 const FAN_VARIANTS = [
   { hair: "ponytail", hairCol: "blonde", skin: "light", accent: "red", item: "racket" },
   { hair: "afro", hairCol: "black", skin: "dark", accent: "orange", item: "headband" },
@@ -3037,20 +3099,38 @@ const FAN_VARIANTS = [
   { hair: "ponytail", hairCol: "auburn", skin: "tan", accent: "purple", item: "towel" },
   { hair: "bob", hairCol: "ash", skin: "light", accent: "blue", item: "headband" },
   { hair: "afro", hairCol: "brown", skin: "brown", accent: "green", item: "racket" },
+  { hair: "pigtails", hairCol: "blonde", skin: "tan", accent: "pink", item: "sunglasses" },
+  { hair: "curly", hairCol: "red", skin: "light", accent: "teal", item: "cap" },
+  { hair: "long", hairCol: "auburn", skin: "light", accent: "yellow", item: "sunglasses" },
+  { hair: "pigtails", hairCol: "black", skin: "dark", accent: "yellow", item: "racket" },
+  { hair: "curly", hairCol: "brown", skin: "tan", accent: "red", item: "headband" },
+  { hair: "bun", hairCol: "ash", skin: "brown", accent: "teal", item: "cap" },
 ];
-const FAN_FRAMES = ["idle", "wave", "jump"];
+const FAN_FRAMES = ["idle", "wave", "jump", "kiss"];
 const FAN_W = 20, FAN_H = 32;
-const FAN_LINES = ["GO BUCK!", "YEAH BUCK!", "WOOO!", "MY HERO!", "BUCK! BUCK!"];
+// What the fans call out, by occasion: cheeky 70s-grindhouse flirting, never explicit.
+// Each line fits a bubble (at most 20 characters) and uses only font glyphs (incl. the heart).
+const FAN_LINES = {
+  shout: ["HEY HANDSOME!", "NICE RACKET, BUCK!", "CALL ME, BIG GUY!", "HOT STUFF! ♥", "YOU MAKE ME SWEAT!",
+    "OOH LA LA, BUCK!", "LOOKING GOOD, BUCK!", "WANNA PLAY DOUBLES?", "WHAT A HUNK! ♥", "HELLO, TIGER!",
+    "NICE MOUSTACHE! ♥", "I LOVE A BAD BOY!", "SERVE IT TO ME! ♥", "MEET ME AT THE BAR!"],
+  kill: ["OOH, DANGEROUS!", "MY HERO! ♥", "DO THAT AGAIN!", "SO STRONG! ♥", "WHAT A SHOT, BABY!",
+    "YOU'RE ON FIRE!", "TAKE ME WITH YOU!", "BAD BOY BUCK! ♥"],
+  trophy: ["WHAT A TROPHY! ♥", "BIG CUP, BIG MAN!", "CHAMPION OF MY HEART", "GAME, SET, MATCH! ♥", "WIN ME NEXT, BUCK!"],
+  checkpoint: ["SAVE ME TOO, BUCK!", "DON'T GO FAR! ♥", "COME BACK SOON!", "I'LL WAIT FOR YOU!", "KEEP IT UP, TIGER!"],
+};
+const FAN_BUBBLE_T = 1.5, FAN_MAX_BUBBLES = 3;
+const FAN_SHOUT_RANGE = 4 * TILE, FAN_SHOUT_COOLDOWN = 8, FAN_WHISTLE_GAP = 4, FAN_KISS_T = 0.6;
 
 // One 20x32 frame, facing right. frame: idle (arms down), wave (front arm up), jump (both
-// arms up in a V, body lifted 2 px). The body is 16 px wide at an x offset of 2 so raised
+// arms up in a V, body lifted 2 px), kiss (front hand at the lips, winking: blows Buck a kiss). The body is 16 px wide at an x offset of 2 so raised
 // arms, rackets and towels fit inside the canvas.
 function buildFanFrame(v, frame) {
   const c = makeCanvas(FAN_W, FAN_H), g = c.getContext("2d");
   const skin = FAN_SKIN[v.skin], hair = FAN_HAIR[v.hairCol], acc = FAN_ACCENT[v.accent];
   const ox = 2, oy = frame === "jump" ? 2 : 4;
   const P = function (col, x, y, w, h) { g.fillStyle = col; g.fillRect(ox + x, oy + y, w || 1, h || 1); };
-  const WHITE = "#f4f4f0", SHADE = "#d4d4d0", cheer = frame !== "idle";
+  const WHITE = "#f4f4f0", SHADE = "#d4d4d0", cheer = frame === "wave" || frame === "jump", kiss = frame === "kiss";
   // legs (tucked a little when jumping), socks with a stripe, sneakers
   const lg = frame === "jump" ? 1 : 0;
   P(skin, 5, 19, 2, 5 - lg); P(skin, 9, 19, 2, 5 - lg);
@@ -3063,8 +3143,11 @@ function buildFanFrame(v, frame) {
   // neck and face (three-quarter view facing right): eye, mouth (open when cheering)
   P(skin, 7, 9, 2, 1);
   P(skin, 5, 3, 6, 6); P(skin, 11, 5, 1, 2);
-  P("#101018", 9, 5);
-  if (cheer) { P("#801818", 9, 7, 2, 1); P("#f0f0f0", 9, 7); } else P("#a04030", 9, 7, 2, 1);
+  if (kiss) { P("#101018", 8, 5, 2, 1); P("#d02040", 10, 7); P("#d02040", 10, 8); }   // wink, puckered lips
+  else {
+    P("#101018", 9, 5);
+    if (cheer) { P("#801818", 9, 7, 2, 1); P("#f0f0f0", 9, 7); } else P("#a04030", 9, 7, 2, 1);
+  }
   // hair
   switch (v.hair) {
     case "ponytail": P(hair, 5, 2, 6, 2); P(hair, 4, 3, 2, 4); P(hair, 2, 4, 2, 2); P(hair, 1, 6, 2, 3); P(acc, 4, 3); break;
@@ -3072,9 +3155,13 @@ function buildFanFrame(v, frame) {
     case "afro": P(hair, 4, 0, 7, 1); P(hair, 2, 1, 10, 3); P(hair, 2, 4, 4, 4); P(hair, 10, 2, 2, 2); break;
     case "bun": P(hair, 5, 2, 6, 2); P(hair, 4, 3, 2, 3); P(hair, 4, 0, 3, 2); break;
     case "long": P(hair, 5, 2, 6, 2); P(hair, 3, 3, 3, 8); P(hair, 10, 3, 1, 1); break;
+    case "pigtails": P(hair, 5, 2, 6, 2); P(hair, 4, 3, 2, 3); P(hair, 2, 4, 2, 4); P(hair, 12, 3, 1, 4); P(acc, 3, 4); P(acc, 12, 3); break;
+    case "curly": P(hair, 4, 1, 7, 2); P(hair, 3, 2, 3, 6); P(hair, 2, 4, 1, 3); P(hair, 10, 2, 2, 1); P(hair, 4, 8, 1, 2); break;
   }
   if (v.item === "headband") P(acc, 5, 3, 6, 1);
   if (v.item === "visor") { P(acc, 5, 3, 6, 1); P(acc, 11, 3, 2, 1); }
+  if (v.item === "cap") { P(acc, 4, 1, 7, 2); P(acc, 11, 2, 3, 1); }
+  if (v.item === "sunglasses" && !kiss) P("#101018", 8, 5, 3, 1);
   // arms (2 px wide) with wristbands: down at the sides, or raised up and out in a V
   function armDown(x) { P(skin, x, 10, 1, 6); P(acc, x, 14); return { x: x, y: 16 }; }
   function armUp(dir) {            // dir 1 = front (right), -1 = back (left)
@@ -3083,14 +3170,19 @@ function buildFanFrame(v, frame) {
     P(acc, pts[3][0], pts[3][1]); P(acc, pts[3][0] - dir, pts[3][1]);
     return { x: pts[5][0], y: pts[5][1] - 1 };
   }
-  const hand = frame === "idle" ? armDown(12) : armUp(1);
+  function armToLips() {           // front arm bent up, hand at the mouth
+    [[12, 10], [12, 9], [12, 8], [11, 7]].forEach(function (q) { P(skin, q[0], q[1], 1, 1); });
+    P(acc, 12, 9);
+    return { x: 11, y: 6 };
+  }
+  const hand = frame === "idle" ? armDown(12) : kiss ? armToLips() : armUp(1);
   const backHand = frame === "jump" ? armUp(-1) : armDown(3);
   P(skin, hand.x, hand.y); P(skin, backHand.x, backHand.y);
-  const up = frame !== "idle";
-  if (v.item === "racket") {              // wooden grip, black frame, light strings
+  const up = cheer;
+  if (v.item === "racket" && !kiss) {              // wooden grip, black frame, light strings
     if (up) { P("#5a3a1a", hand.x, hand.y - 2, 1, 2); P("#202020", hand.x - 1, hand.y - 7, 3, 5); P("#e8e8d8", hand.x, hand.y - 6, 1, 3); }
     else { P("#5a3a1a", hand.x, hand.y + 1, 1, 2); P("#202020", hand.x - 1, hand.y + 3, 3, 5); P("#e8e8d8", hand.x, hand.y + 4, 1, 3); }
-  } else if (v.item === "towel") {        // white towel with a coloured stripe, swung overhead
+  } else if (v.item === "towel" && !kiss) {        // white towel with a coloured stripe, swung overhead
     if (up) { P(WHITE, hand.x - 1, hand.y - 4, 3, 4); P(acc, hand.x - 1, hand.y - 2, 3, 1); }
     else { P(WHITE, hand.x, hand.y + 1, 2, 5); P(acc, hand.x, hand.y + 3, 2, 1); }
   }
@@ -3108,13 +3200,13 @@ function buildFanSprites() {
 
 // ---- behaviour: idle cheer, face Buck, react to his successes ----
 const Fans = {
-  list: [], bubble: null, lastCheer: -99, lineIdx: 0, time: 0,
+  list: [], lastCheer: -99, lastWhistle: -99, time: 0, hearts: [], decks: {}, shown: [],
   spawn(level, levelIndex) {
-    this.list = []; this.bubble = null; this.lastCheer = -99; this.time = 0;
+    this.list = []; this.lastCheer = -99; this.lastWhistle = -99; this.time = 0; this.hearts = []; this.decks = {}; this.shown = [];
     const self = this;
     level.spawns.filter(function (s) { return s.ch === "F"; }).forEach(function (s, i) {
       self.list.push({ tx: s.tx, ty: s.ty, x: s.tx * TILE + TILE / 2 - FAN_W / 2, y: (s.ty + 1) * TILE - (FAN_H - 1),
-        variant: (levelIndex * 3 + i) % FAN_VARIANTS.length, face: -1, phase: i * 0.37, cheerT: 0 });
+        variant: (levelIndex * 5 + i) % FAN_VARIANTS.length, face: -1, phase: i * 0.37, cheerT: 0, bubble: null, shoutT: 0, kissT: 0 });
     });
     return this.list;
   },
@@ -3125,41 +3217,129 @@ const Fans = {
       const d = pcx - (f.x + FAN_W / 2);
       if (Math.abs(d) > 6) f.face = d > 0 ? 1 : -1;     // dead zone: no flicker when Buck is right above her
       if (f.cheerT > 0) f.cheerT = Math.max(0, f.cheerT - dt);
+      if (f.bubble && (f.bubble.t -= dt) <= 0) f.bubble = null;
+      if (f.shoutT > 0) f.shoutT -= dt;
+      if (f.kissT > 0) f.kissT = Math.max(0, f.kissT - dt);
     }
-    if (this.bubble && (this.bubble.t -= dt) <= 0) this.bubble = null;
+    // shout-outs: Buck walks past (within 4 tiles, about the same height) -> she blows him a
+    // kiss, a heart floats up and she calls out; once per 8 s per fan; wolf whistle once per 4 s
+    const live = !Player.dead && (Game.state === STATE.PLAY || Game.state === STATE.BOSS);
+    if (live) {
+      const pcy = Player.y + Player.h;
+      let talking = this.list.filter(function (f) { return f.bubble; }).length;
+      for (const f of this.list) {
+        if (f.shoutT > 0 || f.bubble || talking >= FAN_MAX_BUBBLES) continue;
+        if (Math.abs(pcx - (f.x + FAN_W / 2)) > FAN_SHOUT_RANGE || Math.abs(pcy - (f.y + FAN_H)) > 2 * TILE) continue;
+        this.shout(f); talking++;
+      }
+    }
+    for (let i = this.hearts.length - 1; i >= 0; i--) {
+      const h = this.hearts[i];
+      h.t -= dt; h.y -= 22 * dt; h.x += Math.sin((0.8 - h.t) * 9) * 8 * dt;     // drift up, sway
+      if (h.t <= 0) this.hearts.splice(i, 1);
+    }
+  },
+  // a small heart floats up from a fan (blowing Buck a kiss): rises and fades over 0.8 s
+  addHeart(f) {
+    this.hearts.push({ x: f.x + FAN_W / 2 + (f.face > 0 ? 3 : -3), y: f.y + 4, t: 0.8 });
+  },
+  drawHearts(camX, camY) {
+    for (const h of this.hearts) {
+      ctx.globalAlpha = Math.min(1, h.t / 0.4);
+      drawText("♥", Math.round(h.x - camX - 2), Math.round(h.y - camY + HUD_H), "#ff3070");
+    }
+    ctx.globalAlpha = 1;
   },
   frame(f) {
+    if (f.kissT > 0) return "kiss";
     if (f.cheerT > 0) return Math.floor(f.cheerT / 0.15) % 2 ? "jump" : "wave";
     return ((this.time + f.phase) % 0.9) < 0.35 ? "wave" : "idle";   // idle cheer loop
   },
-  // Buck scored near (x, y): fans within 12 tiles cheer; the nearest one gets a speech
-  // bubble and a cheer sound plays, at most once per 1.5 s.
+  // Next line for an occasion: a shuffled deck per occasion, never a line already on screen.
+  pickLine(kind) {
+    const pool = FAN_LINES[kind] || FAN_LINES.kill;
+    const onScreen = this.list.filter(function (f) { return f.bubble; }).map(function (f) { return f.bubble.text; });
+    for (let tries = 0; tries < pool.length + 1; tries++) {
+      let deck = this.decks[kind];
+      if (!deck || !deck.length) {
+        deck = this.decks[kind] = pool.slice();
+        for (let i = deck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); const t = deck[i]; deck[i] = deck[k]; deck[k] = t; }
+      }
+      const line = deck.pop();
+      if (onScreen.indexOf(line) < 0) return line;
+    }
+    return pool[0];
+  },
+  say(f, kind) { f.bubble = { text: this.pickLine(kind), t: FAN_BUBBLE_T, kind: kind }; },
+  shout(f) {
+    this.say(f, "shout");
+    f.shoutT = FAN_SHOUT_COOLDOWN; f.kissT = FAN_KISS_T;
+    this.addHeart(f);
+    if (this.time - this.lastWhistle >= FAN_WHISTLE_GAP) { this.lastWhistle = this.time; Sound.play("whistle"); }
+  },
+  // Buck scored near (x, y): every fan within 12 tiles cheers; the nearest ones (up to the
+  // bubble limit) each say their own line for the occasion; the cheer sound plays at most
+  // once per 1.5 s.
   react(x, y, kind) {
-    let nearest = null, nd = Infinity;
+    const near = [];
     for (const f of this.list) {
       const d = Math.hypot(f.x + FAN_W / 2 - x, f.y + FAN_H / 2 - y);
       if (d > 12 * TILE) continue;
       f.cheerT = 1.0;
-      if (d < nd) { nd = d; nearest = f; }
+      near.push({ f: f, d: d });
     }
-    if (!nearest || this.time - this.lastCheer < 1.5) return false;
-    this.lastCheer = this.time;
-    this.bubble = { fan: nearest, text: FAN_LINES[this.lineIdx++ % FAN_LINES.length], t: 1.2, kind: kind };
-    Sound.play("cheer");
+    if (!near.length) return false;
+    near.sort(function (a, b) { return a.d - b.d; });
+    let talking = this.list.filter(function (f) { return f.bubble; }).length;
+    for (const n of near) {
+      if (talking >= FAN_MAX_BUBBLES) break;
+      if (n.f.bubble) continue;
+      this.say(n.f, kind); talking++;
+    }
+    if (this.time - this.lastCheer >= 1.5) { this.lastCheer = this.time; Sound.play("cheer"); }
     return true;
   },
+  // Lays out the speech bubbles: at most 3, fans nearest to Buck first. A bubble that would
+  // overlap one already placed slides beside it, else moves up a row (at most twice); if it
+  // still doesn't fit it waits (its timer runs on).
+  layoutBubbles(camX, camY) {
+    const pcx = Player.cx(), pcy = Player.cy();
+    const talk = this.list.filter(function (f) { return f.bubble; }).sort(function (a, b) {
+      return Math.hypot(a.x - pcx, a.y - pcy) - Math.hypot(b.x - pcx, b.y - pcy);
+    });
+    const out = [];
+    for (const f of talk) {
+      if (out.length >= FAN_MAX_BUBBLES) break;
+      const w = textWidth(f.bubble.text) + 6, h = 11;
+      const fx = Math.round(f.x + FAN_W / 2 - camX);
+      const y0 = Math.round(f.y - camY + HUD_H) - h - 2;
+      const free = function (x, y) {
+        return x >= 2 && x + w <= W - 2 && out.every(function (r) { return x + w + 2 <= r.x || r.x + r.w + 2 <= x || y + h + 3 <= r.y || r.y + r.h + 3 <= y; });
+      };
+      let spot = null;
+      for (let k = 0; k < 3 && !spot; k++) {
+        const y = Math.max(HUD_H + 2, y0 - k * (h + 2));
+        // centred over her, else right beside a placed bubble (the side nearer to her)
+        const xs = [clamp(Math.round(fx - w / 2), 2, W - w - 2)];
+        out.forEach(function (r) { xs.push(r.x + r.w + 3, r.x - w - 3); });
+        xs.sort(function (a, b) { return Math.abs(a + w / 2 - fx) - Math.abs(b + w / 2 - fx); });
+        for (const x of xs) if (free(x, y) && Math.abs(x + w / 2 - fx) < w / 2 + 40) { spot = { x: x, y: y }; break; }
+      }
+      if (spot) out.push({ fan: f, text: f.bubble.text, x: spot.x, y: spot.y, w: w, h: h, tx: fx });
+    }
+    this.shown = out;
+    return out;
+  },
   drawBubble(camX, camY) {
-    const b = this.bubble;
-    if (!b) return;
-    const w = b.text.length * 6 + 5, h = 11;
-    let x = Math.round(b.fan.x + FAN_W / 2 - camX - w / 2), y = Math.round(b.fan.y - camY + HUD_H) - h - 2;
-    x = clamp(x, 2, W - w - 2); y = Math.max(HUD_H + 2, y);
-    fillRect(x - 1, y - 1, w + 2, h + 2, "#101018");                 // outline
-    fillRect(x, y, w, h, "#fffbe8");
-    const tx = clamp(Math.round(b.fan.x + FAN_W / 2 - camX), x + 3, x + w - 4);
-    fillRect(tx - 1, y + h, 3, 1, "#fffbe8"); fillRect(tx, y + h + 1, 1, 1, "#fffbe8");   // tail
-    fillRect(tx - 2, y + h, 1, 1, "#101018"); fillRect(tx + 2, y + h, 1, 1, "#101018"); fillRect(tx - 1, y + h + 1, 1, 1, "#101018"); fillRect(tx + 1, y + h + 1, 1, 1, "#101018"); fillRect(tx, y + h + 2, 1, 1, "#101018");
-    drawText(b.text, x + 3, y + 2, "#c01818");
+    for (const b of this.layoutBubbles(camX, camY)) {
+      const x = b.x, y = b.y, w = b.w, h = b.h;
+      fillRect(x - 1, y - 1, w + 2, h + 2, "#101018");                 // outline
+      fillRect(x, y, w, h, "#fffbe8");
+      const tx = clamp(b.tx, x + 3, x + w - 4);
+      fillRect(tx - 1, y + h, 3, 1, "#fffbe8"); fillRect(tx, y + h + 1, 1, 1, "#fffbe8");   // tail
+      fillRect(tx - 2, y + h, 1, 1, "#101018"); fillRect(tx + 2, y + h, 1, 1, "#101018"); fillRect(tx - 1, y + h + 1, 1, 1, "#101018"); fillRect(tx + 1, y + h + 1, 1, 1, "#101018"); fillRect(tx, y + h + 2, 1, 1, "#101018");
+      drawText(b.text, x + 3, y + 2, "#c01818");
+    }
   },
   draw(camX, camY) {
     for (const f of this.list) {
@@ -3218,7 +3398,7 @@ function drawHud() {
 // Grindhouse-styled screens: exploitation-poster title, film-reel intro cards (countdown
 // leader, "REEL n", "MISSING REEL"), level complete, pause and "THE END" cards.
 const TITLE_CONTROLS = [
-  ["ARROWS/WASD", "MOVE"], ["UP/DOWN", "CLIMB LADDER"], ["SPACE", "JUMP"],
+  ["ARROWS/WASD", "MOVE"], ["UP/DOWN", "CLIMB/KNEEL"], ["SPACE", "JUMP"],
   ["X/CTRL/ALT", "FIRE"], ["P/ENTER", "PAUSE"], ["M", "MUTE"], ["G", "FILM FILTER"], ["F", "FULLSCREEN"],
 ];
 const TAGLINE = ["HE CAME FOR THE TENNIS.", "HE STAYED FOR THE CARNAGE."];
@@ -3493,7 +3673,7 @@ const Game = {
     L.spawns.forEach(function (s) {
       const bx = s.tx * TILE + TILE / 2, by = (s.ty + 1) * TILE;
       switch (s.ch) {
-        case "P": start = { x: bx - Player.w / 2, y: by - Player.h }; break;
+        case "P": start = { x: bx - Player.w / 2, y: by - STAND_H }; break;
         case "L": self.enemies.push(makeEnemy("lawyer", bx, by, L, -1)); break;
         case "K": self.enemies.push(makeEnemy("cray", bx, by, L, -1)); break;
         case "M": self.enemies.push(makeEnemy("punk", bx, by, L, -1)); break;
@@ -3665,7 +3845,7 @@ const Game = {
       for (const c of this.checkpoints) {
         if (!c.on && overlap(c, Player)) {
           c.on = true;
-          Player.setCheckpoint(c.x + c.w / 2 - Player.w / 2, c.y + c.h - Player.h);
+          Player.setCheckpoint(c.x + c.w / 2 - Player.w / 2, c.y + c.h - STAND_H);
           FX.text(c.x + 4, c.y - 6, "CHECKPOINT", "#ffffff");
           Sound.play("checkpoint");
           Fans.react(c.x + c.w / 2, c.y + c.h / 2, "checkpoint");
@@ -3724,6 +3904,7 @@ const Game = {
     }
     drawEnemyShots(camX, camY);
     FX.draw(camX, camY - HUD_H);
+    Fans.drawHearts(camX, camY);                         // hearts under the bubbles: text stays readable
     Fans.drawBubble(camX, camY);
     L.drawTiles(camX, camY, this.time, "water");
     if (this.hurtFlash > 0) {
@@ -3910,8 +4091,8 @@ function runTests() {
       }
       return bad === 0 && outl > 10;
     }
-    const sets = [SPR.hero.idle, SPR.hero.run[1], SPR.hero.climb[0], SPR.hero.hurt, SPR.lawyer[0], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.heroCutter.idle, SPR.heroCutter.run[1], SPR.heroCutter.jump].concat(
-      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev, SPR.briefcase]);
+    const sets = [SPR.hero.idle, SPR.hero.run[1], SPR.hero.climb[0], SPR.hero.hurt, SPR.hero.kneel, SPR.hero.kneelShoot, SPR.heroCutter.kneel, SPR.lawyer[0], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.heroCutter.idle, SPR.heroCutter.run[1], SPR.heroCutter.jump].concat(
+      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump, f.kiss]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev, SPR.briefcase]);
     check("sprites: hero and enemy edge pixels all border a dark outline", sets.every(function (s) { return edgesOutlined(s.r) && edgesOutlined(s.l); }));
     // 3 tones: the lawyer's suit colour appears as base, highlight and shadow
     (function () {
@@ -3988,7 +4169,7 @@ function runTests() {
   safe("fan sprites", function () {
     const keys = FAN_VARIANTS.map(function (v) { return [v.hair, v.hairCol, v.skin, v.accent, v.item].join("/"); });
     const distinct = keys.filter(function (k, i) { return keys.indexOf(k) === i; }).length;
-    check("fans: at least 6 distinct looks", distinct >= 6 && SPR.fans.length === FAN_VARIANTS.length, distinct + " looks");
+    check("fans: at least 14 distinct looks", distinct >= 14 && SPR.fans.length === FAN_VARIANTS.length, distinct + " looks");
     let framesDiffer = true;
     SPR.fans.forEach(function (f) {
       const a = f.idle.r.getContext("2d").getImageData(0, 0, f.idle.r.width, f.idle.r.height).data;
@@ -3997,6 +4178,14 @@ function runTests() {
       if (d < 20) framesDiffer = false;
     });
     check("fans: idle and wave frames differ for every look", framesDiffer);
+    let kissDiffers = true;
+    SPR.fans.forEach(function (f) {
+      const a = f.idle.r.getContext("2d").getImageData(0, 0, f.idle.r.width, f.idle.r.height).data;
+      const b = f.kiss.r.getContext("2d").getImageData(0, 0, f.kiss.r.width, f.kiss.r.height).data;
+      let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+      if (d < 20) kissDiffers = false;
+    });
+    check("fans: a blow-a-kiss frame, different from idle, for every look", kissDiffers && FAN_FRAMES.indexOf("kiss") >= 0);
   });
 
   safe("worn tiles", function () {
@@ -4161,6 +4350,7 @@ function runTests() {
     check("title: controls list shows SPACE jump and X/CTRL/ALT fire",
       txt.indexOf("SPACE JUMP") >= 0 && txt.indexOf("X/CTRL/ALT FIRE") >= 0 && txt.indexOf("CTRL JUMP") < 0, txt);
     check("title: controls list shows F fullscreen", txt.indexOf("F FULLSCREEN") >= 0, txt);
+    check("title: controls list shows UP/DOWN climb and kneel", txt.indexOf("UP/DOWN CLIMB/KNEEL") >= 0, txt);
   });
 
   safe("ladder", function () {
@@ -4178,6 +4368,140 @@ function runTests() {
       "feet " + (Player.y + Player.h) + " climbing " + Player.climbing + " onGround " + Player.onGround);
     press("down"); steps(60); release("down");
     check("ladder: climbing down works", Player.y + Player.h > 100, "feet at " + (Player.y + Player.h));
+  });
+
+  // ---------------- kneeling ----------------
+  safe("kneel", function () {
+    load(grid(40, 12, [[3, 9, "P"]]));
+    const feet0 = Player.y + Player.h;
+    press("right"); steps(30);
+    press("down"); steps(40);
+    const x0 = Player.x;
+    check("kneel: Down makes a running hero kneel and stop", Player.kneeling && Math.abs(Player.vx) < 1, "kneeling " + Player.kneeling + " vx " + Player.vx.toFixed(1));
+    release("right"); press("left"); steps(20);
+    check("kneel: Left only turns the kneeling hero, he doesn't move", Player.face === -1 && Math.abs(Player.x - x0) < 0.5 && Player.kneeling,
+      "face " + Player.face + " moved " + (Player.x - x0).toFixed(2));
+    release("left");
+    check("kneel: hitbox 16 px high, feet unchanged", Player.h === KNEEL_H && KNEEL_H === 16 && Math.abs(Player.y + Player.h - feet0) < 0.5,
+      "h " + Player.h + " feet " + (Player.y + Player.h) + " vs " + feet0);
+    release("down"); steps(5);
+    check("kneel: releasing Down stands him up (28 px, feet unchanged)", !Player.kneeling && Player.h === 28 && Math.abs(Player.y + Player.h - feet0) < 0.5);
+    // low ceiling: a block right above the kneeling body
+    load(grid(40, 12, [[3, 9, "P"], [10, 8, "#"], [11, 8, "#"]]));
+    press("down"); steps(10);
+    Player.x = 10 * 16 + 8; steps(2);
+    release("down"); steps(20);
+    check("kneel: under a low ceiling he stays kneeling, not inside the tile", Player.kneeling && Player.y >= 9 * 16 - 0.01, "kneeling " + Player.kneeling + " y " + Player.y);
+    press("jump"); steps(2); release("jump"); steps(10);
+    check("kneel: no jump into a low ceiling", Player.kneeling && Player.onGround);
+    Player.x = 14 * 16; steps(3);
+    check("kneel: stands up once there is room again", !Player.kneeling && Player.h === 28);
+    // Jump while kneeling on solid ground: a normal jump
+    press("down"); steps(10); press("jump"); steps(8); release("jump");
+    check("kneel: Jump while kneeling on solid ground jumps", !Player.onGround && Player.vy < 0 && !Player.kneeling);
+    release("down"); steps(60);
+    Input.reset();
+  });
+
+  safe("kneel shots", function () {
+    function crayTest(kneel) {
+      load(grid(40, 12, [[3, 9, "P"]]));
+      Game.godMode = true;
+      const e = makeEnemy("cray", 12 * 16 + 8, 10 * 16, Game.level, -1);
+      e.active = true; e.cd = 99;                                  // stays on the ground (no leap)
+      Game.enemies = [e];
+      Player.face = 1;
+      if (kneel) { press("down"); steps(5); }
+      const hp0 = e.hp;
+      press("fire"); steps(50, function () { e.cd = 99; e.vx = 0; }); release("fire");
+      const res = { dead: e.dead, hits: hp0 - e.hp, shots: Game.stats.shots };
+      release("down"); Game.godMode = false; Input.reset();
+      return res;
+    }
+    const k = crayTest(true), s = crayTest(false);
+    check("kneel: kneeling shots kill a crayfish on the ground (2 standard hits)", k.dead && CONFIG.crayHp === 2, JSON.stringify(k));
+    check("kneel: standing shots still fly over a crayfish on the ground", !s.dead && s.hits === 0, JSON.stringify(s));
+    load(grid(40, 12, [[3, 9, "P"]]));
+    press("down"); steps(5); Game.shots = []; Player.fireCd = 0; Player.fire();
+    const sh = Game.shots[0];
+    check("kneel: the kneeling shot leaves 6 px above the floor", sh && Math.abs(sh.y + sh.h / 2 - (Player.y + Player.h - 6)) <= 1);
+    release("down"); Input.reset();
+  });
+
+  safe("kneel pose", function () {
+    function rowsOf(set) {
+      const c = set.r, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      let top = -1, bottom = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { if (top < 0) top = y; bottom = y; }
+      return { top: top, bottom: bottom };
+    }
+    const st = rowsOf(SPR.hero.idle), kn = rowsOf(SPR.hero.kneel), kc = rowsOf(SPR.heroCutter.kneel);
+    check("kneel pose: feet on the same row as standing, top at least 8 px lower", kn.bottom === st.bottom && kn.top - st.top >= 8 && kc.bottom === st.bottom,
+      "standing " + JSON.stringify(st) + " kneeling " + JSON.stringify(kn) + " cutter " + JSON.stringify(kc));
+    // the drawn kneeling gun row matches the shot: the barrel colour sits 6 px above the feet
+    const c = SPR.hero.kneelShoot.r, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, pad = SPR.hero.kneelShoot.pad;
+    const feetRow = kn.bottom;            // last opaque row (outline under the clogs)
+    let barrelRow = -1;
+    for (let y = 0; y < c.height; y++) { let n = 0; for (let x = c.width - 6; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) n++; if (n >= 3) { barrelRow = y; break; } }
+    check("kneel pose: the gun barrel is about 6 px above the feet", barrelRow >= 0 && Math.abs((feetRow - pad) - barrelRow - 6) <= 2, "barrel row " + barrelRow + ", feet " + feetRow);
+  });
+
+  safe("drop through", function () {
+    // Buck stands on a one-way ledge (row 6) above the floor (row 10)
+    function onLedge(ch) {
+      const items = [[3, 5, "P"]];
+      for (let x = 1; x < 8; x++) items.push([x, 6, ch]);
+      load(grid(30, 12, items));
+      return Player.y + Player.h;
+    }
+    [["=", "ledge"], ["T", "clubhouse table"], ["a", "bar counter"]].forEach(function (c) {
+      const top = onLedge(c[0]);
+      press("down"); steps(10); press("jump"); steps(2); release("jump"); steps(60);
+      check("drop: Down + Jump drops through a " + c[1], top === 96 && Player.onGround && Math.abs(Player.y + Player.h - 160) < 1,
+        "feet " + top + " -> " + (Player.y + Player.h));
+      release("down"); Input.reset();
+    });
+    const top = onLedge("=");
+    press("down"); steps(60);
+    check("drop: holding Down alone keeps Buck kneeling on the ledge", Player.kneeling && Math.abs(Player.y + Player.h - top) < 1,
+      "feet " + top + " -> " + (Player.y + Player.h) + " kneeling " + Player.kneeling);
+    release("down"); Input.reset();
+  });
+
+  safe("kneel duck", function () {
+    const FLOOR = 10 * 16;
+    // a briefcase flying level at chest height (8-10 px above where a kneeling hero ends)
+    function briefcase(kneel) {
+      load(grid(40, 12, [[3, 9, "P"]]));
+      Game.enemies = [];
+      if (kneel) { press("down"); steps(5); }
+      const hp0 = Player.hp;
+      Game.enemyShots = [{ kind: "briefcase", x: Player.x + 80, y: FLOOR - 26, w: 10, h: 8, vx: -125, vy: 0, grav: 0, dmg: 1, t: 0 }];
+      steps(60);
+      const hit = Player.hp < hp0;
+      release("down"); Input.reset();
+      return hit;
+    }
+    const kneelHit = briefcase(true), standHit = briefcase(false);
+    check("kneel: a briefcase at chest height passes over a kneeling hero", !kneelHit && standHit, "kneeling hit " + kneelHit + ", standing hit " + standHit);
+    // a crayfish walking into a kneeling hero still hurts
+    load(grid(40, 12, [[3, 9, "P"]]));
+    press("down"); steps(5);
+    const c = makeEnemy("cray", Player.x + 40, FLOOR, Game.level, -1);
+    c.active = true; Game.enemies = [c];
+    const hp1 = Player.hp;
+    steps(90, function () { c.cd = 99; c.vx = -CONFIG.craySpeed; c.face = -1; });
+    check("kneel: a crayfish walking into a kneeling hero hurts him", Player.hp < hp1, "hp " + hp1 + " -> " + Player.hp);
+    release("down"); Input.reset();
+    // the boss shockwave (12 px high, along the floor) still hits
+    load(grid(40, 12, [[3, 9, "P"]]));
+    Game.enemies = [];
+    press("down"); steps(5);
+    const hp2 = Player.hp;
+    Game.enemyShots = [{ kind: "shockwave", x: Player.x + 60, y: FLOOR - 12, w: 12, h: 12, vx: -150, life: 3, dmg: 2 }];
+    steps(40);
+    check("kneel: the boss shockwave still hits a kneeling hero", Player.hp < hp2, "hp " + hp2 + " -> " + Player.hp);
+    release("down"); Input.reset();
   });
 
   // ---------------- shooting ----------------
@@ -4998,24 +5322,98 @@ function runTests() {
     let maxX = law.x; steps(240, function () { maxX = Math.max(maxX, law.x); });
     Game.godMode = false;
     check("fans: enemies walk through her", maxX > 11 * 16, "lawyer max x " + Math.round(maxX));
-    // reactions: a kill within 12 tiles -> cheer + one bubble + one sound; rate-limited; far fans stay calm
+    // reactions: a kill within 12 tiles -> every fan nearby cheers with her own line; one sound per 1.5 s; far fans stay calm
     sounds.length = 0;
-    load(grid(60, 12, [[2, 9, "P"], [8, 9, "F"], [40, 9, "F"], [12, 9, "L"], [14, 9, "L"]]));
+    load(grid(70, 12, [[2, 9, "P"], [8, 9, "F"], [10, 9, "F"], [12, 9, "F"], [50, 9, "F"], [14, 9, "L"], [16, 9, "L"]]));
     Game.godMode = true; steps(10);
-    const nearF = Fans.list[0], farF = Fans.list[1];
+    const near3 = Fans.list.slice(0, 3), farF = Fans.list[3];
     damageEnemy(Game.enemies[0], 99); steps(1);
-    const b1 = Fans.bubble && Fans.bubble.fan === nearF && /BUCK|WOO|HERO/.test(Fans.bubble.text);
-    check("fans: a kill nearby makes her cheer with a speech bubble and a cheer sound", nearF.cheerT > 0 && b1 && sounds.filter(function (n) { return n === "cheer"; }).length === 1,
-      (Fans.bubble ? Fans.bubble.text : "no bubble") + " " + sounds.join(","));
-    check("fans: fans more than 12 tiles away do not react", farF.cheerT === 0);
-    const firstText = Fans.bubble && Fans.bubble.text;
+    const texts = near3.map(function (f) { return f.bubble && f.bubble.text; });
+    check("fans: a kill nearby: every fan in range cheers and says her own line, one cheer sound",
+      near3.every(function (f) { return f.cheerT > 0 && f.bubble && FAN_LINES.kill.indexOf(f.bubble.text) >= 0; }) &&
+      texts.filter(function (x, k) { return texts.indexOf(x) === k; }).length === 3 && sounds.filter(function (n) { return n === "cheer"; }).length === 1,
+      texts.join(" | ") + " / " + sounds.join(","));
+    check("fans: fans more than 12 tiles away do not react", farF.cheerT === 0 && !farF.bubble);
     steps(30); damageEnemy(Game.enemies[Game.enemies.length - 1], 99); steps(1);
-    check("fans: at most one bubble and cheer sound per 1.5 s", sounds.filter(function (n) { return n === "cheer"; }).length === 1 && Fans.bubble && Fans.bubble.text === firstText && nearF.cheerT > 0.9);
-    Game.render();                       // bubble drawing smoke test
-    steps(120);
-    check("fans: the bubble disappears after about a second", Fans.bubble === null);
+    check("fans: the cheer sound plays at most once per 1.5 s, one bubble per fan",
+      sounds.filter(function (n) { return n === "cheer"; }).length === 1 && near3.every(function (f, k) { return f.bubble && f.bubble.text === texts[k]; }));
+    Game.render();
+    const shown = Fans.shown;
+    function overlaps(a, b) { return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y); }
+    let anyOverlap = false;
+    for (let a = 0; a < shown.length; a++) for (let b = a + 1; b < shown.length; b++) if (overlaps(shown[a], shown[b])) anyOverlap = true;
+    check("fans: drawn bubbles don't overlap", shown.length === 3 && !anyOverlap, shown.map(function (r) { return r.x + "," + r.y + " " + r.w; }).join(" / "));
+    steps(95);
+    check("fans: bubbles disappear after about 1.5 s", Fans.list.every(function (f) { return !f.bubble; }));
+    // 5 fans in range: at most 3 bubbles
+    load(grid(70, 12, [[2, 9, "P"], [7, 9, "F"], [9, 9, "F"], [11, 9, "F"], [13, 9, "F"], [15, 9, "F"], [18, 9, "L"]]));
+    Game.godMode = true; steps(10);
+    damageEnemy(Game.enemies[0], 99); steps(1); Game.render();
+    check("fans: with 5 fans in range at most 3 bubbles are shown", Fans.list.filter(function (f) { return f.bubble; }).length <= 3 && Fans.shown.length <= 3 &&
+      Fans.list.every(function (f) { return f.cheerT > 0; }), Fans.shown.length + " shown");
     Game.godMode = false;
     Input.reset();
+  });
+
+  safe("fan lines", function () {
+    const all = [].concat(FAN_LINES.shout, FAN_LINES.kill, FAN_LINES.trophy, FAN_LINES.checkpoint);
+    const distinct = all.filter(function (l, i) { return all.indexOf(l) === i; });
+    check("fan lines: at least 30 distinct lines, 12+ shout-outs, every occasion covered",
+      distinct.length >= 30 && FAN_LINES.shout.length >= 12 && FAN_LINES.kill.length >= 5 && FAN_LINES.trophy.length >= 4 && FAN_LINES.checkpoint.length >= 4,
+      distinct.length + " lines (" + ["shout", "kill", "trophy", "checkpoint"].map(function (k) { return k + " " + FAN_LINES[k].length; }).join(", ") + ")");
+    const long = all.filter(function (l) { return l.length > 20; });
+    check("fan lines: each at most 20 characters", long.length === 0, long.join(" | "));
+    const bad = all.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("fan lines: drawable with the game font", bad.length === 0, bad.join(" | "));
+    // cheeky innuendo only: nothing explicit
+    const BLOCK = ["SEX", "NUDE", "NAKED", "PORN", "FUCK", "BOOB", "TITS", "DICK", "COCK", "PUSSY", "ORGASM", "HORNY", "STRIP", "BED"];
+    const explicit = all.filter(function (l) { return BLOCK.some(function (w) { return new RegExp("\\b" + w).test(l); }); });
+    check("fan lines: flirty but not explicit (blocklist)", explicit.length === 0, explicit.join(" | "));
+  });
+
+  safe("fan shout-outs", function () {
+    // two fans 2 tiles apart; Buck starts 10 tiles away and walks up to them
+    sounds.length = 0;
+    load(grid(60, 12, [[2, 9, "P"], [14, 9, "F"], [16, 9, "F"], [40, 9, "F"]]));
+    Game.godMode = true;
+    const a = Fans.list[0], b = Fans.list[1], far = Fans.list[2];
+    steps(30);
+    check("fans: no shout-out while Buck is far away", Fans.list.every(function (f) { return !f.bubble && f.shoutT <= 0; }));
+    Fans.hearts.length = 0;
+    Player.x = 13 * 16; steps(2);
+    const shoutA = a.bubble && FAN_LINES.shout.indexOf(a.bubble.text) >= 0;
+    check("fans: Buck within 4 tiles: she blows a kiss, a heart floats up and she calls out", shoutA && Fans.frame(a) === "kiss" && Fans.hearts.length >= 1 && a.shoutT > 7,
+      (a.bubble ? a.bubble.text : "no bubble") + " frame " + Fans.frame(a) + " hearts " + Fans.hearts.length);
+    check("fans: two fans shout out, the wolf whistle plays only once (4 s limit)", b.bubble && sounds.filter(function (n) { return n === "whistle"; }).length === 1,
+      sounds.join(","));
+    check("fans: a fan out of range stays quiet", !far.bubble);
+    steps(120);                         // bubbles gone, still in range: cooldown (8 s) holds
+    check("fans: no new shout-out from the same fan within 8 s", !a.bubble && a.shoutT > 0);
+    Player.x = 30 * 16; steps(2); Player.x = 13 * 16;
+    steps(6 * 60);
+    check("fans: she calls out again after the 8 s cooldown", a.shoutT > 0 && (a.bubble !== null || a.shoutT > 7 - 6), "shoutT " + a.shoutT.toFixed(2));
+    // nobody calls out to a dead hero
+    load(grid(60, 12, [[2, 9, "P"], [14, 9, "F"]]));
+    Player.dead = true; Player.deathT = 99; Player.x = 13 * 16; steps(5);
+    check("fans: no shout-outs while Buck is dead", !Fans.list[0].bubble);
+    Player.dead = false;
+    Game.godMode = false;
+    Input.reset();
+  });
+
+  safe("hearts", function () {
+    ctx.clearRect(0, 0, W, 8);
+    drawText("♥", 0, 0, "#ff3070");
+    const d = ctx.getImageData(0, 0, 6, 7).data;
+    let lit = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) lit++;
+    check("font: heart glyph in the font and drawn", FONT_CHARS.indexOf("♥") >= 0 && lit >= 12, lit + " px");
+    load(grid(40, 12, [[3, 9, "P"], [10, 9, "F"]]));
+    Fans.addHeart(Fans.list[0]);
+    const made = Fans.hearts.length === 1, y0 = Fans.hearts[0].y;
+    steps(20);
+    const rose = Fans.hearts.length === 1 && Fans.hearts[0].y < y0 - 5;
+    steps(45);
+    check("fans: a floating heart rises and is gone after about 1 s", made && rose && Fans.hearts.length === 0);
   });
 
   safe("fans in the levels", function () {
@@ -5023,19 +5421,19 @@ function runTests() {
     for (let i = 0; i < LEVEL_DATA.length; i++) {
       Player.resetForGame(); Game.loadLevel(i);
       const L = Game.level, fs = Fans.list, n = fs.length;
-      const countOk = L.isBoss ? n >= 2 && n <= 3 : n >= 3 && n <= 5;
+      const countOk = L.isBoss ? n >= 4 && n <= 5 : n >= 8 && n <= 10;
       const floorOk = fs.every(function (f) { return L.isSolid(f.tx, f.ty + 1) || L.isPlatform(f.tx, f.ty + 1); });
       const looks = fs.map(function (f) { return f.variant; });
       const distinct = looks.every(function (v, k) { return looks.indexOf(v) === k; });
       if (!(countOk && floorOk && distinct)) ok = false;
       info.push("L" + (i + 1) + ": " + n + (floorOk ? "" : " floor!") + (distinct ? "" : " same-look!"));
     }
-    check("fans: 3-5 per level (2-3 in the boss arena), all on floor or platforms, all different", ok, info.join(", "));
+    check("fans: 8-10 per level (4-5 in the boss arena), all on floor or platforms, all different", ok, info.join(", "));
   });
 
   safe("sound coverage", function () {
     const needed = ["shot", "shotUp", "jump", "hit", "explode", "pickup", "health", "hurt", "door", "locked", "slam", "bubble",
-      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer"];
+      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle"];
     const missing = needed.filter(function (n) { return !allSounds[n]; });
     check("sound: every effect was triggered by its game event", missing.length === 0, "missing: " + missing.join(","));
   });
@@ -5342,7 +5740,7 @@ function runShot(spec) {
   if (what === "sprites") {            // sprite sheet debug screen
     fillRect(0, 0, W, H, "#3a4a6a");
     const H_ = SPR.hero;
-    const frames = [H_.idle, H_.run[0], H_.run[1], H_.run[2], H_.jump, H_.shoot, H_.shootJump, H_.hurt, H_.climb[0], H_.climb[1]];
+    const frames = [H_.idle, H_.run[0], H_.run[1], H_.run[2], H_.jump, H_.shoot, H_.shootJump, H_.hurt, H_.climb[0], H_.climb[1], H_.kneel, H_.kneelShoot, SPR.heroCutter.kneel];
     frames.forEach(function (s, i) { ctx.drawImage(s.r, 4 + i * 24, 4); ctx.drawImage(s.l, 4 + i * 24, 40); });
     [SPR.lawyer[0], SPR.lawyer[1], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev].forEach(function (s, i) {
       ctx.drawImage(s.r, 4 + i * 30, 80); ctx.drawImage(s.fl, 4 + i * 30, 116);
@@ -5376,11 +5774,11 @@ function runShot(spec) {
     Game.render(); present();
     return;
   }
-  if (what === "fans") {               // all fan looks: idle, wave, jump (2x, facing right and left)
+  if (what === "fans") {               // all fan looks: idle, wave, jump, kiss (facing right), 4 looks per row
     fillRect(0, 0, W, H, "#5a8a40");
     SPR.fans.forEach(function (f, i) {
       FAN_FRAMES.forEach(function (fr, j) {
-        ctx.drawImage(f[fr].r, 6 + i * 39, 10 + j * 36); ctx.drawImage(f[fr].l, 6 + i * 39 + 18, 10 + j * 36);
+        ctx.drawImage(f[fr].r, 2 + (i % 4) * 80 + j * 19, 2 + Math.floor(i / 4) * 36);
       });
     });
     present();
@@ -5398,8 +5796,9 @@ function runShot(spec) {
     Game.godMode = true;
     if (p[2]) { Player.x = +p[2] * TILE; Player.y = +p[3] * TILE; Camera.snap(Player, Game.level); }
     const n = +p[4] || 30;
+    if (what === "kneelfire") Input.simulate("down", true);
     for (let i = 0; i < n; i++) {
-      if (what === "fire" && i % 10 === 0) Player.fire();
+      if ((what === "fire" || what === "kneelfire") && i % 10 === 0) Player.fire();
       Game.update(DT); Input.endStep();
     }
     if (what === "complete") { Game.completeLevel(); for (let i = 0; i < 200; i++) Game.update(DT); }

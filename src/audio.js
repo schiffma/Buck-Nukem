@@ -391,6 +391,13 @@ const Sound = {
         this.tone("square", 1600 * k, t + 0.1, 0.08, 0.05); this.tone("square", 2100 * k, t + 0.2, 0.14, 0.05);
         break;
       }
+      case "whistle": {   // wolf whistle: a quick rising "whee", then a long rise-and-fall "whee-oo"
+        const k = 0.96 + Math.random() * 0.08;
+        this.sweep("sine", 1100 * k, 2300 * k, t, 0.16, 0.1);
+        this.sweep("sine", 1300 * k, 2500 * k, t + 0.28, 0.14, 0.1);
+        this.sweep("sine", 2500 * k, 1050 * k, t + 0.42, 0.42, 0.1);
+        break;
+      }
       case "pullstart":   // petrol mower: rope pull, three sputters, then the engine catches
         this.noise(t, 0.22, 0.22, 600, null, 2600);
         [0.3, 0.42, 0.56].forEach(function (d, i) {

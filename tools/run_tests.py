@@ -70,6 +70,8 @@ def main():
         return 2
     report = (m.group(1).replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
               .replace("&quot;", '"').replace("&#39;", "'"))
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")     # test output may contain the heart glyph
     print(f"[{args.browser} {args.size}]")
     print(report)
     return 0 if "TESTS PASS" in report else 1

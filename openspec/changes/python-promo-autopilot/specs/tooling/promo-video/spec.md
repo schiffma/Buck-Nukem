@@ -29,7 +29,7 @@ A full promo run SHALL go from the title screen to the victory screen and play f
 
 #### Scenario: Detours that pay
 - **WHEN** the agent plans a level
-- **THEN** each optional stop is valued against the time bonus (10 points per second): tennis ball 50, trophy 1000, lawyer 200, punk 500 points, health for the HP bonus and survival; a stop whose detour costs more is skipped, and crayfish are shot only opportunistically while they leap
+- **THEN** each optional stop is valued against the time bonus (10 points per second): tennis ball 50, trophy 1000, lawyer 200, punk 500 points, health for the HP bonus and survival; a stop whose detour costs more is skipped, and crayfish are shot when in line: in the air, or kneeling when on the ground
 
 #### Scenario: Victory with the best score
 - **WHEN** a full run ends
@@ -62,7 +62,7 @@ The agent's movement SHALL look deliberate and human: it SHALL react to new thre
 - **THEN** the agent's dodge input starts between 150 and 300 ms later
 
 ### Requirement: Purposeful actions
-Every jump and every shot SHALL have a visible reason: a jump crosses a gap or obstacle, reaches another floor or platform, dodges a threat or collects a pickup; a shot is fired at a hittable target in line (an enemy in the shot's row ahead, a crayfish only while it leaps, the boss face only while the claws are raised). Over a full run, at most 2% of jumps may be unneeded and at most 2% of shots may lack a hittable target.
+Every jump and every shot SHALL have a visible reason: a jump crosses a gap or obstacle, reaches another floor or platform, dodges a threat or collects a pickup; a shot is fired at a hittable target in line (an enemy in the shot's row ahead, a crayfish while it leaps or on the ground from a kneeling shot, the boss face only while the claws are raised). Over a full run, at most 2% of jumps may be unneeded and at most 2% of shots may lack a hittable target.
 
 #### Scenario: No unneeded jumps
 - **WHEN** a full run's jumps are analysed

@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.0** (see `VERSION`; releases are git tags `vX.Y.Z`).
+Version **1.1.0** (see `VERSION`; releases are git tags `vX.Y.Z`).
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
 
@@ -13,7 +13,8 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 | Key | Action |
 |---|---|
 | Arrows / WASD | Move |
-| Up / Down (W / S) | Climb ladders (Down on a platform drops through it) |
+| Up / Down (W / S) | Climb ladders. Down on the ground kneels: Buck stops (Left/Right only turn him), shoots at knee height (hits crayfish on the ground) and ducks under head- and chest-high projectiles. On a ladder top Down climbs down. |
+| Down + Space | Drop through a platform (ledges, clubhouse tables, bar counter) |
 | Space | Jump (hold for higher jumps) |
 | X / Ctrl / Alt | Fire (also on ladders: Left/Right turn Buck there) |
 | P / Enter | Pause / resume |
@@ -39,6 +40,7 @@ The game is styled like a 1970s grindhouse movie on a lurid, saturated colour pr
 - **Backgrounds:** the photos, graded at build time to vivid, warm 70s colours and dithered to a 32-colour palette.
 - **Gore:** cartoon pixel blood. Enemies burst into blood and gibs, the punks' mowers explode into oil and sparks, and leave stains that fade after 20 seconds.
 - **Damage:** a red edge flash when Buck is hit.
+- **Fans:** a crowd of TC Wollerau tennis players in 70s whites cheers Buck on: 8–10 per level, 4–5 in the boss arena, 14 different looks. When he scores nearby, they cheer and call out in speech bubbles. When he walks past, a fan blows him a kiss, a heart floats up and she calls out something cheeky ("HEY HANDSOME!", "NICE RACKET, BUCK!"), with a wolf whistle. The lines are flirty grindhouse innuendo, never explicit. At most 3 bubbles show at a time. Fans are pure decoration: nothing collides with them.
 - **Screens:** a red-tinted exploitation-poster title, film-reel countdown intros ("REEL n", "MISSING REEL" before the boss) and "THE END" cards.
 
 ## Build
@@ -117,7 +119,7 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 | `y` `Y` | potted plant (1×2), club plaque (4×2) | | |
 | `Q` `@` `%` | umpire chair (2×3), ball machine (2×1), ball basket | `V` `z` `[` | racket bag (2×1), player bench (2×1), scoreboard (5×2) |
 | `J` `&` | court drag brush (2×1), water cooler (1×2) | `*` `^` | toxic waste drum, skull "TOXIC" warning sign (2×2) |
-| `F` | cheering tennis fan (background, stands on floor or a platform) | | |
+| `F` | cheering tennis fan (background, stands on floor or a platform; 8–10 per level, 4–5 in the arena) | | |
 
 Multi-tile props are placed by their top-left cell; the rest of their footprint must be `.` (the build warns otherwise). The header line `interior: x0-x1` draws columns x0–x1 as the clubhouse interior (wallpaper and wood panelling instead of the photo; windows still show the photo).
 

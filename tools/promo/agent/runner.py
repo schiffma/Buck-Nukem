@@ -16,7 +16,7 @@ from .world import World
 STALL_S = 5.0
 KILL_STOPS = {"lawyer": "L", "punk": "M"}       # enemies worth a detour (planner kinds)
 HUNT_BUDGET = {"lawyer": 12.0, "punk": 20.0}    # seconds of fighting one enemy is worth
-WAIT_LEAVES = {"Boss", "Dodge", "Mower", "Cray", "Spacing", "Hunt", "Vault"}   # deliberate waits for the stall detector
+WAIT_LEAVES = {"Boss", "Dodge", "Mower", "Cray", "Spacing", "Hunt", "Kneel", "Vault"}   # deliberate waits for the stall detector
 
 
 class Agent:
@@ -61,6 +61,7 @@ class Agent:
         self.was_dead = False
         self.banned = set()
         self.hunt_time = {}
+        self.kneel_time = {}
         self.replan(snap)
 
     def finish_level(self, snap, completed):

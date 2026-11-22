@@ -98,8 +98,8 @@ function runTests() {
       }
       return bad === 0 && outl > 10;
     }
-    const sets = [SPR.hero.idle, SPR.hero.run[1], SPR.hero.climb[0], SPR.hero.hurt, SPR.lawyer[0], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.heroCutter.idle, SPR.heroCutter.run[1], SPR.heroCutter.jump].concat(
-      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev, SPR.briefcase]);
+    const sets = [SPR.hero.idle, SPR.hero.run[1], SPR.hero.climb[0], SPR.hero.hurt, SPR.hero.kneel, SPR.hero.kneelShoot, SPR.heroCutter.kneel, SPR.lawyer[0], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.heroCutter.idle, SPR.heroCutter.run[1], SPR.heroCutter.jump].concat(
+      SPR.fans.reduce(function (a, f) { return a.concat([f.idle, f.wave, f.jump, f.kiss]); }, [])).concat([SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev, SPR.briefcase]);
     check("sprites: hero and enemy edge pixels all border a dark outline", sets.every(function (s) { return edgesOutlined(s.r) && edgesOutlined(s.l); }));
     // 3 tones: the lawyer's suit colour appears as base, highlight and shadow
     (function () {
@@ -176,7 +176,7 @@ function runTests() {
   safe("fan sprites", function () {
     const keys = FAN_VARIANTS.map(function (v) { return [v.hair, v.hairCol, v.skin, v.accent, v.item].join("/"); });
     const distinct = keys.filter(function (k, i) { return keys.indexOf(k) === i; }).length;
-    check("fans: at least 6 distinct looks", distinct >= 6 && SPR.fans.length === FAN_VARIANTS.length, distinct + " looks");
+    check("fans: at least 14 distinct looks", distinct >= 14 && SPR.fans.length === FAN_VARIANTS.length, distinct + " looks");
     let framesDiffer = true;
     SPR.fans.forEach(function (f) {
       const a = f.idle.r.getContext("2d").getImageData(0, 0, f.idle.r.width, f.idle.r.height).data;
@@ -185,6 +185,14 @@ function runTests() {
       if (d < 20) framesDiffer = false;
     });
     check("fans: idle and wave frames differ for every look", framesDiffer);
+    let kissDiffers = true;
+    SPR.fans.forEach(function (f) {
+      const a = f.idle.r.getContext("2d").getImageData(0, 0, f.idle.r.width, f.idle.r.height).data;
+      const b = f.kiss.r.getContext("2d").getImageData(0, 0, f.kiss.r.width, f.kiss.r.height).data;
+      let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+      if (d < 20) kissDiffers = false;
+    });
+    check("fans: a blow-a-kiss frame, different from idle, for every look", kissDiffers && FAN_FRAMES.indexOf("kiss") >= 0);
   });
 
   safe("worn tiles", function () {
@@ -349,6 +357,7 @@ function runTests() {
     check("title: controls list shows SPACE jump and X/CTRL/ALT fire",
       txt.indexOf("SPACE JUMP") >= 0 && txt.indexOf("X/CTRL/ALT FIRE") >= 0 && txt.indexOf("CTRL JUMP") < 0, txt);
     check("title: controls list shows F fullscreen", txt.indexOf("F FULLSCREEN") >= 0, txt);
+    check("title: controls list shows UP/DOWN climb and kneel", txt.indexOf("UP/DOWN CLIMB/KNEEL") >= 0, txt);
   });
 
   safe("ladder", function () {
@@ -366,6 +375,140 @@ function runTests() {
       "feet " + (Player.y + Player.h) + " climbing " + Player.climbing + " onGround " + Player.onGround);
     press("down"); steps(60); release("down");
     check("ladder: climbing down works", Player.y + Player.h > 100, "feet at " + (Player.y + Player.h));
+  });
+
+  // ---------------- kneeling ----------------
+  safe("kneel", function () {
+    load(grid(40, 12, [[3, 9, "P"]]));
+    const feet0 = Player.y + Player.h;
+    press("right"); steps(30);
+    press("down"); steps(40);
+    const x0 = Player.x;
+    check("kneel: Down makes a running hero kneel and stop", Player.kneeling && Math.abs(Player.vx) < 1, "kneeling " + Player.kneeling + " vx " + Player.vx.toFixed(1));
+    release("right"); press("left"); steps(20);
+    check("kneel: Left only turns the kneeling hero, he doesn't move", Player.face === -1 && Math.abs(Player.x - x0) < 0.5 && Player.kneeling,
+      "face " + Player.face + " moved " + (Player.x - x0).toFixed(2));
+    release("left");
+    check("kneel: hitbox 16 px high, feet unchanged", Player.h === KNEEL_H && KNEEL_H === 16 && Math.abs(Player.y + Player.h - feet0) < 0.5,
+      "h " + Player.h + " feet " + (Player.y + Player.h) + " vs " + feet0);
+    release("down"); steps(5);
+    check("kneel: releasing Down stands him up (28 px, feet unchanged)", !Player.kneeling && Player.h === 28 && Math.abs(Player.y + Player.h - feet0) < 0.5);
+    // low ceiling: a block right above the kneeling body
+    load(grid(40, 12, [[3, 9, "P"], [10, 8, "#"], [11, 8, "#"]]));
+    press("down"); steps(10);
+    Player.x = 10 * 16 + 8; steps(2);
+    release("down"); steps(20);
+    check("kneel: under a low ceiling he stays kneeling, not inside the tile", Player.kneeling && Player.y >= 9 * 16 - 0.01, "kneeling " + Player.kneeling + " y " + Player.y);
+    press("jump"); steps(2); release("jump"); steps(10);
+    check("kneel: no jump into a low ceiling", Player.kneeling && Player.onGround);
+    Player.x = 14 * 16; steps(3);
+    check("kneel: stands up once there is room again", !Player.kneeling && Player.h === 28);
+    // Jump while kneeling on solid ground: a normal jump
+    press("down"); steps(10); press("jump"); steps(8); release("jump");
+    check("kneel: Jump while kneeling on solid ground jumps", !Player.onGround && Player.vy < 0 && !Player.kneeling);
+    release("down"); steps(60);
+    Input.reset();
+  });
+
+  safe("kneel shots", function () {
+    function crayTest(kneel) {
+      load(grid(40, 12, [[3, 9, "P"]]));
+      Game.godMode = true;
+      const e = makeEnemy("cray", 12 * 16 + 8, 10 * 16, Game.level, -1);
+      e.active = true; e.cd = 99;                                  // stays on the ground (no leap)
+      Game.enemies = [e];
+      Player.face = 1;
+      if (kneel) { press("down"); steps(5); }
+      const hp0 = e.hp;
+      press("fire"); steps(50, function () { e.cd = 99; e.vx = 0; }); release("fire");
+      const res = { dead: e.dead, hits: hp0 - e.hp, shots: Game.stats.shots };
+      release("down"); Game.godMode = false; Input.reset();
+      return res;
+    }
+    const k = crayTest(true), s = crayTest(false);
+    check("kneel: kneeling shots kill a crayfish on the ground (2 standard hits)", k.dead && CONFIG.crayHp === 2, JSON.stringify(k));
+    check("kneel: standing shots still fly over a crayfish on the ground", !s.dead && s.hits === 0, JSON.stringify(s));
+    load(grid(40, 12, [[3, 9, "P"]]));
+    press("down"); steps(5); Game.shots = []; Player.fireCd = 0; Player.fire();
+    const sh = Game.shots[0];
+    check("kneel: the kneeling shot leaves 6 px above the floor", sh && Math.abs(sh.y + sh.h / 2 - (Player.y + Player.h - 6)) <= 1);
+    release("down"); Input.reset();
+  });
+
+  safe("kneel pose", function () {
+    function rowsOf(set) {
+      const c = set.r, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      let top = -1, bottom = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) { if (top < 0) top = y; bottom = y; }
+      return { top: top, bottom: bottom };
+    }
+    const st = rowsOf(SPR.hero.idle), kn = rowsOf(SPR.hero.kneel), kc = rowsOf(SPR.heroCutter.kneel);
+    check("kneel pose: feet on the same row as standing, top at least 8 px lower", kn.bottom === st.bottom && kn.top - st.top >= 8 && kc.bottom === st.bottom,
+      "standing " + JSON.stringify(st) + " kneeling " + JSON.stringify(kn) + " cutter " + JSON.stringify(kc));
+    // the drawn kneeling gun row matches the shot: the barrel colour sits 6 px above the feet
+    const c = SPR.hero.kneelShoot.r, d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, pad = SPR.hero.kneelShoot.pad;
+    const feetRow = kn.bottom;            // last opaque row (outline under the clogs)
+    let barrelRow = -1;
+    for (let y = 0; y < c.height; y++) { let n = 0; for (let x = c.width - 6; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3]) n++; if (n >= 3) { barrelRow = y; break; } }
+    check("kneel pose: the gun barrel is about 6 px above the feet", barrelRow >= 0 && Math.abs((feetRow - pad) - barrelRow - 6) <= 2, "barrel row " + barrelRow + ", feet " + feetRow);
+  });
+
+  safe("drop through", function () {
+    // Buck stands on a one-way ledge (row 6) above the floor (row 10)
+    function onLedge(ch) {
+      const items = [[3, 5, "P"]];
+      for (let x = 1; x < 8; x++) items.push([x, 6, ch]);
+      load(grid(30, 12, items));
+      return Player.y + Player.h;
+    }
+    [["=", "ledge"], ["T", "clubhouse table"], ["a", "bar counter"]].forEach(function (c) {
+      const top = onLedge(c[0]);
+      press("down"); steps(10); press("jump"); steps(2); release("jump"); steps(60);
+      check("drop: Down + Jump drops through a " + c[1], top === 96 && Player.onGround && Math.abs(Player.y + Player.h - 160) < 1,
+        "feet " + top + " -> " + (Player.y + Player.h));
+      release("down"); Input.reset();
+    });
+    const top = onLedge("=");
+    press("down"); steps(60);
+    check("drop: holding Down alone keeps Buck kneeling on the ledge", Player.kneeling && Math.abs(Player.y + Player.h - top) < 1,
+      "feet " + top + " -> " + (Player.y + Player.h) + " kneeling " + Player.kneeling);
+    release("down"); Input.reset();
+  });
+
+  safe("kneel duck", function () {
+    const FLOOR = 10 * 16;
+    // a briefcase flying level at chest height (8-10 px above where a kneeling hero ends)
+    function briefcase(kneel) {
+      load(grid(40, 12, [[3, 9, "P"]]));
+      Game.enemies = [];
+      if (kneel) { press("down"); steps(5); }
+      const hp0 = Player.hp;
+      Game.enemyShots = [{ kind: "briefcase", x: Player.x + 80, y: FLOOR - 26, w: 10, h: 8, vx: -125, vy: 0, grav: 0, dmg: 1, t: 0 }];
+      steps(60);
+      const hit = Player.hp < hp0;
+      release("down"); Input.reset();
+      return hit;
+    }
+    const kneelHit = briefcase(true), standHit = briefcase(false);
+    check("kneel: a briefcase at chest height passes over a kneeling hero", !kneelHit && standHit, "kneeling hit " + kneelHit + ", standing hit " + standHit);
+    // a crayfish walking into a kneeling hero still hurts
+    load(grid(40, 12, [[3, 9, "P"]]));
+    press("down"); steps(5);
+    const c = makeEnemy("cray", Player.x + 40, FLOOR, Game.level, -1);
+    c.active = true; Game.enemies = [c];
+    const hp1 = Player.hp;
+    steps(90, function () { c.cd = 99; c.vx = -CONFIG.craySpeed; c.face = -1; });
+    check("kneel: a crayfish walking into a kneeling hero hurts him", Player.hp < hp1, "hp " + hp1 + " -> " + Player.hp);
+    release("down"); Input.reset();
+    // the boss shockwave (12 px high, along the floor) still hits
+    load(grid(40, 12, [[3, 9, "P"]]));
+    Game.enemies = [];
+    press("down"); steps(5);
+    const hp2 = Player.hp;
+    Game.enemyShots = [{ kind: "shockwave", x: Player.x + 60, y: FLOOR - 12, w: 12, h: 12, vx: -150, life: 3, dmg: 2 }];
+    steps(40);
+    check("kneel: the boss shockwave still hits a kneeling hero", Player.hp < hp2, "hp " + hp2 + " -> " + Player.hp);
+    release("down"); Input.reset();
   });
 
   // ---------------- shooting ----------------
@@ -1186,24 +1329,98 @@ function runTests() {
     let maxX = law.x; steps(240, function () { maxX = Math.max(maxX, law.x); });
     Game.godMode = false;
     check("fans: enemies walk through her", maxX > 11 * 16, "lawyer max x " + Math.round(maxX));
-    // reactions: a kill within 12 tiles -> cheer + one bubble + one sound; rate-limited; far fans stay calm
+    // reactions: a kill within 12 tiles -> every fan nearby cheers with her own line; one sound per 1.5 s; far fans stay calm
     sounds.length = 0;
-    load(grid(60, 12, [[2, 9, "P"], [8, 9, "F"], [40, 9, "F"], [12, 9, "L"], [14, 9, "L"]]));
+    load(grid(70, 12, [[2, 9, "P"], [8, 9, "F"], [10, 9, "F"], [12, 9, "F"], [50, 9, "F"], [14, 9, "L"], [16, 9, "L"]]));
     Game.godMode = true; steps(10);
-    const nearF = Fans.list[0], farF = Fans.list[1];
+    const near3 = Fans.list.slice(0, 3), farF = Fans.list[3];
     damageEnemy(Game.enemies[0], 99); steps(1);
-    const b1 = Fans.bubble && Fans.bubble.fan === nearF && /BUCK|WOO|HERO/.test(Fans.bubble.text);
-    check("fans: a kill nearby makes her cheer with a speech bubble and a cheer sound", nearF.cheerT > 0 && b1 && sounds.filter(function (n) { return n === "cheer"; }).length === 1,
-      (Fans.bubble ? Fans.bubble.text : "no bubble") + " " + sounds.join(","));
-    check("fans: fans more than 12 tiles away do not react", farF.cheerT === 0);
-    const firstText = Fans.bubble && Fans.bubble.text;
+    const texts = near3.map(function (f) { return f.bubble && f.bubble.text; });
+    check("fans: a kill nearby: every fan in range cheers and says her own line, one cheer sound",
+      near3.every(function (f) { return f.cheerT > 0 && f.bubble && FAN_LINES.kill.indexOf(f.bubble.text) >= 0; }) &&
+      texts.filter(function (x, k) { return texts.indexOf(x) === k; }).length === 3 && sounds.filter(function (n) { return n === "cheer"; }).length === 1,
+      texts.join(" | ") + " / " + sounds.join(","));
+    check("fans: fans more than 12 tiles away do not react", farF.cheerT === 0 && !farF.bubble);
     steps(30); damageEnemy(Game.enemies[Game.enemies.length - 1], 99); steps(1);
-    check("fans: at most one bubble and cheer sound per 1.5 s", sounds.filter(function (n) { return n === "cheer"; }).length === 1 && Fans.bubble && Fans.bubble.text === firstText && nearF.cheerT > 0.9);
-    Game.render();                       // bubble drawing smoke test
-    steps(120);
-    check("fans: the bubble disappears after about a second", Fans.bubble === null);
+    check("fans: the cheer sound plays at most once per 1.5 s, one bubble per fan",
+      sounds.filter(function (n) { return n === "cheer"; }).length === 1 && near3.every(function (f, k) { return f.bubble && f.bubble.text === texts[k]; }));
+    Game.render();
+    const shown = Fans.shown;
+    function overlaps(a, b) { return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y); }
+    let anyOverlap = false;
+    for (let a = 0; a < shown.length; a++) for (let b = a + 1; b < shown.length; b++) if (overlaps(shown[a], shown[b])) anyOverlap = true;
+    check("fans: drawn bubbles don't overlap", shown.length === 3 && !anyOverlap, shown.map(function (r) { return r.x + "," + r.y + " " + r.w; }).join(" / "));
+    steps(95);
+    check("fans: bubbles disappear after about 1.5 s", Fans.list.every(function (f) { return !f.bubble; }));
+    // 5 fans in range: at most 3 bubbles
+    load(grid(70, 12, [[2, 9, "P"], [7, 9, "F"], [9, 9, "F"], [11, 9, "F"], [13, 9, "F"], [15, 9, "F"], [18, 9, "L"]]));
+    Game.godMode = true; steps(10);
+    damageEnemy(Game.enemies[0], 99); steps(1); Game.render();
+    check("fans: with 5 fans in range at most 3 bubbles are shown", Fans.list.filter(function (f) { return f.bubble; }).length <= 3 && Fans.shown.length <= 3 &&
+      Fans.list.every(function (f) { return f.cheerT > 0; }), Fans.shown.length + " shown");
     Game.godMode = false;
     Input.reset();
+  });
+
+  safe("fan lines", function () {
+    const all = [].concat(FAN_LINES.shout, FAN_LINES.kill, FAN_LINES.trophy, FAN_LINES.checkpoint);
+    const distinct = all.filter(function (l, i) { return all.indexOf(l) === i; });
+    check("fan lines: at least 30 distinct lines, 12+ shout-outs, every occasion covered",
+      distinct.length >= 30 && FAN_LINES.shout.length >= 12 && FAN_LINES.kill.length >= 5 && FAN_LINES.trophy.length >= 4 && FAN_LINES.checkpoint.length >= 4,
+      distinct.length + " lines (" + ["shout", "kill", "trophy", "checkpoint"].map(function (k) { return k + " " + FAN_LINES[k].length; }).join(", ") + ")");
+    const long = all.filter(function (l) { return l.length > 20; });
+    check("fan lines: each at most 20 characters", long.length === 0, long.join(" | "));
+    const bad = all.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("fan lines: drawable with the game font", bad.length === 0, bad.join(" | "));
+    // cheeky innuendo only: nothing explicit
+    const BLOCK = ["SEX", "NUDE", "NAKED", "PORN", "FUCK", "BOOB", "TITS", "DICK", "COCK", "PUSSY", "ORGASM", "HORNY", "STRIP", "BED"];
+    const explicit = all.filter(function (l) { return BLOCK.some(function (w) { return new RegExp("\\b" + w).test(l); }); });
+    check("fan lines: flirty but not explicit (blocklist)", explicit.length === 0, explicit.join(" | "));
+  });
+
+  safe("fan shout-outs", function () {
+    // two fans 2 tiles apart; Buck starts 10 tiles away and walks up to them
+    sounds.length = 0;
+    load(grid(60, 12, [[2, 9, "P"], [14, 9, "F"], [16, 9, "F"], [40, 9, "F"]]));
+    Game.godMode = true;
+    const a = Fans.list[0], b = Fans.list[1], far = Fans.list[2];
+    steps(30);
+    check("fans: no shout-out while Buck is far away", Fans.list.every(function (f) { return !f.bubble && f.shoutT <= 0; }));
+    Fans.hearts.length = 0;
+    Player.x = 13 * 16; steps(2);
+    const shoutA = a.bubble && FAN_LINES.shout.indexOf(a.bubble.text) >= 0;
+    check("fans: Buck within 4 tiles: she blows a kiss, a heart floats up and she calls out", shoutA && Fans.frame(a) === "kiss" && Fans.hearts.length >= 1 && a.shoutT > 7,
+      (a.bubble ? a.bubble.text : "no bubble") + " frame " + Fans.frame(a) + " hearts " + Fans.hearts.length);
+    check("fans: two fans shout out, the wolf whistle plays only once (4 s limit)", b.bubble && sounds.filter(function (n) { return n === "whistle"; }).length === 1,
+      sounds.join(","));
+    check("fans: a fan out of range stays quiet", !far.bubble);
+    steps(120);                         // bubbles gone, still in range: cooldown (8 s) holds
+    check("fans: no new shout-out from the same fan within 8 s", !a.bubble && a.shoutT > 0);
+    Player.x = 30 * 16; steps(2); Player.x = 13 * 16;
+    steps(6 * 60);
+    check("fans: she calls out again after the 8 s cooldown", a.shoutT > 0 && (a.bubble !== null || a.shoutT > 7 - 6), "shoutT " + a.shoutT.toFixed(2));
+    // nobody calls out to a dead hero
+    load(grid(60, 12, [[2, 9, "P"], [14, 9, "F"]]));
+    Player.dead = true; Player.deathT = 99; Player.x = 13 * 16; steps(5);
+    check("fans: no shout-outs while Buck is dead", !Fans.list[0].bubble);
+    Player.dead = false;
+    Game.godMode = false;
+    Input.reset();
+  });
+
+  safe("hearts", function () {
+    ctx.clearRect(0, 0, W, 8);
+    drawText("♥", 0, 0, "#ff3070");
+    const d = ctx.getImageData(0, 0, 6, 7).data;
+    let lit = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) lit++;
+    check("font: heart glyph in the font and drawn", FONT_CHARS.indexOf("♥") >= 0 && lit >= 12, lit + " px");
+    load(grid(40, 12, [[3, 9, "P"], [10, 9, "F"]]));
+    Fans.addHeart(Fans.list[0]);
+    const made = Fans.hearts.length === 1, y0 = Fans.hearts[0].y;
+    steps(20);
+    const rose = Fans.hearts.length === 1 && Fans.hearts[0].y < y0 - 5;
+    steps(45);
+    check("fans: a floating heart rises and is gone after about 1 s", made && rose && Fans.hearts.length === 0);
   });
 
   safe("fans in the levels", function () {
@@ -1211,19 +1428,19 @@ function runTests() {
     for (let i = 0; i < LEVEL_DATA.length; i++) {
       Player.resetForGame(); Game.loadLevel(i);
       const L = Game.level, fs = Fans.list, n = fs.length;
-      const countOk = L.isBoss ? n >= 2 && n <= 3 : n >= 3 && n <= 5;
+      const countOk = L.isBoss ? n >= 4 && n <= 5 : n >= 8 && n <= 10;
       const floorOk = fs.every(function (f) { return L.isSolid(f.tx, f.ty + 1) || L.isPlatform(f.tx, f.ty + 1); });
       const looks = fs.map(function (f) { return f.variant; });
       const distinct = looks.every(function (v, k) { return looks.indexOf(v) === k; });
       if (!(countOk && floorOk && distinct)) ok = false;
       info.push("L" + (i + 1) + ": " + n + (floorOk ? "" : " floor!") + (distinct ? "" : " same-look!"));
     }
-    check("fans: 3-5 per level (2-3 in the boss arena), all on floor or platforms, all different", ok, info.join(", "));
+    check("fans: 8-10 per level (4-5 in the boss arena), all on floor or platforms, all different", ok, info.join(", "));
   });
 
   safe("sound coverage", function () {
     const needed = ["shot", "shotUp", "jump", "hit", "explode", "pickup", "health", "hurt", "door", "locked", "slam", "bubble",
-      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer"];
+      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle"];
     const missing = needed.filter(function (n) { return !allSounds[n]; });
     check("sound: every effect was triggered by its game event", missing.length === 0, "missing: " + missing.join(","));
   });
@@ -1530,7 +1747,7 @@ function runShot(spec) {
   if (what === "sprites") {            // sprite sheet debug screen
     fillRect(0, 0, W, H, "#3a4a6a");
     const H_ = SPR.hero;
-    const frames = [H_.idle, H_.run[0], H_.run[1], H_.run[2], H_.jump, H_.shoot, H_.shootJump, H_.hurt, H_.climb[0], H_.climb[1]];
+    const frames = [H_.idle, H_.run[0], H_.run[1], H_.run[2], H_.jump, H_.shoot, H_.shootJump, H_.hurt, H_.climb[0], H_.climb[1], H_.kneel, H_.kneelShoot, SPR.heroCutter.kneel];
     frames.forEach(function (s, i) { ctx.drawImage(s.r, 4 + i * 24, 4); ctx.drawImage(s.l, 4 + i * 24, 40); });
     [SPR.lawyer[0], SPR.lawyer[1], SPR.lawyerThrow, SPR.cray[0], SPR.cray[1], SPR.punk.walk[0], SPR.punk.walk[1], SPR.punk.rev].forEach(function (s, i) {
       ctx.drawImage(s.r, 4 + i * 30, 80); ctx.drawImage(s.fl, 4 + i * 30, 116);
@@ -1564,11 +1781,11 @@ function runShot(spec) {
     Game.render(); present();
     return;
   }
-  if (what === "fans") {               // all fan looks: idle, wave, jump (2x, facing right and left)
+  if (what === "fans") {               // all fan looks: idle, wave, jump, kiss (facing right), 4 looks per row
     fillRect(0, 0, W, H, "#5a8a40");
     SPR.fans.forEach(function (f, i) {
       FAN_FRAMES.forEach(function (fr, j) {
-        ctx.drawImage(f[fr].r, 6 + i * 39, 10 + j * 36); ctx.drawImage(f[fr].l, 6 + i * 39 + 18, 10 + j * 36);
+        ctx.drawImage(f[fr].r, 2 + (i % 4) * 80 + j * 19, 2 + Math.floor(i / 4) * 36);
       });
     });
     present();
@@ -1586,8 +1803,9 @@ function runShot(spec) {
     Game.godMode = true;
     if (p[2]) { Player.x = +p[2] * TILE; Player.y = +p[3] * TILE; Camera.snap(Player, Game.level); }
     const n = +p[4] || 30;
+    if (what === "kneelfire") Input.simulate("down", true);
     for (let i = 0; i < n; i++) {
-      if (what === "fire" && i % 10 === 0) Player.fire();
+      if ((what === "fire" || what === "kneelfire") && i % 10 === 0) Player.fire();
       Game.update(DT); Input.endStep();
     }
     if (what === "complete") { Game.completeLevel(); for (let i = 0; i < 200; i++) Game.update(DT); }

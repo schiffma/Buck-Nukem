@@ -8,7 +8,8 @@
         Mower         a revving/charging punk facing Buck -> back off (or hop)
         Cray          a crayfish leaping at Buck -> back off
         Spacing       an enemy right on top of Buck -> step back
-        Vault         a crayfish on the ground blocking the route -> jump over it
+        Kneel         a crayfish on the ground ahead, in range -> kneel, face it, shoot it low
+        Vault         a crayfish on the ground blocking the route (too close to shoot) -> jump over it
         Hold          the route leads straight into a nearby enemy -> stand, face it and shoot
         Hunt          a lawyer/punk on Buck's floor ahead (or closing in from behind) -> get in range, face, fire
         Route         follow the planned route
@@ -47,7 +48,7 @@ class FireLeaf(py_trees.behaviour.Behaviour):
 def build_tree(agent):
     move = py_trees.composites.Selector("Move", memory=False, children=[
         Leaf("Boss", boss, agent), Leaf("Dodge", dodge, agent), Leaf("Mower", mower, agent),
-        Leaf("Cray", cray, agent), Leaf("Spacing", spacing, agent), Leaf("Vault", vault, agent),
+        Leaf("Cray", cray, agent), Leaf("Spacing", spacing, agent), Leaf("Kneel", kneel, agent), Leaf("Vault", vault, agent),
         Leaf("Hold", hold, agent), Leaf("Hunt", hunt, agent), Leaf("Route", route, agent)])
     root = py_trees.composites.Sequence("root", memory=False, children=[FireLeaf(agent), move])
     return py_trees.trees.BehaviourTree(root)
@@ -114,8 +115,8 @@ def cray(a):
         dx = w.cx() - (e["x"] + e["w"] / 2)
         if abs(dx) < 90 and (e["vx"] > 0) == (dx > 0) and a.reacted(("cray", e["id"])):
             d = 1 if dx > 0 else -1
-            if h["face"] == -d and w.hittable(e) and abs(dx) > 40:
-                return None                   # facing it and it's in the air: shoot it instead of backing off
+            if h["face"] == -d and abs(dx) > 40 and (w.hittable(e, kneeling=False) or w.hittable(e, kneeling=True)):
+                return None                   # facing it and in line (standing or kneeling): shoot it instead of backing off
             if w.ground_ahead(d):
                 return {"dir": d, "why": "dodge"}
     return None
@@ -137,6 +138,43 @@ def spacing(a):
             if w.ground_ahead(d):
                 return {"dir": d, "why": "dodge"}
     return None
+
+
+KNEEL_BUDGET = 4.0              # seconds of kneeling at one crayfish before giving up on it
+
+
+def kneel(a):
+    """A crayfish on the ground on Buck's floor, 28 px - 9 tiles ahead (in the route direction):
+    kneel (Down), face it, and let Fire shoot it at knee height. Crayfish behind him are left
+    to Vault/Spacing: turning back for them makes him flip-flop."""
+    w = a.world
+    h = w.hero
+    if a.ctrl.busy() or h["climbing"] or not h["onGround"] or a.boss_level:
+        return None
+    times = a.__dict__.setdefault("kneel_time", {})
+    rd = a.route_dir()
+    feet = h["y"] + h["h"]
+    best = None
+    for e in w.enemies():
+        if e["type"] != "cray" or e["leaping"] or not e["active"] or not w.same_floor(e, 6):
+            continue
+        ex = e["x"] + e["w"] / 2
+        dx = ex - w.cx()
+        if not 28 < abs(dx) < 9 * TILE or times.get(e["id"], 0.0) >= KNEEL_BUDGET:
+            continue
+        if not w.line_clear(w.cx(), ex, int((feet - 6) // TILE)):
+            continue
+        if (rd and (dx > 0) != (rd > 0)) or (not rd and (dx > 0) != (h["face"] > 0)):
+            continue                                  # behind him: not worth turning back for
+        if best is None or abs(dx) < abs(best[1]):
+            best = (e, dx)
+    if not best:
+        return None
+    e, dx = best
+    times[e["id"]] = times.get(e["id"], 0.0) + 1 / 30
+    d = 1 if dx > 0 else -1
+    # kneeling, Left/Right only turn Buck, so Down and a turn can go together
+    return {"dir": d if h["face"] != d else 0, "down": True, "why": "kneel"}
 
 
 def vault(a):

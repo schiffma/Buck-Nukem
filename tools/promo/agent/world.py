@@ -1,6 +1,7 @@
 """Read-only facts about the game world, computed from a bridge snapshot (no game access).
 
-Geometry mirrors the game: hero box 10x28, shots leave at hero.y + 14 (blaster) or span
+Geometry mirrors the game: hero box 10x28 (10x16 kneeling, feet in place), shots leave at
+hero.y + 14 (blaster; 6 px above the feet kneeling) or span
 hero.y + 12 .. + 26 (disc cutter), TILE = 16, fixed step DT = 1/60.
 """
 from .nav import TILE, hero_node
@@ -72,18 +73,27 @@ class World:
         a, b = sorted((int(x0 // TILE), int(x1 // TILE)))
         return not any(self.solid(x, y) for x in range(a + 1, b))
 
-    def hittable(self, e, face=None, margin=3):
+    def gun_y(self):
+        """Shot row: chest height standing (top + 14), 6 px above the feet kneeling."""
+        h = self.hero
+        return h["y"] + h["h"] - 6 if h.get("kneeling") else h["y"] + 14
+
+    def hittable(self, e, face=None, margin=3, kneeling=None):
         """Would a shot fired now (facing `face`) hit this enemy? Same rules as the metrics'
-        'hittable', with a safety margin so the target is still in line a couple of steps later."""
+        'hittable', with a safety margin so the target is still in line a couple of steps later.
+        kneeling: judge for a kneeling shot (default: the hero's current pose)."""
         h, f = self.hero, face or self.hero["face"]
         cutter = h["weapon"] == "cutter"
-        if e["type"] == "cray" and not e["leaping"] and not cutter:
-            return False                     # blaster shots fly over a crayfish on the ground
-        y0, y1 = h["y"] + 8 + margin, h["y"] + 22 + (6 if cutter else 0) - margin
+        kn = h.get("kneeling") if kneeling is None else kneeling
+        if e["type"] == "cray" and not e["leaping"] and not cutter and not kn:
+            return False                     # standing blaster shots fly over a crayfish on the ground
+        feet = h["y"] + h["h"]
+        gy = feet - 6 if kn else feet - 14
+        y0, y1 = gy - 6 + margin, gy + 8 + (6 if cutter else 0) - margin
         dx = (e["x"] + e["w"] / 2 - self.cx()) * f
         if not (-4 < dx < 13 * TILE and e["y"] < y1 and e["y"] + e["h"] > y0):
             return False
-        return self.line_clear(self.cx(), e["x"] + e["w"] / 2, int((h["y"] + 14) // TILE))
+        return self.line_clear(self.cx(), e["x"] + e["w"] / 2, int(gy // TILE))
 
     def boss_face_hittable(self, face=None):
         b = self.s.get("boss")

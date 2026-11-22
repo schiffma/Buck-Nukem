@@ -158,6 +158,13 @@ const LEGS = {
     ".........PPP", ".........FFF", ".........FFF", ".........dDD"],
 };
 
+// Kneeling (hitbox 16 px): head and torso drawn KNEEL_DROP px lower, two belly rows and the
+// waist row taken out so the gun row lands 6 px above the feet (the kneeling shot height),
+// and 3 rows of legs: the back knee and clog on the ground, the front leg bent forward.
+const KNEEL_DROP = 10;
+function kneelTorso(t) { return t.filter(function (r, i) { return i !== 4 && i !== 5 && i !== 12; }); }
+const LEGS_KNEEL = ["....PPPPPPPPPPPp", "..FPPPPp.....PPP", "dDDDPPP.....FFFFf"];
+
 function padRows(rows, w) { return rows.map(function (r) { return r.length < w ? r + ".".repeat(w - r.length) : r; }); }
 function setCh(rows, y, x, ch) { rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1); }
 
@@ -175,11 +182,12 @@ function heroPalette() {
   });
 }
 
-function buildHeroFrame(torso, legs, back) {
+function buildHeroFrame(torso, legs, back, drop) {
+  drop = drop || 0;
   const c = makeCanvas(HERO_W, HERO_H);
   const g = c.getContext("2d");
-  g.drawImage(spriteFromRows(padRows(torso.concat(legs), HERO_W), heroPalette()), 0, BODY_Y);
-  g.drawImage(back ? SPR.headBack : IMG.head, HEAD_X, 0);
+  g.drawImage(spriteFromRows(padRows(torso.concat(legs), HERO_W), heroPalette()), 0, BODY_Y + drop);
+  g.drawImage(back ? SPR.headBack : IMG.head, HEAD_X, drop);
   return makeSet(c);
 }
 
@@ -359,12 +367,16 @@ function buildSprites() {
     shootJump: buildHeroFrame(HERO_TORSO_SHOOT, LEGS.jump),
     hurt: buildHeroFrame(HERO_TORSO_HURT, LEGS.jump),
     climb: [buildHeroFrame(HERO_TORSO_CLIMB[0], LEGS.climb1, true), buildHeroFrame(HERO_TORSO_CLIMB[1], LEGS.climb2, true)],
+    kneel: buildHeroFrame(kneelTorso(HERO_TORSO), LEGS_KNEEL, false, KNEEL_DROP),
+    kneelShoot: buildHeroFrame(kneelTorso(HERO_TORSO_SHOOT), LEGS_KNEEL, false, KNEEL_DROP),
   };
   SPR.heroCutter = Object.assign({}, SPR.hero, {
     idle: buildHeroFrame(HERO_TORSO_CUTTER, LEGS.idle),
     run: [LEGS.run1, LEGS.run2, LEGS.run3, LEGS.run2].map(function (l) { return buildHeroFrame(HERO_TORSO_CUTTER, l); }),
     jump: buildHeroFrame(HERO_TORSO_CUTTER, LEGS.jump),
+    kneel: buildHeroFrame(kneelTorso(HERO_TORSO_CUTTER), LEGS_KNEEL, false, KNEEL_DROP),
   });
+  SPR.heroCutter.kneelShoot = SPR.heroCutter.kneel;
   SPR.heroCutter.shoot = SPR.heroCutter.idle; SPR.heroCutter.shootRun = SPR.heroCutter.run; SPR.heroCutter.shootJump = SPR.heroCutter.jump;
   SPR.cutterIcon = spriteFromRows(CUTTER_ICON);
   SPR.lawyer = [makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS1))), makeSet(spriteFromRows(LAWYER_TOP.concat(LAWYER_LEGS2)))];

@@ -5,7 +5,9 @@ Row: [level, t, dir, why, jumpStart, onGround, x, y, shot, hittable, threat, pic
     less than 1 s after the previous direction started, unless the new direction's reason is a dodge
   - unneeded jumps: take-off and landing on the same floor row, every floor tile between them is
     walkable (floor below, no wall, no water), no threat nearby and no pickup collected meanwhile
-  - shots without a target: a shot fired while no hittable target was in line
+  - shots without a target: a shot fired while no hittable target was in line (the band
+    around the gun row: chest height standing, knee height kneeling, where a crayfish on the
+    ground is hittable too)
   - hit rate: hero shot hits (enemies + boss face) / shots
 """
 DT = 1 / 60
