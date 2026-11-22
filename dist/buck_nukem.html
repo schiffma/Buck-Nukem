@@ -128,25 +128,25 @@ const LEVEL_DATA = [
 "bg": "bg_creek",
 "boss": "1",
 "map": [
-"BBBBBBBBBBBBBBBBBBBB",
-"B..................B",
-"B..................B",
-"B..................B",
-"B..................B",
-"B..................B",
-"B..................B",
-"B..h.F.............B",
-"B.====.............B",
-"B..................B",
-"B......h.F.........B",
-"B.....====.........B",
-"B..................B",
-"B.P.F.F....X.......B",
-"####################"
+"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+"B......................................B",
+"B......................................B",
+"B......................................B",
+"B.............hF.......................B",
+"B...........=====......................B",
+"B......................................B",
+"B...........F....F.....................B",
+"B.......==H==...==H=...................B",
+"B.........H.......H....................B",
+"B...F.h...H.......H..h.................B",
+"B...====..H.......H======..............B",
+"B.........H.....d.H....................B",
+"B.P....F.dH...D.d.H.D.d........X.......B",
+"########################################"
 ]
 }
 ];
-const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}};
+const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}, "version": "v1.0.3"};
 </script>
 <script>
 (function () {
@@ -189,6 +189,9 @@ const CONFIG = {
   punkHp: 5, punkSpeed: 24, punkChargeSpeed: 110, punkRange: 96, punkChargeMax: 128,
   punkRev: 0.5, punkCooldown: 2.0, punkPoints: 500,
   bossHp: 50, bossPoints: 10000,
+  bossSummons: 3,                // summon attacks per boss fight; then it alternates slam and bubbles
+  shockwaveCrateDmg: 3,
+  ledgeKnockback: 25,            // hit while standing on a one-way platform: small stagger (80 elsewhere)          // claw-slam shockwave vs breakable crates
   // scoring
   ballPoints: 50, trophyPoints: 1000, levelBonus: 2500,
   waterDamage: 2,
@@ -1004,6 +1007,7 @@ const GORE = {
   spark: ["#ffd040", "#fff4a0", "#ff9a20"],
   metal: ["#6c7484", "#b8c0cc", "#3a404e"],
   suit: ["#5a6272", "#3a404e", "#e8a880"],
+  wood: ["#a8743a", "#c8904a", "#6e4420", "#8c949e"],
   shell: ["#8c2c1c", "#561810", "#b84a32", "#e8c8b0"],
   punk: ["#40e040", "#e8a880", "#1a1414", "#3858a8"],
   maxStains: 64, stainLife: 20, stainFade: 3,
@@ -1494,6 +1498,7 @@ const Sound = {
       case "powerup": for (let i = 0; i < 8; i++) this.tone("square", 300 + i * 120, t + i * 0.04, 0.05, 0.2); break;
       case "key": this.tone("square", 988, t, 0.08, 0.2); this.tone("square", 1319, t + 0.08, 0.15, 0.2); break;
       case "hurt": this.sweep("sawtooth", 420, 90, t, 0.25, 0.35); break;
+      case "crate": this.noise(t, 0.25, 0.5, 1600, null, 400); this.sweep("square", 220, 70, t, 0.12, 0.25); this.noise(t + 0.08, 0.15, 0.3, 3500); break;
       case "door": this.sweep("square", 140, 60, t, 0.35, 0.3); this.noise(t, 0.3, 0.25, 900); break;
       case "locked": this.tone("square", 110, t, 0.12, 0.3); this.tone("square", 90, t + 0.12, 0.15, 0.3); break;
       case "throw": this.sweep("triangle", 500, 900, t, 0.08, 0.25); break;
@@ -1558,6 +1563,7 @@ Input.anyKeyListeners.push(function () {
 //  L  lawyer          K  crayfish       M  gardener-punk   X  boss
 //  o  tennis ball     t  trophy         h  Rivella         s  Cervelat
 //  +  extra life      w  weapon power-up
+//  D  sturdy crate (solid, indestructible)   d  breakable crate (solid, CRATE_HP strength)
 //  n  net  f  fence  l  lamp  b  bush  v  window   (background decoration)
 //  Clubhouse: a bar counter, A counter with taps, T table (one-way platforms);
 //  props (decoration, anchored top-left): c chair, i stool, q bottle shelf, N neon sign,
@@ -1565,7 +1571,8 @@ Input.anyKeyListeners.push(function () {
 //  x rackets, j hanging lamp, y plant, Y club plaque. Header "interior: x0-x1" gives
 //  the column range drawn with the clubhouse wall backdrop instead of the photo.
 
-const SOLID_CH = "#BRUG";
+const SOLID_CH = "#BRUGDd";
+const CRATE_HP = 6;               // breakable crate strength (blaster 1, blade 3, shockwave 3)
 const DECO_CH = "nflbv";
 const PLATFORM_CH = "=aAT";
 const ENTITY_CH = "PLKMXortuhsg+wCEF";
@@ -1653,6 +1660,30 @@ function buildTileset(themeName) {
   ts.solidTop = [0, 1, 2].map(function (v) { return tile(function (g) { solidBase(g); wear(g, v, false); solidTopDeco(g); }); });
   ts.alt = [0, 1, 2].map(function (v) { return tile(function (g) { altBase(g); wear(g, v, metal); }); });
   ts.plat = [0, 1, 2].map(function (v) { return tile(function (g) { platBase(g); platWear(g, v); }); });
+  // cover crates (boss arena): wooden planks with a dark outline; sturdy ones with metal
+  // bands and rivets; breakable ones get a cracked variant once half their strength is gone
+  function crateBase(g) {
+    g.fillStyle = "#a8743a"; g.fillRect(1, 1, 14, 14);
+    g.fillStyle = "#c8904a"; for (let y = 1; y < 15; y += 5) g.fillRect(1, y, 14, 1);       // plank highlights
+    g.fillStyle = "#6e4420"; for (let y = 5; y < 15; y += 5) g.fillRect(1, y, 14, 1);       // plank seams
+    g.fillStyle = "#8a5a2a"; for (let i = 0; i < 12; i++) g.fillRect(2 + i, 2 + i, 1, 1);  // diagonal brace
+    for (let i = 0; i < 12; i++) g.fillRect(3 + i, 2 + i, 1, 1);
+    g.fillStyle = "rgb(" + OUTLINE_COLOR.join(",") + ")";
+    g.fillRect(0, 0, 16, 1); g.fillRect(0, 15, 16, 1); g.fillRect(0, 0, 1, 16); g.fillRect(15, 0, 1, 16);
+  }
+  ts.crateSturdy = tile(function (g) {
+    crateBase(g);
+    g.fillStyle = "#8c949e"; g.fillRect(1, 2, 14, 2); g.fillRect(1, 12, 14, 2); g.fillRect(2, 1, 2, 14); g.fillRect(12, 1, 2, 14);
+    g.fillStyle = "#c8d0d8"; g.fillRect(1, 2, 14, 1); g.fillRect(1, 12, 14, 1);
+    g.fillStyle = "#3a404e"; [[2, 3], [12, 3], [2, 13], [12, 13], [7, 3], [7, 13]].forEach(function (p) { g.fillRect(p[0], p[1], 1, 1); });
+  });
+  ts.crate = tile(crateBase);
+  ts.crateCracked = tile(function (g) {
+    crateBase(g);
+    g.fillStyle = "#2a160a";
+    [[9, 1], [9, 2], [8, 3], [8, 4], [9, 5], [10, 6], [10, 7], [9, 8], [4, 9], [5, 10], [5, 11], [6, 12], [6, 13], [3, 6], [4, 7]].forEach(function (p) { g.fillRect(p[0], p[1], 1, 1); });
+    g.fillStyle = "#5a3818"; g.fillRect(11, 10, 3, 2); g.fillRect(2, 2, 2, 2);             // splintered gaps
+  });
   // clubhouse interior tiles (theme independent)
   ts.wallpaper = [0, 1].map(function (v) {
     return tile(function (g) {
@@ -1799,6 +1830,7 @@ class Level {
     this.pxH = this.h * TILE;
     this.spawns = [];
     this.openDoors = {};
+    this.crateHp = {};             // "tx,ty" -> strength of breakable crates (reset on load)
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
       const ch = this.rows[y][x];
       if (ENTITY_CH.indexOf(ch) >= 0) {
@@ -1826,6 +1858,25 @@ class Level {
   isLadderTop(tx, ty) { return this.isLadder(tx, ty) && !this.isLadder(tx, ty - 1); }
   isWater(tx, ty) { return this.at(tx, ty) === "~"; }
   isDoor(tx, ty) { return "RUG".indexOf(this.at(tx, ty)) >= 0; }
+  isCrate(tx, ty) { const c = this.at(tx, ty); return c === "D" || c === "d"; }
+  crateStrength(tx, ty) {
+    if (this.at(tx, ty) !== "d") return 0;
+    const k = tx + "," + ty;
+    return k in this.crateHp ? this.crateHp[k] : CRATE_HP;
+  }
+  // Damages a breakable crate; returns true when it broke. Sturdy crates ignore damage.
+  hitCrate(tx, ty, dmg) {
+    if (this.at(tx, ty) !== "d") return false;
+    const k = tx + "," + ty, hp = this.crateStrength(tx, ty) - dmg;
+    if (hp > 0) { this.crateHp[k] = hp; return false; }
+    delete this.crateHp[k];
+    this.rows[ty][tx] = ".";
+    const cx = tx * TILE + 8, cy = ty * TILE + 8;
+    FX.gibs(cx, cy, GORE.wood, 10, false);
+    FX.spark(cx, cy, "#c8904a", 10, 90, 0.5, 300);
+    Sound.play("crate");
+    return true;
+  }
   // standable from above (for one-way collision and enemy ledge checks)
   isFloor(tx, ty) { return this.isSolid(tx, ty) || this.isPlatform(tx, ty) || this.isLadderTop(tx, ty); }
 
@@ -1874,7 +1925,9 @@ class Level {
         else if (PROP_DEFS[ch]) img = propCanvas(ch, time);
       } else if (layer === "main") {
         const v = tileVariant(tx, ty);
-        if (ch === "#") img = this.isSolid(tx, ty - 1) ? ts.solid[v] : ts.solidTop[v];
+        if (ch === "#") img = this.isSolid(tx, ty - 1) && !this.isCrate(tx, ty - 1) ? ts.solid[v] : ts.solidTop[v];
+        else if (ch === "D") img = ts.crateSturdy;
+        else if (ch === "d") img = this.crateStrength(tx, ty) <= CRATE_HP / 2 ? ts.crateCracked : ts.crate;
         else if (ch === "B") img = ts.alt[v];
         else if (ch === "=") img = ts.plat[v];
         else if (ch === "a") img = ts.counter;
@@ -2407,7 +2460,10 @@ const Player = {
     this.invuln = CONFIG.invuln;
     this.hurtT = 0.3;
     this.climbing = false;
-    if (!fromWater) { this.vx = -this.face * 80; this.vy = -150; }
+    // knockback; standing on a one-way platform (a ledge) only a small stagger, so a hit
+    // doesn't throw him off it
+    const ledge = this.onGround && Game.level && this.onOneWay(Game.level);
+    if (!fromWater) { this.vx = -this.face * (ledge ? CONFIG.ledgeKnockback : 80); this.vy = ledge ? -60 : -150; }
     Sound.play("hurt");
     Game.hurtFlash = 0.25;            // red screen-edge flash
     FX.blood(this.cx(), this.cy(), -this.face, 5);
@@ -2730,6 +2786,13 @@ function updateEnemyShots(dt, level) {
       s.x += s.vx * dt; s.life -= dt;
       if (Math.random() < 0.6) FX.parts.push({ x: s.x + s.w / 2, y: s.y + s.h, vx: rnd(-20, 20), vy: rnd(-80, -30), life: 0.3, max: 0.3, color: "#c8a070", grav: 300 });
       if (s.life <= 0 || s.x < -20 || s.x > level.pxW + 20) remove = true;
+      // stopped by the first solid tile or crate at floor height; wears down breakable crates
+      const lx = s.vx < 0 ? s.x : s.x + s.w, ltx = Math.floor(lx / TILE), lty = Math.floor((s.y + s.h - 1) / TILE);
+      if (!remove && level.isSolid(ltx, lty)) {
+        remove = true;
+        FX.spark(lx, s.y + s.h - 2, "#c8a070", 14, 90, 0.5, 300);
+        if (level.at(ltx, lty) === "d") level.hitCrate(ltx, lty, CONFIG.shockwaveCrateDmg);
+      }
     } else {
       s.vy += (s.grav || 0) * dt;
       s.x += s.vx * dt; s.y += s.vy * dt; s.t = (s.t || 0) + dt;
@@ -2759,8 +2822,11 @@ function updateHeroShots(dt, level) {
       s.life -= dt; if (s.life <= 0) remove = true;
     } else {
       const fx = s.vx > 0 ? s.x + s.w : s.x;
-      const t = level.at(Math.floor(fx / TILE), Math.floor((s.y + s.h / 2) / TILE));
-      if (SOLID_CH.indexOf(t) >= 0) { remove = true; FX.spark(fx, s.y + s.h / 2, "#ffe860", 5, 50, 0.25); }
+      const ttx = Math.floor(fx / TILE), tty = Math.floor((s.y + s.h / 2) / TILE), t = level.at(ttx, tty);
+      if (SOLID_CH.indexOf(t) >= 0) {
+        remove = true; FX.spark(fx, s.y + s.h / 2, "#ffe860", 5, 50, 0.25);
+        if (t === "d") level.hitCrate(ttx, tty, s.dmg || 1);
+      }
       if (!remove) {
         for (const e of Game.enemies) {
           if (e.dead || !e.active || (e.T.hidden && e.T.hidden(e))) continue;
@@ -2830,6 +2896,7 @@ const Boss = {
     this.active = true;
     this.ox = px; this.homeX = px; this.floor = floorY;
     this.hp = CONFIG.bossHp; this.maxHp = CONFIG.bossHp;
+    this.summons = 0;              // summon attacks so far (limited per fight, not reset on respawn)
     this.state = "intro"; this.t = 1.5; this.attackIdx = 0; this.raised = false; this.claw = 0; // 0 down .. 1 up
     this.flash = 0; this.anim = 0; this.dir = -1; this.dying = 0; this.fired = 0;
     this.healthTimer = 12;
@@ -2878,7 +2945,7 @@ const Boss = {
         const want = clamp(Player.cx() + 90, this.homeX - 50, this.homeX + 10);
         const sp = this.enraged() ? 30 : 18;
         if (Math.abs(want - this.ox) > 2) this.ox += Math.sign(want - this.ox) * sp * dt;
-        if (this.t <= 0) this.startAttack(BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length]);
+        if (this.t <= 0) this.startAttack(this.nextAttack());
         break;
       }
       case "slam":
@@ -2910,9 +2977,12 @@ const Boss = {
       case "summon":
         if (this.t <= 0) {
           const minions = Game.enemies.filter(function (e) { return e.type === "cray" && !e.dead; }).length;
-          const n = Math.min(2, 4 - minions);
+          const n = this.summons < CONFIG.bossSummons ? Math.min(2, 4 - minions) : 0;
+          this.summons++;
+          // inside the camera view, left of the boss (clamped when the view is tight)
+          const lo = Math.max(Camera.x + 24, 40), hi = Math.max(lo, Math.min(this.ox - 60, Camera.x + W - 24));
           for (let i = 0; i < n; i++) {
-            const x = rnd(40, this.ox - 60);
+            const x = rnd(lo, hi);
             Game.enemies.push(makeEnemy("cray", x, 40, level, 1));
             FX.spark(x, 32, "#ff8060", 10, 60, 0.4);
           }
@@ -2938,6 +3008,13 @@ const Boss = {
     }
   },
 
+  // Next attack of the slam -> bubbles -> summon cycle; once the summons are used up the
+  // summon slot is skipped (slam -> bubbles -> slam ...).
+  nextAttack() {
+    let a = BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length];
+    if (a === "summon" && this.summons >= CONFIG.bossSummons) a = BOSS_ATTACKS[this.attackIdx++ % BOSS_ATTACKS.length];
+    return a;
+  },
   toIdle() { this.state = "idle"; this.raised = false; this.t = this.idleTime(); this.phase = null; },
   startAttack(name) {
     this.state = name; this.phase = "raise"; this.raised = true;
@@ -3510,6 +3587,17 @@ function introPhaseAt(isBoss, t) {
   return { name: "done" };
 }
 
+// Build version (git describe style, embedded by tools/build.py), small print bottom right.
+const BUILD_VERSION = String((typeof ASSETS_META !== "undefined" && ASSETS_META.version) || "dev").toUpperCase();
+const TITLE_VERSION_POS = { x: 314, y: 230 };   // right-aligned
+const TITLE_START_POS = { x: 6, y: 230 };       // "STARTS AT REEL n" note (level links), left-aligned
+// The title's start-reel note for a level link, or "" when new games start at level 1.
+function titleStartNote() {
+  const i = startLevelFromHash(Game.startHash !== null ? Game.startHash : location.hash);
+  if (i <= 0) return "";
+  return LEVEL_DATA[i].boss === "1" ? "STARTS AT FINAL REEL" : "STARTS AT REEL " + (i + 1);
+}
+
 const Screens = {
   title() {
     ctx.drawImage(IMG.bg_title, 0, 0);
@@ -3533,6 +3621,9 @@ const Screens = {
     drawText("FILMED ON LOCATION IN WOLLERAU", 130, 206, "#c8b890", { align: "center", shadow: "#000" });
     if (!Sound.ac) drawText("(ANY KEY STARTS THE MUSIC)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
     else drawText(Sound.muted ? "SOUND OFF (M)" : "SOUND ON (M)", 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
+    const note = titleStartNote();
+    if (note) drawText(note, TITLE_START_POS.x, TITLE_START_POS.y, "#c8b890", { shadow: "#000" });
+    drawText(BUILD_VERSION, TITLE_VERSION_POS.x, TITLE_VERSION_POS.y, "#c8b890", { align: "right", shadow: "#000" });
   },
 
   levelIntro() {
@@ -3653,10 +3744,13 @@ const Game = {
     if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); } else Sound.setTrack("valkyries");
   },
 
+  startHash: null,           // tests: stands in for location.hash when set
+
   newGame() {
     this.score = 0;
     Player.resetForGame();
-    this.loadLevel(0);
+    // a link like buck_nukem.html#level=4 starts every new game at that reel
+    this.loadLevel(startLevelFromHash(this.startHash !== null ? this.startHash : location.hash));
   },
 
   loadLevel(i, data) {       // data: optional map override (used by the test harness)
@@ -3977,6 +4071,15 @@ function frame(now) {
   if (!Game.headless) requestAnimationFrame(frame);
 }
 
+// Start level from the URL fragment: "level=N" (N = 1..number of levels, the reel number) as
+// its own parameter, e.g. "#level=4" or "#debug&level=3". Returns the 0-based level index;
+// 0 (level 1) when it is missing or invalid.
+function startLevelFromHash(hash) {
+  const m = /(?:^#|[#&])level=(\d+)(?:&|$)/.exec(hash || "");
+  const n = m ? parseInt(m[1], 10) : 0;
+  return n >= 1 && n <= LEVEL_DATA.length ? n - 1 : 0;
+}
+
 function boot() {
   loadAssets(function () {
     buildSprites();
@@ -4015,6 +4118,11 @@ function runTests() {
     for (let x = 0; x < w; x++) { g[h - 2][x] = "#"; g[h - 1][x] = "#"; }
     (items || []).forEach(function (it) { g[it[1]][it[0]] = it[2]; });
     return g.map(function (r) { return r.join(""); });
+  }
+  // wide boss arena: put the hero on the floor in front of the boss and bring the camera along
+  function nearBoss() {
+    Player.x = 23 * TILE + 2; Player.y = Game.level.pxH - 2 * TILE - Player.h; Player.vx = 0; Player.vy = 0; Player.face = 1;
+    Camera.snap(Player, Game.level);
   }
   function load(rows, extra) {
     Input.reset();
@@ -4143,8 +4251,8 @@ function runTests() {
   });
 
   safe("boss look", function () {
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS);
-    steps(30); Boss.flash = 0; Game.render();
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); nearBoss();
+    steps(30); Boss.flash = 0; Camera.x = Game.level.pxW - W; Game.render();   // whole boss in view
     const L = bossLayers();
     const d = L.g.getImageData(0, 0, W, H).data;
     let bossPx = 0, blue = 0;
@@ -4743,8 +4851,8 @@ function runTests() {
       const s = d.map.join("\n");
       check("level " + (i + 1) + ": has start" + (d.boss ? " and boss" : ", exit and checkpoint"),
         s.indexOf("P") >= 0 && (d.boss ? s.indexOf("X") >= 0 : s.indexOf("E") >= 0 && s.indexOf("C") >= 0));
-      check("level " + (i + 1) + ": size within 150-250 x 15-40 tiles (boss 20x15)",
-        d.boss ? d.map[0].length === 20 && d.map.length === 15 : d.map[0].length >= 150 && d.map[0].length <= 250 && d.map.length >= 15 && d.map.length <= 40,
+      check("level " + (i + 1) + ": size within 150-250 x 15-40 tiles (boss 40x15)",
+        d.boss ? d.map[0].length === 40 && d.map.length === 15 : d.map[0].length >= 150 && d.map[0].length <= 250 && d.map.length >= 15 && d.map.length <= 40,
         d.map[0].length + "x" + d.map.length);
       "LKM".split("").forEach(function (c) { if (s.indexOf(c) >= 0) types[c] = true; });
     });
@@ -5092,7 +5200,7 @@ function runTests() {
   // ---------------- boss ----------------
   safe("boss", function () {
     Player.resetForGame(); Game.score = 0;
-    Game.loadLevel(3); Game.setState(STATE.BOSS);
+    Game.loadLevel(3); Game.setState(STATE.BOSS); nearBoss();
     check("boss: arena starts with the boss and its health bar", Boss.active && Game.boss === Boss && Boss.hp === CONFIG.bossHp);
     (function () {   // boss drawn with the dark sprite outline
       fillRect(0, 0, W, H, "#ff00ff");
@@ -5124,7 +5232,7 @@ function runTests() {
     check("boss: face takes damage while claws are raised", Boss.hitByShot(s3) && !s3.deflected && Boss.hp === hp0 - 1);
     Boss.raised = false;
     // a hero standing on the floor shooting at the closed claws gets deflected
-    Player.x = 60; Player.face = 1; Game.shots = []; Boss.toIdle(); Boss.t = 99; Boss.claw = 0;
+    nearBoss(); Game.shots = []; Boss.toIdle(); Boss.t = 99; Boss.claw = 0;
     Player.fire(); const hpB = Boss.hp; steps(60);
     check("boss: floor shot hits closed claws (deflect)", Boss.deflects > 0 && Boss.hp === hpB);
     // attack cycle
@@ -5134,7 +5242,7 @@ function runTests() {
       maxShake = Math.max(maxShake, FX.shakeAmp);
       Game.enemyShots.forEach(function (s) { if (s.kind === "bubble") sawBubble = true; if (s.kind === "shockwave") sawWave = true; });
     });
-    check("boss: claw slam shakes the screen and sends a shockwave", Boss.log.indexOf("slam") >= 0 && maxShake >= 5 && sawWave);
+    check("boss: claw slam shakes the screen and sends a shockwave", Boss.log.indexOf("slam") >= 0 && maxShake >= 5 && sawWave, Boss.log.join(",") + " shake " + maxShake + " wave " + sawWave + " state " + Boss.state + " game " + Game.state);
     check("boss: bubble arc attack", Boss.log.indexOf("bubbles") >= 0 && sawBubble);
     check("boss: summons small crayfish", Boss.log.indexOf("summon") >= 0 && Game.enemies.some(function (e) { return e.type === "cray"; }));
     const normalIdle = Boss.idleTime();
@@ -5211,6 +5319,30 @@ function runTests() {
     check("title: exploitation poster with logo, tagline, rating badge, controls and PRESS ENTER",
       t.indexOf("BUCK NUKEM") >= 0 && t.indexOf(TAGLINE[0]) >= 0 && t.indexOf(TAGLINE[1]) >= 0 && t.indexOf("RATED") >= 0 &&
       t.indexOf("WOLLERAU") >= 0 && t.indexOf("X/CTRL/ALT") >= 0 && t.indexOf("PRESS ENTER") >= 0, t);
+    // build version in small print, bottom right, inside the screen, clear of the other title boxes
+    const vw = textWidth(BUILD_VERSION, 1), vx = TITLE_VERSION_POS.x - vw, vy = TITLE_VERSION_POS.y;
+    const vbox = { x: vx - 1, y: vy - 1, w: vw + 2, h: 9 };
+    const boxes = { badge: { x: 250, y: 186, w: 58, h: 30 }, pressEnter: { x: 130 - textWidth("PRESS ENTER", 2) / 2, y: 186, w: textWidth("PRESS ENTER", 2), h: 14 },
+      sound: { x: 130 - textWidth("(ANY KEY STARTS THE MUSIC)", 1) / 2, y: 218, w: textWidth("(ANY KEY STARTS THE MUSIC)", 1), h: 8 },
+      filmed: { x: 130 - textWidth("FILMED ON LOCATION IN WOLLERAU", 1) / 2, y: 206, w: textWidth("FILMED ON LOCATION IN WOLLERAU", 1), h: 8 } };
+    const hitBox = Object.keys(boxes).filter(function (k) { return overlap(vbox, boxes[k]); });
+    const undrawable = BUILD_VERSION.split("").filter(function (c) { return FONT_CHARS.indexOf(c) < 0; });
+    check("title: build version shown in small print, bottom right",
+      /^V\d/.test(BUILD_VERSION) && t.indexOf(BUILD_VERSION) >= 0 && undrawable.length === 0, BUILD_VERSION + (undrawable.length ? " missing glyphs " + undrawable.join("") : ""));
+    check("title: version inside the screen and clear of badge, PRESS ENTER and the bottom lines",
+      vx >= 0 && vy + 8 <= H && hitBox.length === 0, "x " + vx + " y " + vy + " overlaps " + hitBox.join(","));
+    // level links: start-reel note bottom left, only for levels 2-4
+    const notes = ["#level=3", "#level=4", "", "#level=1", "#level=9"].map(function (h) { Game.startHash = h; return [h, titleStartNote(), textsOf(STATE.TITLE)]; });
+    Game.startHash = null;
+    check("title: a level link shows STARTS AT REEL 3 / STARTS AT FINAL REEL",
+      notes[0][2].indexOf("STARTS AT REEL 3") >= 0 && notes[1][2].indexOf("STARTS AT FINAL REEL") >= 0, notes[0][1] + " / " + notes[1][1]);
+    check("title: no start note without a link, with level=1 or an invalid value",
+      notes.slice(2).every(function (n) { return n[1] === "" && n[2].indexOf("STARTS AT") < 0; }), notes.slice(2).map(function (n) { return n[0] + ":" + n[1]; }).join(" "));
+    const nw = textWidth("STARTS AT FINAL REEL", 1);
+    const nbox = { x: TITLE_START_POS.x - 1, y: TITLE_START_POS.y - 1, w: nw + 2, h: 9 };
+    const nhit = Object.keys(boxes).filter(function (k) { return overlap(nbox, boxes[k]); });
+    check("title: start note inside the screen, clear of the version text and the other title boxes",
+      nbox.x >= 0 && nbox.y + nbox.h <= H && !overlap(nbox, vbox) && nhit.length === 0, "overlaps " + nhit.join(",") + (overlap(nbox, vbox) ? " version" : ""));
     const go = textsOf(STATE.GAME_OVER), vi = textsOf(STATE.VICTORY);
     check("end cards: game over is a THE END card with the final score", go.indexOf("THE END") >= 0 && go.indexOf("FINAL SCORE") >= 0, go);
     check("end cards: victory is a THE END card with the final score", vi.indexOf("THE END") >= 0 && vi.indexOf("FINAL SCORE") >= 0, vi);
@@ -5401,6 +5533,241 @@ function runTests() {
     Input.reset();
   });
 
+  safe("crates", function () {
+    const FLOOR = 10 * 16;
+    // fires one hero projectile at the crate at tile (tx, 9) and steps until it is gone
+    function shoot(tx, dmg) {
+      Game.shots.push({ x: (tx - 3) * 16, y: 9 * 16 + 6, w: 4, h: 4, vx: 320, dmg: dmg });
+      steps(30);
+    }
+    load(grid(40, 12, [[2, 9, "P"], [10, 9, "d"], [14, 9, "D"]]));
+    Game.enemies = [];
+    const L = Game.level;
+    check("crates: D and d are solid", L.isSolid(10, 9) && L.isSolid(14, 9) && L.isCrate(10, 9) && L.isCrate(14, 9));
+    for (let i = 0; i < 5; i++) shoot(10, CONFIG.shotDmg);
+    const after5 = L.at(10, 9), str5 = L.crateStrength(10, 9);
+    check("crates: shots hitting a crate disappear", Game.shots.length === 0);
+    sounds.length = 0;
+    shoot(10, CONFIG.shotDmg);
+    check("crates: a breakable crate breaks after exactly 6 blaster hits", after5 === "d" && str5 === 1 && L.at(10, 9) === ".", "after 5: " + after5 + " str " + str5 + ", after 6: " + L.at(10, 9));
+    check("crates: breaking plays the crate sound and throws splinters", sounds.indexOf("crate") >= 0 && FX.parts.some(function (q) { return q.gib && GORE.wood.indexOf(q.color) >= 0; }), sounds.join(","));
+    // the sturdy crate holds against 50 saw blades
+    for (let i = 0; i < 50; i++) Game.shots.push({ x: 11 * 16, y: 9 * 16 + 4 - (i % 2), w: 8, h: 8, vx: 300, dmg: CONFIG.cutterDmg });
+    steps(40);
+    check("crates: a sturdy crate survives 50 saw blades", L.at(14, 9) === "D" && Game.shots.length === 0);
+    // the hero walks through the spot of the broken crate (up to the sturdy one)
+    press("right"); steps(200); release("right");
+    check("crates: the hero walks through a broken crate's spot and is stopped by a sturdy one",
+      Player.x > 11 * 16 && Player.x + Player.w <= 14 * 16 + 0.01, "x " + Player.x.toFixed(1));
+    // blades: 2 break a crate; the cracked look from half strength on
+    load(grid(40, 12, [[2, 9, "P"], [10, 9, "d"]]));
+    Game.enemies = [];
+    const L2 = Game.level;
+    shoot(10, CONFIG.cutterDmg);
+    check("crates: cracked from half strength on", L2.crateStrength(10, 9) === 3 && L2.crateStrength(10, 9) <= CRATE_HP / 2);
+    shoot(10, CONFIG.cutterDmg);
+    check("crates: two saw blades break a crate", L2.at(10, 9) === ".");
+    // broken stays broken over a respawn; a fresh load restores it
+    Game.onPlayerDeath();
+    check("crates: a broken crate stays broken after a respawn", Game.level === L2 && L2.at(10, 9) === ".");
+    load(grid(40, 12, [[2, 9, "P"], [10, 9, "d"]]));
+    check("crates: loading the level again restores the crate", Game.level.at(10, 9) === "d" && Game.level.crateStrength(10, 9) === CRATE_HP);
+    // looks: sturdy, intact and cracked differ; every edge pixel is the dark outline
+    const ts = Game.level.tiles;
+    function px(c) { return c.getContext("2d").getImageData(0, 0, 16, 16).data; }
+    function same(a, b) { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+    const pS = px(ts.crateSturdy), pC = px(ts.crate), pK = px(ts.crateCracked);
+    check("crates: sturdy, breakable and cracked tiles look different", !same(pS, pC) && !same(pC, pK) && !same(pS, pK));
+    let edge = 0, outlined = 0;
+    [pS, pC, pK].forEach(function (d) {
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        if (x > 0 && x < 15 && y > 0 && y < 15) continue;
+        const i = (y * 16 + x) * 4; edge++;
+        if (d[i] === OUTLINE_COLOR[0] && d[i + 1] === OUTLINE_COLOR[1] && d[i + 2] === OUTLINE_COLOR[2] && d[i + 3] === 255) outlined++;
+      }
+    });
+    check("crates: outlined like the other sprites", edge > 0 && outlined === edge, outlined + "/" + edge);
+    let grey = 0;
+    for (let i = 0; i < pS.length; i += 4) if (Math.abs(pS[i] - pS[i + 2]) <= 24 && pS[i + 1] > 120) grey++;
+    check("crates: the sturdy crate shows metal bands", grey >= 30, grey + " grey px");
+    Input.reset(); FX.clear();
+  });
+
+  safe("cover vs boss attacks", function () {
+    const FLOOR = 10 * 16;
+    function wave(x) { return { kind: "shockwave", x: x, y: FLOOR - 12, w: 12, h: 12, vx: -150, life: 3, dmg: 2 }; }
+    // a sturdy crate stops the shockwave; the hero behind it is not hurt
+    load(grid(40, 12, [[3, 9, "P"], [8, 9, "D"]]));
+    Game.enemies = [];
+    let hp = Player.hp;
+    Game.enemyShots = [wave(20 * 16)];
+    steps(150);
+    check("cover: a shockwave stops at a sturdy crate and the hero behind it is not hurt",
+      Game.enemyShots.length === 0 && Player.hp === hp && Game.level.at(8, 9) === "D", "hp " + hp + " -> " + Player.hp);
+    // kneeling behind the crate: no taller than it, safe from the wave
+    load(grid(40, 12, [[6, 9, "P"], [8, 9, "D"]]));
+    Game.enemies = [];
+    press("down"); steps(5);
+    hp = Player.hp;
+    check("cover: a kneeling hero is no taller than a crate", Player.h <= 16);
+    Game.enemyShots = [wave(20 * 16)];
+    steps(150);
+    check("cover: kneeling behind a crate, the shockwave doesn't reach him", Player.hp === hp);
+    release("down"); Input.reset();
+    // a breakable crate loses 3 strength per shockwave and breaks after two
+    load(grid(40, 12, [[3, 9, "P"], [8, 9, "d"]]));
+    Game.enemies = []; Game.godMode = true;
+    Game.enemyShots = [wave(20 * 16)];
+    steps(150);
+    const s1 = Game.level.crateStrength(8, 9);
+    Game.enemyShots = [wave(20 * 16)];
+    steps(150);
+    check("cover: a shockwave takes 3 strength from a breakable crate (two break it)", s1 === CRATE_HP - 3 && Game.level.at(8, 9) === ".",
+      "after one " + s1 + ", after two " + Game.level.at(8, 9));
+    Game.godMode = false;
+    // a hit on a ledge only staggers him: he stays on a 3-tile platform; on the floor the usual knockback
+    function knock(onLedge) {
+      load(onLedge ? grid(40, 12, [[5, 6, "P"], [4, 7, "="], [5, 7, "="], [6, 7, "="]]) : grid(40, 12, [[5, 9, "P"]]));
+      Game.enemies = []; Player.face = 1;
+      const x0 = Player.x, y0 = Player.y + Player.h;
+      Player.hurt(1); steps(60);
+      return { dx: x0 - Player.x, feet: Player.y + Player.h, y0: y0 };
+    }
+    const kl = knock(true), kf = knock(false);
+    check("ledge: a hit on a platform only staggers the hero (stays on it, at most 1 tile back)",
+      kl.feet === kl.y0 && kl.dx > 0 && kl.dx <= 16, "back " + kl.dx.toFixed(1) + " px, feet " + kl.feet + "/" + kl.y0);
+    check("ledge: on the floor the usual knockback", kf.dx > kl.dx * 1.8, "floor " + kf.dx.toFixed(1) + " px vs ledge " + kl.dx.toFixed(1));
+    // on a platform the shockwave passes below the hero
+    load(grid(40, 12, [[3, 6, "P"], [2, 7, "="], [3, 7, "="], [4, 7, "="], [5, 7, "="]]));
+    Game.enemies = [];
+    hp = Player.hp;
+    const onPlat = Player.onGround && Player.y + Player.h <= 7 * 16 + 0.5;
+    Game.enemyShots = [wave(20 * 16)];
+    steps(200);
+    check("cover: a hero standing on a platform is not hit by the shockwave", onPlat && Player.hp === hp, "on platform " + onPlat + ", hp " + hp + " -> " + Player.hp);
+    // summoned crayfish appear inside the camera view, left of the boss
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Game.enemies = [];
+    Camera.snap(Player, Game.level);
+    let inView = true, n = 0;
+    for (let k = 0; k < CONFIG.bossSummons; k++) {      // all of the fight's summons
+      Game.enemies = [];
+      Boss.startAttack("summon"); Boss.t = 0;
+      steps(1);
+      Game.enemies.forEach(function (e) {
+        n++;
+        if (!(e.x >= Camera.x && e.x + e.w <= Camera.x + W && e.x < Boss.ox)) inView = false;
+      });
+    }
+    check("boss: summoned crayfish appear inside the camera view, left of the boss", n >= 4 && inView,
+      n + " summoned, camera " + Math.round(Camera.x) + ", boss " + Math.round(Boss.ox));
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
+  safe("wide boss arena", function () {
+    const d = LEVEL_DATA[3], m = d.map, Hh = m.length, Ww = m[0].length;
+    const count = function (ch) { return m.join("").split(ch).length - 1; };
+    const platRows = {};
+    m.forEach(function (r, y) { if (y < Hh - 2 && r.indexOf("=") >= 0) platRows[y] = true; });
+    check("arena: one-way platforms on at least 3 different rows above the floor", Object.keys(platRows).length >= 3, Object.keys(platRows).join(","));
+    check("arena: at least 2 sturdy and 3 breakable crates", count("D") >= 2 && count("d") >= 3, "D " + count("D") + ", d " + count("d"));
+    check("arena: 4-5 fans", count("F") >= 4 && count("F") <= 5, count("F"));
+    const hRows = {}; m.forEach(function (r, y) { if (r.indexOf("h") >= 0) hRows[y] = true; });
+    check("arena: health spots on more than one height", Object.keys(hRows).length >= 2, Object.keys(hRows).join(","));
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Camera.snap(Player, Game.level);
+    check("arena: hero starts in the left screen, boss in the right one", Player.x < W && Boss.ox >= W && Ww === 40,
+      "hero " + Math.round(Player.x) + ", boss " + Math.round(Boss.ox));
+    const cam0 = Camera.x;
+    Player.x = 34 * TILE; Player.y = 13 * TILE - Player.h;     // jump the hero to the right end, then follow
+    for (let i = 0; i < 30; i++) { Camera.follow(Player, Game.level); }
+    check("arena: the camera scrolls across both screens", cam0 === 0 && Camera.x === Game.level.pxW - W, cam0 + " -> " + Camera.x);
+    // a blade fired from the end of the row-11 platform hits the raised face
+    Game.enemies = []; Game.enemyShots = []; Game.shots = [];
+    const row = Object.keys(platRows).map(Number).sort(function (a, b) { return b - a; })[0];
+    let endX = 0; for (let x = 0; x < 28; x++) if (m[row][x] === "=") endX = x;
+    Player.x = endX * TILE + 2; Player.y = row * TILE - Player.h; Player.vy = 0; Player.face = 1;
+    Camera.snap(Player, Game.level);
+    Boss.state = "idle"; Boss.t = 99; Boss.raised = true; Boss.claw = 1; Boss.ox = Boss.homeX;
+    const hp0 = Boss.hp;
+    Player.fireCd = 0; Player.fire();
+    for (let i = 0; i < 90 && Boss.hp === hp0; i++) { updateHeroShots(DT, Game.level); Boss.raised = true; Boss.claw = 1; }
+    check("arena: a blade from the end of the lowest platform hits the raised face", Boss.hp === hp0 - CONFIG.cutterDmg,
+      "platform row " + row + " end col " + endX + ", hp " + hp0 + " -> " + Boss.hp);
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
+  safe("level links", function () {
+    // parser: "level=N" as its own fragment parameter, N = 1..4 -> 0-based index; anything else -> 0
+    const cases = [["#level=1", 0], ["#level=4", 3], ["#debug&level=3", 2], ["#level=2&debug", 1], ["#level=0", 0], ["#level=5", 0],
+      ["#level=x", 0], ["#xlevel=3", 0], ["#level=3x", 0], ["", 0], ["#test", 0], [null, 0]];
+    const bad = cases.filter(function (c) { return startLevelFromHash(c[0]) !== c[1]; });
+    check("level links: #level=N parsed (1..4), invalid values ignored", bad.length === 0,
+      bad.map(function (c) { return c[0] + " -> " + startLevelFromHash(c[0]); }).join(", "));
+    // starting a game from the title with a link
+    function startFrom(hash) {
+      Game.startHash = hash;
+      Game.setState(STATE.TITLE); steps(2);
+      Game.score = 999; Player.lives = 1;
+      TEXT_LOG.items = []; TEXT_LOG.active = true;
+      tap("enter");
+      let guard = 0;
+      while (Game.state === STATE.LEVEL_INTRO && guard++ < 600) { Game.render(); steps(1); }
+      TEXT_LOG.active = false;
+      const texts = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
+      return { idx: Game.levelIndex, state: Game.state, texts: texts, score: Game.score, hp: Player.hp, lives: Player.lives, weapon: Player.weapon };
+    }
+    const boss = startFrom("#level=4");
+    check("level links: #level=4 starts the boss arena (MISSING REEL, FINAL REEL) fresh, with the disc cutter",
+      boss.idx === 3 && boss.state === STATE.BOSS && boss.texts.indexOf("MISSING REEL") >= 0 && boss.texts.indexOf("FINAL REEL") >= 0 &&
+      boss.score === 0 && boss.hp === CONFIG.maxHp && boss.lives === 3 && boss.weapon === "cutter",
+      JSON.stringify({ idx: boss.idx, state: boss.state, score: boss.score, hp: boss.hp, lives: boss.lives, weapon: boss.weapon }));
+    const l2 = startFrom("#level=2");
+    check("level links: #level=2 starts REEL 2 with the blaster", l2.idx === 1 && l2.state === STATE.PLAY && l2.texts.indexOf("REEL 2") >= 0 && l2.weapon === "blaster",
+      l2.idx + " " + l2.state + " " + l2.weapon);
+    // completing level 2 leads on to level 3
+    Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
+    check("level links: completing the start level continues with the next one", Game.levelIndex === 2);
+    // game over -> title -> Enter: the same level again
+    startFrom("#level=3");
+    Player.lives = 1; Game.onPlayerDeath();
+    check("level links: game over after a linked start", Game.state === STATE.GAME_OVER, Game.state);
+    steps(70); tap("enter");
+    const again = startFrom("#level=3");
+    check("level links: the next game starts at the linked level again", again.idx === 2 && again.state === STATE.PLAY, again.idx + " " + again.state);
+    const plain = startFrom("");
+    check("level links: without a link, level 1 starts", plain.idx === 0 && plain.state === STATE.PLAY, plain.idx);
+    Game.startHash = null; Input.reset(); FX.clear();
+  });
+
+  safe("boss summon limit", function () {
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    check("summons: a fresh boss fight starts with no summons used", Boss.summons === 0);
+    Boss.log = []; Boss.state = "idle"; Boss.t = 0.01;
+    // run at least 6 full attack cycles, health held up so the fight goes on
+    let deathDone = false, summonsAtDeath = -1;
+    for (let i = 0; i < 60 * 60 && Boss.log.length < 14; i++) {
+      Boss.hp = Boss.maxHp; Game.enemies = [];          // minions cleared so each summon could spawn
+      if (!deathDone && Boss.summons >= CONFIG.bossSummons) {
+        // lose a life after the summons are used up: respawn must not reset the count
+        deathDone = true; summonsAtDeath = Boss.summons;
+        Game.godMode = false; Player.lives = 3; Game.onPlayerDeath(); Game.godMode = true;
+      }
+      steps(1);
+    }
+    const log = Boss.log.slice(), nSum = log.filter(function (a) { return a === "summon"; }).length;
+    const third = log.reduce(function (acc, a, i) { return a === "summon" ? i : acc; }, -1);
+    const after = log.slice(third + 1);
+    check("summons: exactly 3 summons in 6+ attack cycles", nSum === CONFIG.bossSummons && log.length >= 14, log.join(","));
+    check("summons: after the third, only claw slams and bubbles, alternating",
+      after.length >= 4 && after.every(function (a, i) { return i === 0 || a !== after[i - 1]; }) && after.every(function (a) { return a === "slam" || a === "bubbles"; }), after.join(","));
+    check("summons: a respawn in the arena does not reset the count", deathDone && Game.level.isBoss && Boss.summons === summonsAtDeath && nSum === CONFIG.bossSummons,
+      "at death " + summonsAtDeath + ", now " + Boss.summons);
+    Game.loadLevel(3); Game.setState(STATE.BOSS);
+    check("summons: loading the arena again allows 3 summons again", Boss.summons === 0);
+    Game.godMode = false; Input.reset(); FX.clear();
+  });
+
   safe("hearts", function () {
     ctx.clearRect(0, 0, W, 8);
     drawText("♥", 0, 0, "#ff3070");
@@ -5433,7 +5800,7 @@ function runTests() {
 
   safe("sound coverage", function () {
     const needed = ["shot", "shotUp", "jump", "hit", "explode", "pickup", "health", "hurt", "door", "locked", "slam", "bubble",
-      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle"];
+      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle", "crate"];
     const missing = needed.filter(function (n) { return !allSounds[n]; });
     check("sound: every effect was triggered by its game event", missing.length === 0, "missing: " + missing.join(","));
   });
@@ -5457,7 +5824,7 @@ function runTests() {
     Player.face = 1;
     let guard = 0;
     while (Game.state === STATE.BOSS && guard++ < 60 * 300) {
-      Player.x = 40; Player.y = Game.level.pxH - 2 * TILE - Player.h;
+      nearBoss();
       press("fire"); steps(1);
     }
     release("fire"); Game.godMode = false;
@@ -5548,6 +5915,7 @@ function runTests() {
     check("cutter: the boss arena switches to the disc cutter", Game.level.isBoss && Player.weapon === "cutter", Player.weapon);
     steps(Math.round(introTotal(true) * 60) + 5);
     check("cutter: still the disc cutter when play begins", Game.state === STATE.BOSS && Player.weapon === "cutter");
+    nearBoss();
     (function () {   // HUD shows DISC CUTTER
       TEXT_LOG.active = true; TEXT_LOG.items = []; drawHud(); TEXT_LOG.active = false;
       const texts = TEXT_LOG.items;
@@ -5572,6 +5940,7 @@ function runTests() {
     updateHeroShots(DT, Game.level);
     check("cutter: a blade on the exposed face removes 3 boss health", Boss.hp === hp0 - 3, hp0 + " -> " + Boss.hp);
     Boss.raised = false; Boss.claw = 0;
+    Camera.x = Game.level.pxW - W;          // the whole boss in view (shots off screen are dropped)
     const sb = Boss.shell(), hp1 = Boss.hp, sparks0 = FX.parts.length;
     Game.shots.push({ x: sb.x + 30, y: sb.y + 10, w: 14, h: 14, vx: -190, dmg: CONFIG.cutterDmg, img: SPR.sawBlade[0], face: -1, spin: true });
     updateHeroShots(DT, Game.level);
@@ -5755,6 +6124,7 @@ function runShot(spec) {
     const tsI = buildTileset("hall");
     [tsI.wallpaper[0], tsI.wainscot, tsI.counter, tsI.table].forEach(function (img, i) { ctx.drawImage(img, 160 + i * 18, 138); });
     ctx.drawImage(tsI.counterTaps, 236, 130);
+    [tsI.crateSturdy, tsI.crate, tsI.crateCracked].forEach(function (img, i) { ctx.drawImage(img, 262 + i * 18, 138); });   // cover crates
     const ts = buildTileset("court"), ts2 = buildTileset("creek"), ts3 = buildTileset("hall");
     [ts, ts2, ts3].forEach(function (t, j) {
       [t.solidTop[0], t.solidTop[1], t.solidTop[2], t.solid[1], t.alt[2], t.plat[2], t.ladder, t.water[0], t.waterTop[0], t.door.R, t.door.U, t.door.G, t.deco.n, t.deco.f,
