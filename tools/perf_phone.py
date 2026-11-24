@@ -4,8 +4,9 @@
 Usage:  python tools/perf_phone.py [--browser chrome|edge] [--headed] [--frames 300]
 
 Emulates a phone in landscape (987x444 CSS px, device pixel ratio 2.75, touch), slows the CPU
-down through the DevTools protocol (1x and 4x) and plays level 1 with the hero running and
-firing, once with the GPU film grade and once with the CPU grade (#film=cpu). Prints the CPU
+down through the DevTools protocol (1x and 4x) and plays the clay-court level (reel 2) with the hero running and
+firing, once with the GPU film grade and once with the CPU grade (#film=cpu), and the mofa
+ride (reel 1) on the GPU grade. Prints the CPU
 time per drawn frame and stage, plus the WebGL renderer, and checks the budgets of the spec
 "Film filter on the GPU":
   - GPU path at most 60% of the CPU path's time per frame (4x)
@@ -25,9 +26,10 @@ DPR = 2.75
 BUDGET_MS, RATIO = 5.0, 0.6
 
 # Times update, drawing (render), film filter and scaling to the screen per frame.
-MEASURE = """(n) => {
+MEASURE = """(args) => {
+  const n = args[0], level = args[1];
   const G = window.__perf;
-  G.Player.resetForGame(); G.Game.loadLevel(0); G.Game.setState(G.STATE.PLAY); G.Game.godMode = true;
+  G.Player.resetForGame(); G.Game.loadLevel(level); G.Game.setState(G.STATE.PLAY); G.Game.godMode = true;
   G.Input.simulate('right', true); G.Input.simulate('fire', true);
   for (let i = 0; i < 30; i++) { G.Game.update(1 / 60); G.Input.endStep(); G.Game.render(); G.present(); }   // warm up
   const t = { update: 0, render: 0, film: 0, present: 0 };
@@ -73,8 +75,10 @@ def main():
         page_file = Path(tmp) / "buck_nukem.html"
         page_file.write_text(src, encoding="utf-8")
         browser = p.chromium.launch(channel="msedge" if args.browser == "edge" else "chrome", headless=not args.headed)
-        for path, hash_ in (("gpu", ""), ("cpu", "#film=cpu")):
-            for rate in (1, 4):
+        # the clay courts (reel 2) on both paths and CPU rates; the mofa ride (reel 1) on the GPU path
+        for scene, level, path, hash_, rate in [("courts", 1, "gpu", "", 1), ("courts", 1, "gpu", "", 4), ("courts", 1, "cpu", "#film=cpu", 1),
+                                               ("courts", 1, "cpu", "#film=cpu", 4), ("ride", 0, "gpu", "", 1), ("ride", 0, "gpu", "", 4)]:
+            if True:
                 ctx = browser.new_context(viewport=VIEWPORT, device_scale_factor=DPR, is_mobile=True, has_touch=True)
                 page = ctx.new_page()
                 errors = []
@@ -83,31 +87,31 @@ def main():
                 page.goto(page_file.as_uri() + hash_)
                 page.wait_for_function("() => window.__perf && window.__perf.Game", timeout=30000)
                 page.wait_for_timeout(500)
-                r = page.evaluate(MEASURE, args.frames)
+                r = page.evaluate(MEASURE, [args.frames, level])
                 ctx.close()
                 if errors:
                     print("PAGE ERROR: " + " | ".join(errors), file=sys.stderr)
                     return 2
-                results[(path, rate)] = r
+                results[(scene, path, rate)] = r
         browser.close()
 
-    print(f"Phone emulation {VIEWPORT['width']}x{VIEWPORT['height']} @{DPR}, {args.frames} frames of level 1, "
+    print(f"Phone emulation {VIEWPORT['width']}x{VIEWPORT['height']} @{DPR}, {args.frames} frames of the clay courts and the mofa ride, "
           f"CPU ms per drawn frame")
-    print(f"WebGL renderer: {results[('gpu', 1)]['renderer'] or '(none)'}")
-    print(f"{'path':<5} {'cpu':>4} {'update':>7} {'render':>7} {'film':>7} {'screen':>7} {'total':>7}")
-    for (path, rate), r in results.items():
-        print(f"{path + ('' if r['mode'] == ('gl' if path == 'gpu' else 'cpu') else '!'):<5} {rate:>3}x "
+    print(f"WebGL renderer: {results[('courts', 'gpu', 1)]['renderer'] or '(none)'}")
+    print(f"{'scene':<7} {'path':<5} {'cpu':>4} {'update':>7} {'render':>7} {'film':>7} {'screen':>7} {'total':>7}")
+    for (scene, path, rate), r in results.items():
+        print(f"{scene:<7} {path + ('' if r['mode'] == ('gl' if path == 'gpu' else 'cpu') else '!'):<5} {rate:>3}x "
               f"{r['update']:7.2f} {r['render']:7.2f} {r['film']:7.2f} {r['present']:7.2f} {r['total']:7.2f}")
-    gpu, cpu = results[("gpu", 4)], results[("cpu", 4)]
+    gpu, cpu, ride = results[("courts", "gpu", 4)], results[("courts", "cpu", 4)], results[("ride", "gpu", 4)]
     problems = []
     if gpu["mode"] != "gl":
         problems.append("the GPU film path was not used (no WebGL?)")
     if "swiftshader" in (gpu["renderer"] or "").lower():
         problems.append("WebGL is software (SwiftShader): try --headed for hardware graphics")
     ratio = gpu["total"] / cpu["total"] if cpu["total"] else 1
-    ok_ratio, ok_budget = ratio <= RATIO, gpu["total"] < BUDGET_MS
-    print(f"GPU path at 4x: {gpu['total']:.2f} ms per frame (budget < {BUDGET_MS} ms) "
-          f"= {ratio * 100:.0f}% of the CPU path (budget <= {RATIO * 100:.0f}%)")
+    ok_ratio, ok_budget = ratio <= RATIO, gpu["total"] < BUDGET_MS and ride["total"] < BUDGET_MS
+    print(f"GPU path at 4x: courts {gpu['total']:.2f} ms, mofa ride {ride['total']:.2f} ms per frame (budget < {BUDGET_MS} ms); "
+          f"courts = {ratio * 100:.0f}% of the CPU path (budget <= {RATIO * 100:.0f}%)")
     for pr in problems:
         print("NOTE: " + pr)
     met = ok_ratio and ok_budget and not problems

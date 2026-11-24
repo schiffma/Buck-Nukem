@@ -85,7 +85,7 @@ Both paths take their random values in the same order and count (flicker step, g
 `tools/perf_phone.py` uses Playwright, which is already required for the promo recorder.
 - It loads an in-memory copy of `dist/buck_nukem.html` with the internals exposed (the same injection point as the promo session).
 - It emulates a 987×444 phone at device pixel ratio 2.75 with touch.
-- It throttles the CPU through CDP (1× and 4×) and plays level 1 with the hero running and firing for 300 frames on each path.
+- It throttles the CPU through CDP (1× and 4×) and plays the clay-court level with the hero running and firing for 300 frames on each path.
 - It prints the per-stage times and the WebGL renderer, and exits with 1 if the spec's budgets are missed (GPU ≤ 60% of CPU; < 5 ms per frame at 4×).
 
 ## Risks / Trade-offs

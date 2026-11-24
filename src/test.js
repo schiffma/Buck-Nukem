@@ -587,7 +587,7 @@ function runTests() {
   });
 
   safe("boss look", function () {
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); nearBoss();
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); nearBoss();
     steps(30); Boss.flash = 0; Camera.x = Game.level.pxW - W; Game.render();   // whole boss in view
     const L = bossLayers();
     const d = L.g.getImageData(0, 0, W, H).data;
@@ -890,6 +890,859 @@ function runTests() {
     check("kneel pose: the gun barrel is about 6 px above the feet", barrelRow >= 0 && Math.abs((feetRow - pad) - barrelRow - 6) <= 2, "barrel row " + barrelRow + ", feet " + feetRow);
   });
 
+  // ---------------- mofa ride (src/ride.js) ----------------
+  function loadRide(items, w) { load(grid(w || 240, 12, [[3, 9, "P"]].concat(items || [])), { ride: "1", name: "TEST RIDE" }); }
+  function holdFor(a, sec, each) { press(a); steps(Math.round(sec * 60), each); release(a); }
+
+  // a ride test map with a climb: flat at row 19 up to column 39, eased up to row 11 by column 99, flat after
+  function climbRows(items) {
+    const w = 170, h = 22, g = [];
+    for (let y = 0; y < h; y++) g.push(new Array(w).fill("."));
+    for (let x = 0; x < w; x++) {
+      const t = Math.min(1, Math.max(0, (x + 0.5 - 40) / 60)), top = Math.ceil(19 - 8 * t * t * (3 - 2 * t));
+      for (let y = top; y < h; y++) g[y][x] = "#";
+    }
+    // items: [column, cells above the road, char]
+    (items || []).forEach(function (it) { let top = 0; while (g[top][it[0]] !== "#") top++; g[top - it[1]][it[0]] = it[2]; });
+    return g.map(function (r) { return r.join(""); });
+  }
+  function loadClimb(items) {
+    load(climbRows([[3, 1, "P"]].concat(items || [])), { ride: "1", name: "TEST CLIMB", climb: "40-99 19-11" });
+  }
+
+  safe("ride climb", function () {
+    loadClimb([[20, 3, "o"], [70, 3, "o"], [30, 1, "S"], [72, 1, "S"], [60, 1, "1"]]);
+    const L = Game.level;
+    let jump = 0;
+    for (let x = 0; x < L.pxW - 1; x++) jump = Math.max(jump, Math.abs(L.roadTop(x + 1) - L.roadTop(x)));
+    const rise = L.roadTop(10) - L.roadTop(L.pxW - 10);
+    check("climb: the road profile is smooth (at most 1 px per px) and rises at least 6 tiles", jump <= 1 && rise >= 6 * TILE, "step " + jump.toFixed(2) + ", rise " + rise);
+    // pickups and signs sit at the same height over the road on the flat and on the climb
+    const ps = Game.pickups.filter(function (q) { return q.type === "o"; }).map(function (q) { return L.roadTop(q.x + q.w / 2) - (q.y + q.h); });
+    const sg = Game.signs.map(function (q) { return L.roadTop(q.tx * TILE + 8) - (q.ty * TILE + q.dy); });
+    check("climb: pickups and signs follow the road (same height above it on the flat and on the slope)",
+      ps.length === 2 && Math.abs(ps[0] - ps[1]) <= 1 && sg.length === 2 && Math.abs(sg[0] - sg[1]) <= 1, "pickups " + ps.join(",") + " signs " + sg.join(","));
+    // ride it: flat top speed, then the steepest part; the mofa stays on the road, the X7 too
+    Game.godMode = true;
+    const camY0 = Camera.y;
+    let flatV = 0, steepV = 1e9, off = 0, carOff = 0, strained = 0, n = 0, steepN = 0;
+    press("right");
+    while (Player.x < 140 * TILE && n++ < 30 * 60) {
+      steps(1);
+      const cx = Player.x + Player.w / 2;
+      if (cx > 30 * TILE && cx < 38 * TILE) flatV = Math.max(flatV, Player.vx);
+      if (cx > 66 * TILE && cx < 74 * TILE) {
+        steepV = Math.min(steepV, Player.vx); steepN++;
+        if (Mofa.load(Player) === 1 && Mofa.speed01(Player) < 0.8) strained++;
+      }
+      const ground = Math.min(L.roadTop(Player.x + 4), L.roadTop(Player.x + Player.w - 4));
+      if (Player.onGround && Math.abs(Player.y + Player.h - ground) > 1) off++;
+      Game.enemies.forEach(function (e) { if (e.type === "suv" && !e.dead && e.active && Math.abs(e.y + e.h - L.roadTop(e.x + e.w / 2)) > 1) carOff++; });
+    }
+    release("right");
+    check("climb: the mofa rides up the whole climb on the road surface", Player.x >= 140 * TILE && off === 0, "x " + Math.round(Player.x) + ", off-road steps " + off);
+    check("climb: uphill top speed at least 25% lower on the steepest part", steepN > 0 && steepV <= 0.75 * flatV, "flat " + flatV.toFixed(0) + ", steep " + steepV.toFixed(0));
+    check("climb: the engine strains (full-throttle load at a lower speed) uphill", strained > steepN / 2, strained + "/" + steepN);
+    check("climb: cars drive on the road profile", carOff === 0 && Game.enemies.some(function (e) { return e.type === "suv"; }), "off " + carOff);
+    const sy = Player.y - Camera.y;
+    check("climb: the camera follows up (Buck stays in view)", Camera.y < camY0 - 2 * TILE && sy > 0 && sy + Player.h < VIEW_H, "cam y " + camY0.toFixed(0) + " -> " + Camera.y.toFixed(0) + ", Buck at " + sy.toFixed(0));
+    Game.godMode = false;
+  });
+
+  safe("mofa controls", function () {
+    loadRide();
+    const top = CONFIG.mofaTop;
+    check("mofa: Buck sits on the mofa (wide box, facing right) on a ride level", Game.level.isRide && Player.w === CONFIG.mofaW && Player.h === CONFIG.mofaH && Player.face === 1);
+    holdFor("right", 3);
+    const v3 = Player.vx;
+    press("right"); steps(60); const v4 = Player.vx;
+    check("mofa: Right reaches the top speed in 3 s and keeps it; top >= 1.5x running speed",
+      v3 === top && v4 === top && top >= 1.5 * CONFIG.runSpeed, v3.toFixed(1) + " / " + top);
+    release("right"); steps(60);
+    check("mofa: released at top speed it coasts on for at least a second", Player.vx > 0 && Player.vx < top, Player.vx.toFixed(1));
+    loadRide(); press("right"); steps(240); release("right");
+    let t = 0; press("left");
+    while (Player.vx > 0 && t < 180) { steps(1); t++; }
+    check("mofa: Left brakes from top speed to a stop within about a second", t <= 66, (t / 60).toFixed(2) + " s");
+    steps(180);
+    const back = Player.vx; release("left");
+    check("mofa: stopped, Left rolls back at most a quarter of the top speed, still facing right",
+      back < 0 && back >= -top * CONFIG.mofaReverse && Player.face === 1, back.toFixed(1));
+    // hop: high enough for a cone or a Ferrari (16 px), no second hop in the air
+    loadRide(); press("right"); steps(120); release("right");
+    const y0 = Player.y; let minY = y0, hops = 0;
+    sounds.length = 0;
+    tap("jump");
+    for (let i = 0; i < 60; i++) { if (i === 12) tap("jump"); steps(1); minY = Math.min(minY, Player.y); }
+    hops = sounds.filter(function (s) { return s === "jump"; }).length;
+    check("mofa: Jump hops at least 45 px (over a cone or a Ferrari) and lands back on the road; Jump in mid-air does nothing",
+      y0 - minY >= 45 && Player.onGround && Math.abs(Player.y - y0) < 1 && hops === 1, "rise " + (y0 - minY).toFixed(1) + ", hops " + hops);
+  });
+
+  safe("mofa gun", function () {
+    loadRide([], 400);
+    check("mofa gun: the ride's weapon is the mounted machine gun", Player.weapon === "mofamg");
+    Game.stats.shots = 0; Game.shots = [];
+    press("fire"); steps(60);
+    const n = Game.stats.shots, s0 = Game.shots[0];
+    release("fire");
+    check("mofa gun: at least 8 shots per second, 1 damage each, flying forward",
+      n >= 8 && s0 && s0.dmg === 1 && s0.vx > 0 && !s0.vy, n + " shots");
+    Game.shots = []; press("up"); press("fire"); steps(10); release("fire"); release("up");
+    const u = Game.shots[0], ang = u ? Math.atan2(-u.vy, u.vx) * 180 / Math.PI : 0;
+    check("mofa gun: with Up held the shots fly forward and up at about 30 degrees", u && Math.abs(ang - 30) < 3, ang.toFixed(1) + " deg");
+    TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+    check("mofa gun: the HUD reads MOFA MG", TEXT_LOG.items.indexOf("MOFA MG") >= 0);
+    // off the mofa: reel 2 starts with the standard blaster
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    const rideW = Player.weapon;
+    Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
+    check("mofa gun: after the gate, reel 2 starts on foot with the standard blaster",
+      rideW === "mofamg" && Game.levelIndex === 1 && Player.weapon === "blaster" && Player.w === STAND_W, rideW + " -> " + Player.weapon);
+    check("mofa gun: the ride map has no weapon pickups", LEVEL_DATA[0].map.join("").indexOf("w") < 0);
+    Input.reset();
+  });
+
+  safe("road hazards", function () {
+    const top = CONFIG.mofaTop;
+    function atTop(items) { loadRide(items, 300); Player.x = 3 * TILE; Player.vx = top; press("right"); }
+    // the clear road: no cones, potholes or speed bumps on the ride map; riding it without cars costs nothing
+    const rm = LEVEL_DATA[0].map.join("");
+    loadRide([], 300); Game.godMode = false;
+    Player.x = 3 * TILE; press("right");
+    const hpC = Player.hp;
+    steps(120);
+    release("right");
+    check("hazards: the ride map has no cones, potholes or speed bumps, and riding a clear road costs no health",
+      rm.indexOf("!") < 0 && rm.indexOf("_") < 0 && rm.indexOf(":") < 0 && Player.hp === hpC && Game.hazards.every(function (z) { return z.type === "ramp"; }));
+    // ramp: at top speed at least twice as far as a normal hop
+    function flight(trigger) {
+      let t0x = null, land = null, air = false;
+      steps(240, function () {
+        if (t0x === null && trigger()) t0x = Player.x;
+        if (t0x !== null && !Player.onGround) air = true;
+        if (air && Player.onGround && land === null) land = Player.x;
+      });
+      return land !== null && t0x !== null ? land - t0x : 0;
+    }
+    atTop([]);
+    let hopAt = false;
+    const hopDist = flight(function () { if (!hopAt) { hopAt = true; Input.simulate("jump", true); return true; } Input.simulate("jump", false); return false; });
+    release("right");
+    atTop([[20, 9, "/"]]);
+    const rampEnd = 22 * TILE;
+    const rampDist = flight(function () { return Player.onRamp === null && Player.x + Player.w / 2 > rampEnd && !Player.onGround; });
+    release("right");
+    check("hazards: a ramp at top speed launches at least twice as far as a hop", hopDist > 40 && rampDist >= 2 * hopDist,
+      "hop " + hopDist.toFixed(0) + " px, ramp " + rampDist.toFixed(0) + " px");
+    Input.reset();
+  });
+
+  safe("cars", function () {
+    const want = { suv: [12, 800], tesla: [8, 700], ferrari: [6, 1000] };
+    loadRide([], 300);
+    const got = Object.keys(want).map(function (k) { const e = makeEnemy(k, 100, 160, Game.level, 1); return k + ":" + e.hp + "/" + e.T.points + (e.T.car ? "" : " not a car"); });
+    check("cars: BMW X7 12 hits/800, Tesla 8/700, Ferrari 6/1000; no BMW sedan", got.join(",") === "suv:12/800,tesla:8/700,ferrari:6/1000" && !ENEMY_TYPES.bmw, got.join(","));
+    check("cars: Ferrari at most 32 px high, SUV the tallest", ENEMY_TYPES.ferrari.h <= 32 && ["tesla", "ferrari"].every(function (k) { return ENEMY_TYPES.suv.h > ENEMY_TYPES[k].h; }));
+    // contact: 2 health and a hard knockback
+    loadRide([], 300);
+    const hp0 = Player.hp;
+    const car = makeEnemy("tesla", Player.cx() + 20, Player.y + Player.h, Game.level, 1); car.state = "leave";
+    Game.enemies.push(car);
+    steps(1);
+    check("cars: touching a car costs 2 health and knocks the mofa back", Player.hp === hp0 - 2 && Player.vx <= -100, "hp " + hp0 + " -> " + Player.hp + ", vx " + Player.vx.toFixed(0));
+    // destroyed: explosion, wreck, driver bails out, points
+    loadRide([], 300);
+    const e = makeEnemy("tesla", Player.cx() + 200, Player.y + Player.h, Game.level, 1); e.state = "leave"; e.vx = 0;
+    Game.enemies.push(e);
+    const s0 = Game.score; sounds.length = 0;
+    for (let i = 0; i < 20 && !e.dead; i++) damageEnemy(e, 1, 1);
+    steps(1);
+    check("cars: a destroyed car explodes, leaves a wreck, the driver runs off, and it scores its points",
+      e.dead && Game.enemies.indexOf(e) < 0 && sounds.indexOf("bigexplode") >= 0 && Cars.wrecks.length === 1 && Cars.runners.length === 1 && Game.score - s0 === 700,
+      "score +" + (Game.score - s0) + ", wrecks " + Cars.wrecks.length + ", runners " + Cars.runners.length);
+    steps(60 * (CONFIG.wreckLife + 1));
+    check("cars: the wreck fades away after a while", Cars.wrecks.length === 0);
+  });
+
+  safe("car behaviour", function () {
+    const top = CONFIG.mofaTop;
+    Game.godMode = false;
+    // SUV: ahead, slower than the mofa, can't be passed, throws every 1.5-2.5 s
+    loadRide([[16, 9, "1"]], 300);
+    const suv = Game.enemies[0];
+    let maxV = 0, passed = false, last = null, gaps = [], prevN = 0;
+    Player.hp = 99; Player.invuln = 0;
+    press("right");
+    steps(60 * 8, function () {
+      Player.hp = 99;
+      if (suv.active) maxV = Math.max(maxV, suv.vx);
+      if (Player.x > suv.x + suv.w) passed = true;
+      const n = Game.enemyShots.filter(function (s) { return s.kind === "latte" || s.kind === "golfball"; }).length;
+      if (n > prevN) { const now = Game.time; if (last !== null) gaps.push(now - last); last = now; }
+      prevN = n;
+    });
+    release("right");
+    check("cars: the SUV drives ahead slower than the mofa's top speed and can't be passed", suv.active && maxV <= top * 0.6 + 0.01 && !passed && !suv.dead,
+      "max speed " + maxV.toFixed(1) + ", passed " + passed);
+    check("cars: the SUV driver throws latte cups / golf balls every 1.5-2.5 s", gaps.length >= 2 && gaps.every(function (g) { return g >= 1.45 && g <= 2.6; }),
+      gaps.map(function (g) { return g.toFixed(2); }).join(","));
+    // a throw shot down with Up
+    loadRide([], 300);
+    Game.enemyShots = [{ kind: "latte", x: Player.x + Player.w + 40, y: Player.y - 20, w: 6, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+    press("up"); press("fire"); steps(30); release("fire"); release("up");
+    check("cars: a thrown latte cup can be shot down with Up held", Game.enemyShots.length === 0 && Player.hp === CONFIG.maxHp);
+    // BMW X7: honks at a mofa riding close behind, at most once a second
+    loadRide([[16, 9, "1"]], 300);
+    const x7 = Game.enemies[0];
+    let honks = 0;
+    sounds.length = 0;
+    steps(60 * 3, function () {
+      x7.x = Player.x + Player.w + 20; x7.vx = 0; x7.throwT = 99; Player.vx = 0;   // the mofa 20 px behind the X7
+      honks = sounds.filter(function (n) { return n === "horn"; }).length;
+    });
+    const closeHonks = honks;
+    sounds.length = 0;
+    steps(60, function () { x7.x = Player.x + Player.w + 120; x7.vx = 0; x7.throwT = 99; });
+    check("cars: the BMW X7 honks at a mofa close behind it, at most once a second, and not from further back",
+      closeHonks >= 2 && closeHonks <= 4 && sounds.indexOf("horn") < 0, closeHonks + " honks in 3 s");
+    // Tesla: from behind, rams within half a screen
+    loadRide([[2, 9, "3"]], 400);
+    press("right"); steps(2);
+    const tesla = Game.enemies.filter(function (e) { return e.type === "tesla"; })[0];
+    if (tesla) tesla.hp = 999;                               // (rear turret, as above)
+    let ramAt = null, hpLost = false; const hpT = Player.hp;
+    steps(60 * 6, function () { if (tesla && tesla.state === "ram" && ramAt === null) ramAt = carGapBehind(tesla); if (Player.hp < hpT) hpLost = true; });
+    release("right");
+    check("cars: the Tesla creeps up from behind and rams when within half a screen", tesla && ramAt !== null && ramAt <= W / 2 && hpLost,
+      "ram at " + ramAt + " px, hit " + hpLost);
+    // Ferrari: from ahead, > 2x top speed, ~1 s off screen; a hop over it costs nothing
+    loadRide([], 400);
+    const fer = Cars.spawn("ferrari", Player.y + Player.h);       // what a "4" trigger does when Buck passes it
+    const offAhead = fer ? (fer.x - (Camera.x + W)) / (CONFIG.ferrariSpeed) : 0;
+    check("cars: the Ferrari comes from ahead, faster than twice the top speed, about a second before it is on screen",
+      fer && fer.face === -1 && CONFIG.ferrariSpeed > 2 * top && offAhead >= 0.95, "off screen for " + offAhead.toFixed(2) + " s");
+    const hpF = Player.hp; let hopped = false;
+    steps(60 * 3, function () {
+      if (!hopped && fer.x - (Player.x + Player.w) < 40) { hopped = true; tap("jump"); }
+    });
+    check("cars: hopping over the Ferrari costs nothing and it drives on off screen", hopped && Player.hp === hpF && (fer.dead || fer.x + fer.w < Player.x), "hp " + hpF + " -> " + Player.hp);
+    Input.reset(); Game.enemies = []; Game.enemyShots = [];
+  });
+
+  safe("ride sound", function () {
+    loadRide([], 400);
+    steps(2);
+    const idle = Sound.mofa.rate, idleF = Sound.mofa.freq, on = Sound.mofa.gain > 0;
+    press("right"); steps(240);
+    const fast = Sound.mofa.rate, fastF = Sound.mofa.freq;
+    release("right"); press("left"); steps(120); release("left"); steps(30);
+    check("ride sound: the mofa idles at a standstill and its pitch rises with speed", on && fast > idle * 2 && fastF > idleF && Math.abs(Sound.mofa.rate - idle) < 4,
+      "rate " + idle.toFixed(1) + " -> " + fast.toFixed(1) + " -> " + Sound.mofa.rate.toFixed(1));
+    const tes = Sound.engineTargets({ kind: "tesla", dist: 100 }).gain, x7 = Sound.engineTargets({ kind: "suv", dist: 100 }).gain;
+    const others = ["suv", "ferrari"].map(function (k) { return Sound.engineTargets({ kind: k, dist: 100 }).gain; });
+    check("ride sound: the Tesla is at most a third as loud as the X7 (and quieter than every other car)",
+      tes <= x7 / 3 + 1e-9 && others.every(function (g) { return tes < g; }), tes.toFixed(3) + " vs " + x7.toFixed(3));
+    // Ferrari: heard while still off screen ahead
+    const fer = Cars.spawn("ferrari", Player.y + Player.h);
+    steps(1);
+    const heard = Sound.engines.some(function (sl) { return sl.id === fer && sl.gain > 0; }) && fer.x > Camera.x + W;
+    check("ride sound: the Ferrari's roar is heard while it is still off screen", heard, "x " + Math.round(fer.x - Camera.x - W) + " px beyond the edge");
+    // paused: mofa and car engines silent
+    Game.setState(STATE.PAUSE); steps(1);
+    const silent = Sound.mofa.gain === 0 && Sound.engines.every(function (sl) { return sl.gain === 0; });
+    Game.state = Game.prevState; Game.prevState = STATE.PAUSE; steps(1);
+    check("ride sound: pausing silences the mofa and the car engines, resuming brings them back", silent && Sound.mofa.gain > 0);
+    // a destroyed car's engine stops
+    for (let i = 0; i < 10 && !fer.dead; i++) damageEnemy(fer, 1, 1);
+    steps(2);
+    check("ride sound: a destroyed car's engine sound stops", fer.dead && !Sound.engines.some(function (sl) { return sl.id === fer && sl.gain > 0; }));
+    // level over: silent
+    Game.completeLevel(); steps(1);
+    check("ride sound: at the level end the mofa falls silent", Sound.mofa.gain === 0);
+    Input.reset(); Game.enemies = [];
+  });
+
+  safe("ride stretches", function () {
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    const L = Game.level, st = L.stretches;
+    const names = st.map(function (q) { return q.name; }).join(",");
+    check("stretches: lake, village, climb, club in that order, each with its own backdrop",
+      names === "bg_lake,bg_village,bg_climb,bg_club" && st.every(function (q, k) { return q.img && (k === 0 || q.x0 > st[k - 1].x0); }), names);
+    // every stretch has both props, and the props look different in every stretch
+    const props = st.map(function (q) { return Game.signs.filter(function (g) { return (g.ch === "(" || g.ch === ")") && L.stretchAt(g.tx * TILE) === st.indexOf(q); }).map(function (g) { return g.ch; }); });
+    const kinds = {}; PROP_KINDS.forEach(function (k) { kinds[k[0]] = kinds[k[1]] = 1; });
+    check("stretches: each stretch has its roadside props ( and ), 8 different looks in all",
+      props.every(function (pp) { return pp.indexOf("(") >= 0 && pp.indexOf(")") >= 0; }) && Object.keys(kinds).length === 8, props.map(function (pp) { return pp.join(""); }).join(" | "));
+    // the backdrop blends over a screen: crossing a border in 2-px steps, no frame jumps like a hard cut
+    function bgAt(camX) { L.drawBackground(camX, Camera.y); return ctx.getImageData(0, HUD_H, W, VIEW_H).data; }
+    function diff(a, b) { let d = 0; for (let i = 0; i < a.length; i += 16) d += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); return d / (a.length / 16); }
+    // blend weight of each frame between the two stretches drawn at the same camera: it must rise
+    // from 0 to 1 in small steps (the parallax pixel shift itself is not a cut)
+    let worst = 0, w0 = 1, w1 = 0;
+    for (let k = 1; k < st.length; k++) {
+      const b = st[k].x0;
+      let prevW = null;
+      for (let x = b - W - 16; x <= b + 16; x += 4) {
+        L.drawStretch(st[k - 1], x, Camera.y); const A = ctx.getImageData(0, HUD_H, W, VIEW_H).data;
+        L.drawStretch(st[k], x, Camera.y); const B = ctx.getImageData(0, HUD_H, W, VIEW_H).data;
+        const F = bgAt(x), dA = diff(F, A), dB = diff(F, B), w = dA / Math.max(1e-6, dA + dB);
+        if (x < b - W) w0 = Math.min(w0, 1 - w); else if (x > b) w1 = Math.max(w1, 1 - w);
+        if (prevW !== null) worst = Math.max(worst, Math.abs(w - prevW));
+        prevW = w;
+      }
+    }
+    check("stretches: no hard cut at a border (the blend moves at most 5% per 4 px over one screen)",
+      worst <= 0.05 && w0 > 0.99 && w1 < 0.01, "largest step " + (worst * 100).toFixed(1) + "%");
+  });
+
+  safe("ride art", function () {
+    function outlined(c) {
+      const w = c.width, h = c.height, d = c.getContext("2d").getImageData(0, 0, w, h).data;
+      function a(x, y) { return x < 0 || y < 0 || x >= w || y >= h ? 0 : d[(y * w + x) * 4 + 3]; }
+      let bad = 0, outl = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (!d[i + 3]) continue;
+        if (d[i] === OUTLINE_COLOR[0] && d[i + 1] === OUTLINE_COLOR[1] && d[i + 2] === OUTLINE_COLOR[2]) { outl++; continue; }
+        if (!a(x - 1, y) || !a(x + 1, y) || !a(x, y - 1) || !a(x, y + 1)) bad++;
+      }
+      return bad === 0 && outl > 10;
+    }
+    const sets = SPR.mofa.frames.concat([SPR.mofa.rider], SPR.driverRun);
+    Object.keys(SPR.cars).forEach(function (k) { const C = SPR.cars[k]; sets.push(C.frames[0], C.frames[1], C.wreck); });
+    check("ride art: mofa, rider, cars, wrecks and runners have dark outlines on every edge", sets.every(function (s) { return outlined(s.r) && outlined(s.l); }), sets.length + " sets");
+    const hs = {}; Object.keys(SPR.cars).forEach(function (k) { hs[k] = SPR.cars[k].frames[0].h; });
+    check("ride art: the X7 the tallest car, Ferrari at most 32 px", hs.ferrari <= 32 && hs.suv > hs.tesla && hs.suv > hs.ferrari, JSON.stringify(hs));
+    // at the mofa sprite's scale (~25 px per metre): 110-130 px long, X7 ~45, Tesla ~36, Ferrari ~30; driver heads >= 8 px
+    const sizes = {}, heads = {};
+    Object.keys(SPR.cars).forEach(function (k) {
+      const S = SPR.cars[k].frames[0]; sizes[k] = S.w + "x" + S.h;
+      const raw = drawCar(k, 0, false), d = raw.getContext("2d").getImageData(0, 0, raw.width, raw.height).data;
+      let top = 99, bottom = -1;
+      for (let y = 0; y < raw.height; y++) for (let x = 0; x < raw.width; x++) {
+        const i = (y * raw.width + x) * 4;
+        if (d[i] === 0xe8 && d[i + 1] === 0xb8 && d[i + 2] === 0x98) { top = Math.min(top, y); bottom = Math.max(bottom, y); }
+      }
+      heads[k] = bottom - top + 1 + 2;                          // skin rows + the two hair rows above
+    });
+    const near = function (v, want) { return Math.abs(v - want) <= 2; };
+    check("ride art: cars at the mofa's scale (110-130 px long, X7 ~45, Tesla ~36, Ferrari ~30 px tall)",
+      ["suv", "tesla", "ferrari"].every(function (k) { const S = SPR.cars[k].frames[0]; return S.w >= 110 && S.w <= 130; }) &&
+      near(hs.suv, 45) && near(hs.tesla, 36) && near(hs.ferrari, 30), JSON.stringify(sizes));
+    check("ride art: every driver's head is at least 8 px high", Object.keys(heads).every(function (k) { return heads[k] >= 8; }), JSON.stringify(heads));
+    const bodies = ["suv", "tesla", "ferrari"].map(function (k) { return CAR_COLORS[k].body; });
+    check("ride art: the three road cars have distinct main colours (plus the white limo)", Object.keys(SPR.cars).length === 4 && CAR_COLORS.limo.body === "#f0eee6" && bodies.filter(function (c, i) { return bodies.indexOf(c) === i; }).length === 3, bodies.join(","));
+    // like the photos: X7 dark grey with a chrome grille; Tesla deep red with a black roof; Ferrari bright red, black rear, yellow calipers
+    function has(k, hex, x0, x1) {
+      const c = drawCar(k, 0, false), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      const t = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+      let n = 0;
+      for (let y = 0; y < c.height; y++) for (let x = Math.round(x0 * c.width); x < Math.round(x1 * c.width); x++) {
+        const i = (y * c.width + x) * 4;
+        if (d[i] === t[0] && d[i + 1] === t[1] && d[i + 2] === t[2]) n++;
+      }
+      return n;
+    }
+    const lum = function (hex) { return (parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16)) / 3; };
+    const x7c = CAR_COLORS.suv, tc = CAR_COLORS.tesla, fc = CAR_COLORS.ferrari;
+    const photoInfo = { x7grille: has("suv", x7c.chrome, 0.9, 1), teslaRoof: has("tesla", "#15171a", 0.2, 0.75), ferrariRear: has("ferrari", "#15171a", 0, 0.15), calipers: has("ferrari", "#f0c010", 0, 1) };
+    check("ride art: like the photos (grey X7 with a chrome grille at the front, deep-red Tesla with a black roof, bright-red Ferrari with a black rear and yellow calipers)",
+      lum(x7c.body) < 90 && Math.abs(parseInt(x7c.body.slice(1, 3), 16) - parseInt(x7c.body.slice(5, 7), 16)) < 20 && photoInfo.x7grille > 20 &&
+      parseInt(tc.body.slice(1, 3), 16) > 2 * parseInt(tc.body.slice(3, 5), 16) && lum(tc.body) < lum(fc.body) && photoInfo.teslaRoof > 20 &&
+      parseInt(fc.body.slice(1, 3), 16) > 200 && photoInfo.ferrariRear > 20 && photoInfo.calipers >= 4, JSON.stringify(photoInfo));
+    // wheel spokes turn with the speed
+    function wheelChanges(speed) {
+      loadRide([], 400); Player.vx = speed; let n = 0, prev = null;
+      for (let i = 0; i < 60; i++) { Mofa.update(Player, DT, Game.level); Player.vx = speed; const f = Math.floor(Player.wheelT) % 4; if (prev !== null && f !== prev) n++; prev = f; }
+      return n;
+    }
+    const slow = wheelChanges(30), fast = wheelChanges(CONFIG.mofaTop), still = wheelChanges(0);
+    check("ride art: the wheels turn in step with the speed", still === 0 && fast > slow * 2 && slow > 0, "still " + still + ", slow " + slow + ", fast " + fast);
+    // muzzle flash at the barrel when firing
+    loadRide([], 300);
+    Film.enabled = false;
+    Player.shootT = 0.07; Game.render();
+    const mx = Math.round(Player.x + Player.w / 2 - MOFA_SPR_W / 2 - Camera.x), my = Math.round(Player.y + Player.h - MOFA_SPR_H - Camera.y + HUD_H);
+    const fp = ctx.getImageData(mx + MOFA_SPR_W + 2, my + MOFA_GUN_Y, 1, 1).data;
+    Film.enabled = true;
+    check("ride art: a muzzle flash shows at the end of the gun barrel when firing", fp[0] === 255 && fp[1] === 246 && fp[2] === 192, Array.from(fp).join(","));
+    // colours sampled from the photo
+    const pal = ASSETS_META.mofaPalette || {}, raw = drawMofa(0).getContext("2d");
+    function hex(x, y) { const d = raw.getImageData(x, y, 1, 1).data; return "#" + [d[0], d[1], d[2]].map(function (v) { return v.toString(16).padStart(2, "0"); }).join(""); }
+    check("ride art: the mofa's red frame, chrome tank, seat and engine colours come from sachs-mofa.jpg",
+      pal.frame && hex(16, 13) === pal.frame && hex(24, 6) === pal.chrome && hex(12, MOFA_SEAT_Y + 1) === pal.seat && hex(17, 17) === pal.engine &&
+      /^#[89a-f]/.test(pal.frame), JSON.stringify(pal) + " " + [hex(16, 13), hex(24, 6), hex(12, MOFA_SEAT_Y + 1), hex(17, 17)].join(","));
+    Input.reset();
+  });
+
+  safe("ride map", function () {
+    const d = LEVEL_DATA[0], m = d.map.join("|");
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    const place = Game.signs.filter(function (s) { return s.ch === "S"; }), dir = Game.signs.filter(function (s) { return s.ch === ">"; }).sort(function (a, b) { return a.tx - b.tx; });
+    const dists = dir.map(function (s) { return Mofa.signText(s); });
+    const metres = dists.map(function (t) { return /KM/.test(t) ? parseFloat(t) * 1000 : parseFloat(t); });
+    const gate = Game.signs.filter(function (s) { return s.ch === "}"; })[0];
+    check("ride map: a WOLLERAU place sign, at least two TC WOLLERAU direction signs counting down, the club gate at the exit",
+      place.length >= 1 && Mofa.signText(place[0]) === "WOLLERAU" && dir.length >= 2 && metres.every(function (v, i) { return i === 0 || v < metres[i - 1]; }) &&
+      gate && Game.exit && Game.exit.x >= gate.tx * TILE && Game.exit.x < (gate.tx + 4) * TILE, dists.join(" > "));
+    check("ride map: 640 x 22 tiles, theme road, four stretches, the climb in the last third, 3 checkpoints, 8-10 fans, no weapon pickups",
+      d.map[0].length === 640 && d.map.length === 22 && d.theme === "road" && d.bg === "bg_lake" && (m.match(/C/g) || []).length === 3 &&
+      /^0 bg_lake, 160 bg_village, 320 bg_climb, 480 bg_club$/.test(d.stretches) && +d.climb.split("-")[0] >= 640 * 2 / 3 - 8 &&
+      (m.match(/[Fe\]]/g) || []).length >= 8 && (m.match(/[Fe\]]/g) || []).length <= 10 && m.indexOf("w") < 0, d.map[0].length + "x" + d.map.length);
+    check("ride map: ramps, the BMW X7, Tesla and Ferrari triggers, every wave kind, the limo, WD-40 cans; no road obstacles, no BMW sedan trigger",
+      ["/", "1", "3", "4", "5", "6", "7", "8", "9", "{"].every(function (c) { return m.indexOf(c) >= 0; }) && (m.match(/9/g) || []).length === 1 && ["!", "_", ":", "2"].every(function (c) { return m.indexOf(c) < 0; }));
+    // decoration doesn't block: at top speed through the whole road (no cars, no hazards, god mode)
+    Game.enemies = []; Game.hazards = []; Cars.triggers = [];
+    Game.godMode = true; press("right");
+    let stalls = 0, last = Player.x;
+    for (let i = 0; i < 60 * 120 && Game.state === STATE.PLAY; i++) { steps(1); if (i > 200 && Player.x <= last) stalls++; last = Player.x; }
+    release("right"); Game.godMode = false;
+    check("ride map: signs, guard rails, lamps and the gate don't block the mofa; the gate ends the ride", stalls === 0 && Game.state === STATE.LEVEL_COMPLETE,
+      "state " + Game.state + ", stalls " + stalls);
+    Input.reset();
+  });
+
+  safe("traffic waves", function () {
+    // ride past a trigger at column 12 and watch which cars come, where and when
+    function wave(ch, sec) {
+      loadRide([[12, 9, ch]], 300); Game.godMode = true;
+      Player.x = 6 * TILE; Player.vx = CONFIG.mofaTop; Camera.snap(Player, Game.level);
+      const seen = [];
+      press("right");
+      let t = 0;
+      steps(Math.round(sec * 60), function () {
+        t += DT;
+        Game.enemies.forEach(function (e) {
+          if (seen.indexOf(e) < 0) { seen.push(e); e._t = t; e._ahead = e.x > Player.x; e._x0 = e.x; }
+        });
+      });
+      release("right"); Game.godMode = false;
+      return seen;
+    }
+    const w5 = wave("5", 2.5), s5 = w5.filter(function (e) { return e.type === "suv"; });
+    let gapOk = false;
+    if (s5.length === 2) {
+      const a = Math.min(s5[0].x, s5[1].x), b = Math.max(s5[0].x, s5[1].x);
+      gapOk = b - a >= 120;
+    }
+    check("waves: 5 is an X7 convoy, two X7s ahead of Buck, the second further ahead",
+      s5.length === 2 && s5.every(function (e) { return e._ahead && e.awake; }) && gapOk, s5.map(function (e) { return Math.round(e._x0 - Player.x); }).join(","));
+    const w6 = wave("6", 2.5), s6 = w6.filter(function (e) { return e.type === "tesla"; });
+    check("waves: 6 is two Teslas from behind, about 0.8 s apart",
+      s6.length === 2 && s6.every(function (e) { return !e._ahead; }) && Math.abs(Math.abs(s6[1]._t - s6[0]._t) - 0.8) < 0.1, s6.map(function (e) { return e._t.toFixed(2); }).join(","));
+    const w7 = wave("7", 2.5), s7 = w7.filter(function (e) { return e.type === "ferrari"; });
+    check("waves: 7 is a Ferrari pair from ahead, about 0.6 s apart",
+      s7.length === 2 && s7.every(function (e) { return e._ahead && e.face === -1; }) && Math.abs(Math.abs(s7[1]._t - s7[0]._t) - 0.6) < 0.1, s7.map(function (e) { return e._t.toFixed(2); }).join(","));
+    const w8 = wave("8", 2.5);
+    const x7 = w8.filter(function (e) { return e.type === "suv"; }), te = w8.filter(function (e) { return e.type === "tesla"; });
+    check("waves: 8 is an X7 ahead and a Tesla from behind",
+      x7.length === 1 && x7[0]._ahead && te.length === 1 && !te[0]._ahead, w8.map(function (e) { return e.type; }).join(","));
+    Cars.reset(); Game.enemies = [];
+  });
+
+  safe("president's limo", function () {
+    // a short road: the limo, the club gate (4x4 from row 6) and the exit behind it
+    function loadGate() {
+      loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90);
+      return Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    }
+    let L = loadGate();
+    check("limo: parked 60 px before the club gate, 300 x 56 (taller than the X7), 30 hits",
+      L && Math.abs(60 * TILE - (L.x + L.w) - 60) <= 1 && L.w === 300 && L.h === 56 && L.h > CAR_INFO.suv.h && L.hp === 30, L ? Math.round(60 * TILE - (L.x + L.w)) + " px" : "no limo");
+    // blocking: full throttle at it for 6 s, hop included; Buck never gets past, gets hurt, the level doesn't end
+    Player.x = L.x - 200; Camera.snap(Player, Game.level); L.corkT = 1e9;     // contact only, no corks
+    let maxRight = -1e9, hurt = false, deaths = 0;
+    press("right");
+    steps(360, function (i) {
+      if (i > 180 && i % 50 === 0) press("jump"); else if (i % 50 === 2) release("jump");   // hops at the limo
+      if (Player.hp < CONFIG.maxHp) hurt = true;
+      if (Player.dead) deaths++;
+      maxRight = Math.max(maxRight, Player.x + Player.w - L.x);
+      Player.hp = CONFIG.maxHp;                              // keep him alive
+    });
+    release("right"); release("jump");
+    check("limo: blocks the road (never passed, even with hops), contact hurts, the level doesn't end",
+      maxRight >= 0 && maxRight <= 2.01 && hurt && deaths === 0 && Game.state === STATE.PLAY && Game.gateLocked(),
+      "overlap " + maxRight.toFixed(1) + ", hurt " + hurt + ", deaths " + deaths + ", state " + Game.state);
+    // corks: every 1-1.5 s while Buck is within a screen (god mode: count only)
+    L = loadGate(); Game.godMode = true;
+    Player.x = L.x - 150; Camera.snap(Player, Game.level);
+    const pops = []; let t = 0, fromRoof = true;
+    steps(600, function () {
+      t += DT;
+      Game.enemyShots.forEach(function (q) { if (q.kind === "cork" && !q._seen) { q._seen = true; pops.push(t); if (q.t === 0 || q.t <= DT) fromRoof = fromRoof && Math.abs(q.x - (L.x + limoX(LIMO_SUNROOF_BX))) < 12; } });
+    });
+    Game.godMode = false;
+    const gaps = pops.slice(1).map(function (x, i) { return x - pops[i]; });
+    check("limo: the corks come from the sunroof", pops.length >= 3 && fromRoof);
+    check("limo: the president pops a champagne cork every 1-1.5 s", gaps.length >= 3 && gaps.every(function (g) { return g >= 0.98 && g <= 1.55; }),
+      gaps.map(function (g) { return g.toFixed(2); }).join(","));
+    // a cork costs 1 health; a cork can be shot down
+    L = loadGate(); Player.x = L.x - 300; Camera.snap(Player, Game.level); Player.invuln = 0;
+    Game.enemyShots = [{ kind: "cork", x: Player.x + 4, y: Player.y + 8, w: 5, h: 4, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+    const hpC = Player.hp; steps(2);
+    check("limo: a cork hit costs 1 health", Player.hp === hpC - 1, hpC + " -> " + Player.hp);
+    L = loadGate(); Player.x = L.x - 300; Camera.snap(Player, Game.level);
+    L.corkT = 99; Game.enemyShots = [];
+    press("fire"); steps(1);
+    const sh = Game.shots[0];
+    Game.enemyShots = [{ kind: "cork", x: sh.x + 50, y: sh.y + sh.h / 2 - 2, w: 5, h: 4, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+    steps(30); release("fire");
+    check("limo: a cork can be shot down", Game.enemyShots.length === 0 && Player.hp === CONFIG.maxHp);
+    // the bar: on screen only
+    L = loadGate();
+    Player.x = 4 * TILE; Camera.snap(Player, Game.level);
+    const off = Game.limoOnScreen();
+    Player.x = L.x - 120; Camera.snap(Player, Game.level);
+    TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+    const bar = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
+    check("limo: the bar THE PRESIDENT'S LIMO shows while the limo is on screen", !off && Game.limoOnScreen() === L && bar.indexOf("THE PRESIDENT'S LIMO") >= 0);
+    // destroyed: 3000 points, the gate opens, riding on ends the level
+    const sc = Game.score;
+    for (let i = 0; i < 30; i++) damageEnemy(L, 1, 1);
+    steps(2);
+    check("limo: destroyed by 30 hits -> 3000 points, the gate opens", L.dead && Game.score - sc === 3000 && !Game.gateLocked(), "score +" + (Game.score - sc));
+    Game.godMode = true; press("right");
+    for (let i = 0; i < 600 && Game.state === STATE.PLAY; i++) steps(1);
+    release("right"); Game.godMode = false;
+    check("limo: after it, the mofa rides through the gate and the level completes", Game.state === STATE.LEVEL_COMPLETE, "state " + Game.state);
+    Input.reset();
+  });
+
+  safe("wd-40", function () {
+    loadRide([[12, 9, "{"]], 120);
+    const can = Game.pickups.filter(function (q) { return q.type === "{"; })[0];
+    Player.hp = CONFIG.maxHp - 3; sounds.length = 0;
+    TEXT_LOG.active = true; TEXT_LOG.items = [];
+    press("right");
+    let puff = false;
+    for (let i = 0; i < 180 && Game.pickups.indexOf(can) >= 0; i++) steps(1);
+    steps(2, function () { Game.render(); if (FX.parts.some(function (q) { return q.wd40; })) puff = true; });
+    release("right");
+    TEXT_LOG.active = false;
+    const texts = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
+    check("wd-40: a 10 x 14 can on the ride; riding through it heals 2, shows WD-40 +2, a spray puff and the health sound",
+      can && can.img.width >= 10 && can.img.height >= 14 && Game.pickups.indexOf(can) < 0 && Player.hp === CONFIG.maxHp - 1 &&
+      texts.indexOf("WD-40 +2") >= 0 && puff && sounds.indexOf("health") >= 0, "hp " + Player.hp + ", puff " + puff);
+    const m = LEVEL_DATA[0].map.join("");
+    check("wd-40: the ride map has WD-40 cans and no Rivella or Cervelat", m.indexOf("{") >= 0 && m.indexOf("h") < 0 && m.indexOf("s") < 0);
+  });
+
+  safe("ride play-through", function () {
+    // the whole ride as the harness plays it: god mode, holding Right and Fire, until the tally
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Game.godMode = true; Input.reset();
+    press("right"); press("fire");
+    let t = 0, limoT = -1, maxCars = 0;
+    while (Game.state === STATE.PLAY && t < 60 * 180) {
+      steps(1); t++;
+      if (limoT < 0 && !Game.gateLocked()) limoT = t;
+      maxCars = Math.max(maxCars, Game.enemies.filter(function (e) { return e.T.car && e.awake && !e.dead; }).length);
+    }
+    release("right"); release("fire"); Game.godMode = false;
+    check("ride play-through: holding Right and Fire (god mode) destroys the limo and reaches the tally",
+      Game.state === STATE.LEVEL_COMPLETE && limoT > 0, "state " + Game.state + " after " + (t / 60).toFixed(0) + " s, limo down at " + (limoT / 60).toFixed(0) + " s, up to " + maxCars + " cars at once");
+    check("ride play-through: the ride takes 70-150 s at full throttle", t >= 70 * 60 && t <= 150 * 60, (t / 60).toFixed(0) + " s");
+    Input.reset();
+  });
+
+  safe("machine gun sound", function () {
+    loadRide([], 300); sounds.length = 0;
+    Game.shots = []; let n = 0;
+    press("fire");
+    steps(60, function () { Game.shots.forEach(function (q) { if (!q.c) { q.c = true; n++; } }); });
+    release("fire");
+    const mg = sounds.filter(function (x) { return x === "mg"; }).length;
+    check("mg sound: holding Fire on the mofa plays a machine-gun report with every volley (>= 8/s), never the blaster's sound",
+      n >= 16 && mg * 2 === n && sounds.indexOf("shot") < 0, n + " shots, " + mg + " mg");
+    load(grid(40, 12, [[3, 9, "P"]])); sounds.length = 0;
+    press("fire"); steps(30); release("fire");
+    check("mg sound: the blaster on foot keeps its own sound", sounds.indexOf("shot") >= 0 && sounds.indexOf("mg") < 0, sounds.join(","));
+  });
+
+  safe("limo ladies", function () {
+    // heads in proportion to Buck on the mofa: the ladies' and the president's heads at least 8 px,
+    // measured like the drivers' (skin rows + the hair/hat rows above)
+    (function () {
+      const raw = drawCar("limo", 0, false), d = raw.getContext("2d").getImageData(0, 0, raw.width, raw.height).data, pad = 0, sizes = [];
+      LIMO_SPEAKERS.forEach(function (q) {
+        const cx = limoX(q.bx) + pad;
+        let top = 1e9, bottom = -1;
+        for (let y = 0; y < raw.height; y++) for (let x = cx - 8; x <= cx + 8; x++) {
+          const i = (y * raw.width + x) * 4;
+          if (d[i] === 0xe8 && d[i + 1] === 0xb8 && d[i + 2] === 0x98) { top = Math.min(top, y); bottom = Math.max(bottom, y); }
+        }
+        sizes.push(bottom - top + 1 + 2);
+      });
+      check("limo ladies: the ladies' and the president's heads are at least 8 px, in proportion to Buck", sizes.every(function (h) { return h >= 8; }), sizes.join(","));
+    })();
+    const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN)\b/;
+    const all = LIMO_LADY_LINES.concat(PRESIDENT_LINES);
+    const long = all.filter(function (l) { return l.length > 20; });
+    const glyph = all.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("limo ladies: at least 12 lady lines; all limo lines at most 20 characters, drawable, not explicit",
+      LIMO_LADY_LINES.length >= 12 && !long.length && !glyph.length && !all.some(function (l) { return bad.test(l); }),
+      LIMO_LADY_LINES.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+    // the ladies are drawn at the windows: their hat colours in the limo sprite, not in the wreck
+    const has = function (img, rgb) {
+      const c = makeCanvas(img.width, img.height), g = c.getContext("2d"); g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, img.width, img.height).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i] === rgb[0] && d[i + 1] === rgb[1] && d[i + 2] === rgb[2] && d[i + 3] === 255) return true;
+      return false;
+    };
+    check("limo ladies: two ladies at the side windows (pink hat, pearls), gone in the wreck",
+      has(SPR.cars.limo.frames[0].r, [0xe0, 0x70, 0xa0]) && has(SPR.cars.limo.frames[0].r, [0xf8, 0xf8, 0xf0]) && !has(SPR.cars.limo.wreck.r, [0xe0, 0x70, 0xa0]));
+    // speech on screen: 20 s with the limo in view, Buck kept back (god mode)
+    loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90); Game.godMode = true;
+    const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    Player.x = L.x - 150; Camera.snap(Player, Game.level);
+    let prev = null, starts = [], speakers = {}, t = 0, twoAtOnce = false, anchorOk = true;
+    steps(60 * 20, function () {
+      t += DT; Player.x = L.x - 150; Player.vx = 0;
+      const talking = Game.enemies.filter(function (e) { return e.bubble && !e.dead; });
+      if (talking.length > 1) twoAtOnce = true;
+      if (L.bubble && L.bubble !== prev) {
+        starts.push(t); speakers[L.bubble.dx] = (speakers[L.bubble.dx] || 0) + 1;
+        if (LIMO_SPEAKERS.map(function (q) { return limoX(q.bx); }).indexOf(L.bubble.dx) < 0) anchorOk = false;
+        const pool = L.bubble.dx === limoX(LIMO_SUNROOF_BX) ? PRESIDENT_LINES : LIMO_LADY_LINES;
+        if (pool.indexOf(L.bubble.text) < 0) anchorOk = false;
+      }
+      prev = L.bubble;
+    });
+    const gaps = starts.slice(1).map(function (x, i) { return x - starts[i]; });
+    check("limo ladies: a lady or the president speaks every 2-3 s, above the speaker, one bubble at a time",
+      gaps.length >= 5 && gaps.every(function (g) { return g >= 1.95 && g <= 3.1; }) && LIMO_SPEAKERS.every(function (q) { return speakers[limoX(q.bx)]; }) && anchorOk && !twoAtOnce,
+      "gaps " + gaps.map(function (g) { return g.toFixed(1); }).join(",") + " speakers " + JSON.stringify(speakers));
+    // destroyed: no bubble, the president and both ladies run off
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+    steps(2);
+    const ladies = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+    const shown = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
+    check("limo ladies: once the limo is destroyed its bubbles are gone and the ladies run off with the president",
+      L.dead && ladies === 2 && Cars.runners.length >= 4 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
+      ladies + " ladies, " + Cars.runners.length + " runners");
+    Game.godMode = false; Input.reset();
+  });
+
+  safe("mofa smoke", function () {
+    function puffs(sec, gas) {
+      loadRide([], 300); FX.clear(); Player.smokeT = 0;
+      if (gas) press("right");
+      const seen = new Set(); let sizes = 0, lum = 0, n = 0, startOk = true, left = 0;
+      steps(Math.round(sec * 60), function () {
+        left = Player.x + Player.w / 2 - MOFA_SPR_W / 2;
+        FX.parts.forEach(function (p) {
+          if (!p.mofaSmoke || seen.has(p)) return;
+          seen.add(p); n++; sizes += p.size;
+          const m = /rgba\((\d+),(\d+),(\d+)/.exec(p.color); lum += (+m[1] + +m[2] + +m[3]) / 3;
+          if (p.x > left + 2) startOk = false;                // behind the rear wheel (its left edge is at x 2)
+        });
+      });
+      release("right");
+      return { puffs: n / 2, size: sizes / Math.max(1, n), lum: lum / Math.max(1, n), startOk: startOk };
+    }
+    const idle = puffs(1, false), gas = puffs(1, true);
+    check("mofa smoke: at least 3 puffs a second at idle, at least 12 while accelerating, larger and darker",
+      idle.puffs >= 3 && gas.puffs >= 12 && gas.size > idle.size && gas.lum < idle.lum, JSON.stringify({ idle: idle, gas: gas }));
+    // a puff: from behind the rear wheel, rises and drifts back, gone within 1.5 s
+    loadRide([], 300); FX.clear(); Player.smokeT = 0; steps(1);
+    const p = FX.parts.filter(function (q) { return q.mofaSmoke; })[0], x0 = p.x, y0 = p.y;
+    steps(30);
+    const rose = p.y < y0, back = p.x < x0;
+    Player.smokeT = 99;                                     // no new puffs
+    steps(60);
+    check("mofa smoke: a puff starts behind the rear wheel, rises, drifts back and fades within 1.5 s",
+      idle.startOk && gas.startOk && rose && back && FX.parts.indexOf(p) < 0 && p.max <= 1.5);
+    Input.reset();
+  });
+
+  safe("twin gun", function () {
+    // a car kept at a fixed gap behind the mofa (its own AI overridden each step)
+    function behind(gap, fire, up) {
+      loadRide([], 300); Game.godMode = true;
+      Player.x = 100 * TILE; Camera.snap(Player, Game.level);
+      const e = makeEnemy("tesla", 0, Player.y + Player.h, Game.level, 1);
+      e.awake = true; e.hp = 999; Game.enemies.push(e);
+      const place = function () { e.x = Player.x - gap - e.w; e.vx = 0; e.state = "x"; };
+      place();
+      Game.shots = []; sounds.length = 0; let back = 0, fwd = 0, fwdUp = 0, backLevel = true; const hp0 = e.hp;
+      if (fire) press("fire");
+      if (up) press("up");
+      steps(60, function () {
+        place();
+        Game.shots.forEach(function (q) {
+          if (q.counted) return;
+          q.counted = true;
+          if (q.vx < 0) { back++; if (q.vy !== 0) backLevel = false; } else { fwd++; if (q.vy < 0) fwdUp++; }
+        });
+      });
+      release("fire"); release("up"); Game.godMode = false;
+      return { back: back, fwd: fwd, fwdUp: fwdUp, backLevel: backLevel, hit: hp0 - e.hp, mg: sounds.filter(function (x) { return x === "mg"; }).length };
+    }
+    const both = behind(30, true);
+    check("twin gun: Fire held for 1 s fires at least 8 shots forward and 8 backward", both.fwd >= 8 && both.back >= 8 && both.fwd === both.back, JSON.stringify(both));
+    check("twin gun: the rear gun hits a car behind", both.hit > 0, JSON.stringify(both));
+    check("twin gun: one machine-gun report per volley", both.mg === both.fwd, JSON.stringify(both));
+    const idle = behind(30, false);
+    check("twin gun: no automatic fire (a car behind, Fire not held: no shots)", idle.fwd === 0 && idle.back === 0, JSON.stringify(idle));
+    const up = behind(30, true, true);
+    check("twin gun: Up angles the front gun only; the rear gun fires level", up.fwdUp === up.fwd && up.fwd >= 8 && up.backLevel && up.back >= 8, JSON.stringify(up));
+    check("twin gun: no rear turret any more", typeof Mofa.rearThreat === "undefined" && typeof Mofa.rearTarget === "undefined" && !SPR.mofa.gunBack);
+    Input.reset(); Game.enemies = [];
+  });
+
+  safe("posh lines", function () {
+    const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN)\b/;
+    const long = POSH_LINES.filter(function (l) { return l.length > 20; });
+    const glyph = POSH_LINES.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("posh lines: at least 12 lines, at most 20 characters, drawable, not explicit",
+      POSH_LINES.length >= 12 && !long.length && !glyph.length && !POSH_LINES.some(function (l) { return bad.test(l); }),
+      POSH_LINES.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+    // a car coming on screen: its driver speaks within 0.5 s, then every 2.5-3.5 s (one car on screen)
+    const firsts = [], gaps = [];
+    ["suv", "tesla", "ferrari"].forEach(function (kind) {
+      loadRide([], 300); Game.godMode = true;
+      Player.x = 60 * TILE; Camera.snap(Player, Game.level);
+      const d = makeEnemy(kind, Camera.x + W + 80, Player.y + Player.h, Game.level, 1);
+      d.awake = true; d.throwT = 99; d.state = "x"; Game.enemies.push(d);
+      let t = 0, seenT = -1, prevB = null, starts = [];
+      steps(60 * 9, function () {
+        t += DT;
+        // drive into view, then stay on screen ahead of Buck
+        d.x = Math.max(Camera.x + 160, Camera.x + W + 80 - t * 200); d.vx = 0; d.state = "x"; d.throwT = 99;
+        if (seenT < 0 && d.x < Camera.x + W) seenT = t;
+        if (d.bubble && d.bubble !== prevB) starts.push(t);
+        prevB = d.bubble;
+      });
+      Game.godMode = false;
+      firsts.push(starts.length ? starts[0] - seenT : 99);
+      starts.slice(1).forEach(function (x, k) { gaps.push(x - starts[k]); });
+    });
+    check("posh lines: every car's driver speaks within 0.5 s of showing up",
+      firsts.every(function (f) { return f >= 0 && f <= 0.52; }), firsts.map(function (f) { return f.toFixed(2); }).join(","));
+    check("posh lines: then again every 2.5-3.5 s while on screen, each bubble about 1.5 s",
+      gaps.length >= 6 && gaps.every(function (g) { return g >= 2.45 && g <= 3.55; }) && CONFIG.driverTalkT === 1.5, gaps.map(function (g) { return g.toFixed(2); }).join(","));
+    // many cars on screen: at most two car bubbles, never overlapping each other or a fan bubble
+    loadRide([[14, 9, "]"], [17, 9, "]"], [20, 9, "]"], [23, 9, "]"]], 300); Game.godMode = true;
+    Player.x = 10 * TILE; Camera.snap(Player, Game.level);
+    const crowd = ["suv", "tesla", "suv", "ferrari"].map(function (k, n) {
+      const e = makeEnemy(k, 0, Player.y + Player.h, Game.level, 1); e.awake = true; Game.enemies.push(e); return e;
+    });
+    let most = 0, clash = 0, frames = 0, both = 0;
+    steps(60 * 12, function (n) {
+      crowd.forEach(function (e, k) { e.x = Camera.x + 30 + k * 70; e.vx = 0; e.state = "x"; e.throwT = 99; });
+      if (n % 3) return;
+      Game.render(); frames++;
+      const cars = Talk.rects(Camera.x, Camera.y), fans = Fans.shown || [];
+      most = Math.max(most, cars.length);
+      if (cars.length === 2) both++;
+      for (let a = 0; a < cars.length; a++) {
+        for (let b = a + 1; b < cars.length; b++) if (rectsTouch(cars[a], cars[b], 0)) clash++;
+        fans.forEach(function (f) { if (rectsTouch(cars[a], f, 0)) clash++; });
+      }
+    });
+    Game.godMode = false;
+    check("posh lines: at most 2 car bubbles at once on the ride, never overlapping each other or a fan's bubble",
+      most === 2 && both > 0 && clash === 0, "most " + most + ", two at once in " + both + "/" + frames + " frames, overlaps " + clash);
+    // other levels keep one bubble at a time (lawyers)
+    load(grid(40, 12, [[3, 9, "P"], [12, 9, "L"], [20, 9, "L"]]));
+    const l1 = Game.enemies[0], l2 = Game.enemies[1];
+    const s1 = Talk.say(l1, LAWYER_LINES, 1.5), s2 = Talk.say(l2, LAWYER_LINES, 1.5);
+    check("posh lines: off the ride, one speech bubble at a time (lawyers)", s1 && !s2 && !l2.bubble);
+    Input.reset(); Game.enemies = [];
+  });
+
+  safe("mofa no climbing", function () {
+    const items = [];
+    for (let y = 4; y <= 9; y++) items.push([5, y, "H"]);
+    loadRide(items);
+    Player.x = 5 * TILE + 8 - Player.w / 2; steps(2);
+    holdFor("up", 0.5);
+    const climbed = Player.climbing;
+    holdFor("down", 0.5);
+    check("mofa: Up and Down neither climb ladders nor kneel", !climbed && !Player.climbing && !Player.kneeling && Player.h === CONFIG.mofaH);
+  });
+
+  safe("mofa respawn", function () {
+    loadRide([[30, 9, "C"]]);
+    press("right"); steps(400); release("right");
+    const cp = Game.checkpoints[0];
+    Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(5);
+    steps(120);
+    const cx = Player.x + Player.w / 2;
+    check("mofa: after a lost life Buck respawns on the mofa at the checkpoint, at a standstill, full health",
+      cp.on && !Player.dead && Player.w === CONFIG.mofaW && Math.abs(cx - (cp.x + cp.w / 2)) < 2 && Player.vx === 0 && Player.hp === CONFIG.maxHp,
+      "cx " + cx.toFixed(1) + " cp " + (cp.x + cp.w / 2) + " vx " + Player.vx + " hp " + Player.hp);
+  });
+
+  safe("ride checkpoints", function () {
+    // the real map: ride over each flag, then lose a life there
+    const cps = LEVEL_DATA[0].map.join("|");
+    let n = 0;
+    for (let k = 0; k < 3; k++) {
+      Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Input.reset();
+      const L = Game.level, cp = Game.checkpoints.slice().sort(function (a, b) { return a.x - b.x; })[k];
+      if (!cp) break;
+      n++;
+      Game.godMode = true;
+      Player.x = cp.x - 80; Mofa.mount(Player); Camera.snap(Player, L);
+      Game.enemies = Game.enemies.filter(function (e) { return e.type === "limo"; });
+      Cars.triggers = Cars.triggers.filter(function (t) { return t.tx * TILE > cp.x + 2 * W; });   // no traffic near the test
+      press("right"); steps(90); release("right");
+      const flagUp = cp.on;
+      steps(40);                                       // roll on a little
+      // a car parked on the flag and the limo hurt a bit, then the life is lost
+      const t = makeEnemy("tesla", cp.x + cp.w / 2, Player.y + Player.h, L, 1); t.awake = true; t.state = "x"; Game.enemies.push(t);
+      const limo = Game.enemies.filter(function (e) { return e.type === "limo"; })[0], limoHp = limo ? (limo.hp -= 3) : 0;
+      const trig = Cars.triggers.length;
+      Game.godMode = false; Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(5);
+      let respawned = false, hpLoss = false;
+      for (let i = 0; i < 240; i++) {
+        steps(1);
+        if (!respawned && !Player.dead && Player.invuln > 0) respawned = true;
+        if (respawned && Player.invuln > 0 && Player.hp < CONFIG.maxHp) hpLoss = true;
+        if (respawned && i > 200) break;
+      }
+      const cx = Player.x + Player.w / 2, ground = Math.min(L.roadTop(Player.x + 4), L.roadTop(Player.x + Player.w - 4));
+      const roadOnScreen = L.roadTop(cx) - Camera.y;
+      const onClimb = L.climb && cx >= L.climb.x0 && cx <= L.climb.x1;
+      check("checkpoints: flag " + (k + 1) + (onClimb ? " (on the climb)" : "") + " goes up when passed; after a lost life the mofa respawns there on the road, standing, full health, the camera on the road",
+        flagUp && respawned && Player.lives === 2 && Math.abs(cx - (cp.x + cp.w / 2)) < 2 && Math.abs(Player.y + Player.h - ground) <= 1 &&
+        Player.w === CONFIG.mofaW && Player.hp === CONFIG.maxHp && roadOnScreen > VIEW_H - 48 && roadOnScreen < VIEW_H,
+        "flag " + flagUp + ", dx " + (cx - (cp.x + cp.w / 2)).toFixed(1) + ", feet-road " + (Player.y + Player.h - ground).toFixed(1) + ", hp " + Player.hp + ", road at " + roadOnScreen.toFixed(0));
+      check("checkpoints: flag " + (k + 1) + ": a safe respawn (the car on the flag gone, no hit while blinking, triggers still used" + (limo ? ", the limo keeps its damage" : "") + ")",
+        Game.enemies.indexOf(t) < 0 && !hpLoss && Cars.triggers.length === trig && (!limo || (Game.enemies.indexOf(limo) >= 0 && limo.hp === limoHp)),
+        "hp loss " + hpLoss);
+    }
+    check("checkpoints: the ride has 3 flags", n === 3 && (cps.match(/C/g) || []).length === 3);
+    // game over on the ride
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Input.reset();
+    Player.lives = 1; Player.hp = 1; Player.invuln = 0; Player.hurt(5);
+    steps(240);
+    check("checkpoints: losing the last life on the ride shows the game-over screen", Game.state === STATE.GAME_OVER, "state " + Game.state);
+    Input.reset();
+  });
+
+  safe("mofa touch", function () {
+    withTouch(true, function () {
+      const L = Touch.layout, P_ = L.pad;
+      const R = [P_.x + P_.r * 0.7, P_.y], Lf = [P_.x - P_.r * 0.7, P_.y], J = [L.jump.x, L.jump.y];
+      loadRide();
+      ptr("pointerdown", 80, R[0], R[1]); steps(180);
+      const fast = Player.vx;
+      ptr("pointermove", 80, Lf[0], Lf[1]); steps(90);
+      const stopped = Player.vx <= 0;
+      ptr("pointerup", 80, Lf[0], Lf[1]);
+      const y0 = Player.y; let minY = y0;
+      ptr("pointerdown", 81, J[0], J[1]); steps(2); ptr("pointerup", 81, J[0], J[1]);
+      for (let i = 0; i < 30; i++) { steps(1); minY = Math.min(minY, Player.y); }
+      check("mofa: touch pad Right/Left and the Jump button ride the mofa", fast > CONFIG.mofaTop * 0.9 && stopped && y0 - minY >= 20,
+        "vx " + fast.toFixed(1) + ", rise " + (y0 - minY).toFixed(1));
+      Input.reset();
+    });
+  });
+
   safe("drop through", function () {
     // Buck stands on a one-way ledge (row 6) above the floor (row 10)
     function onLedge(ch) {
@@ -1007,7 +1860,7 @@ function runTests() {
       (c.hold || []).forEach(press); press("fire"); steps(30); Input.reset();
       res.push(k + " " + Game.stats.shots); if (Game.stats.shots < 2) ok = false;
     });
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true; Game.stats.shots = 0;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true; Game.stats.shots = 0;
     press("fire"); steps(30); Input.reset();
     res.push("disc cutter " + Game.stats.shots); if (Game.stats.shots < 1) ok = false;
     Game.godMode = false;
@@ -1182,24 +2035,27 @@ function runTests() {
   });
 
   safe("level sequence", function () {
-    check("levels: 3 levels + boss arena", LEVEL_DATA.length === 4 && LEVEL_DATA[3].boss === "1", LEVEL_DATA.map(function (l) { return l.name; }).join(" / "));
-    check("levels: order courts, creek, clubhouse, boss",
-      /WOLLERAU/.test(LEVEL_DATA[0].name) && /KREBSBACH/.test(LEVEL_DATA[1].name) && /CLUBHOUSE|HALL/.test(LEVEL_DATA[2].name));
+    check("levels: mofa ride, 3 levels + boss arena (5 reels)", LEVEL_DATA.length === 5 && LEVEL_DATA[0].ride === "1" && LEVEL_DATA[4].boss === "1", LEVEL_DATA.map(function (l) { return l.name; }).join(" / "));
+    check("levels: order ride, courts, creek, clubhouse, boss",
+      /ROAD TO WOLLERAU/.test(LEVEL_DATA[0].name) && /CLAY COURTS/.test(LEVEL_DATA[1].name) && /KREBSBACH/.test(LEVEL_DATA[2].name) && /CLUBHOUSE|HALL/.test(LEVEL_DATA[3].name));
     const types = {};
     LEVEL_DATA.forEach(function (d, i) {
       const s = d.map.join("\n");
       check("level " + (i + 1) + ": has start" + (d.boss ? " and boss" : ", exit and checkpoint"),
         s.indexOf("P") >= 0 && (d.boss ? s.indexOf("X") >= 0 : s.indexOf("E") >= 0 && s.indexOf("C") >= 0));
+      if (d.ride) return;                  // the ride's size and road are checked in "ride map"
       check("level " + (i + 1) + ": size within 150-250 x 15-40 tiles (boss 40x15)",
         d.boss ? d.map[0].length === 40 && d.map.length === 15 : d.map[0].length >= 150 && d.map[0].length <= 250 && d.map.length >= 15 && d.map.length <= 40,
         d.map[0].length + "x" + d.map.length);
       "LKM".split("").forEach(function (c) { if (s.indexOf(c) >= 0) types[c] = true; });
     });
     check("levels: all three enemy types appear", types.L && types.K && types.M);
-    check("levels: creek level has water", LEVEL_DATA[1].map.join("").indexOf("~") >= 0);
+    check("levels: creek level has water", LEVEL_DATA[2].map.join("").indexOf("~") >= 0);
     Player.resetForGame(); Game.score = 0;
-    Game.loadLevel(2); Game.setState(STATE.PLAY); Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
-    check("levels: exiting level 3 starts the boss arena", Game.level.isBoss && Game.levelIndex === 3);
+    Game.loadLevel(3); Game.setState(STATE.PLAY); Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
+    check("levels: exiting the clubhouse (reel 4) starts the boss arena", Game.level.isBoss && Game.levelIndex === 4);
+    Game.loadLevel(0); Game.setState(STATE.PLAY); Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
+    check("levels: the ride (reel 1) leads to the clay courts (reel 2)", Game.levelIndex === 1 && /CLAY COURTS/.test(Game.level.name));
     // render every level once (no exceptions)
     for (let i = 0; i < LEVEL_DATA.length; i++) { Game.loadLevel(i); Game.setState(STATE.PLAY); steps(5); Game.render(); }
     check("levels: every level renders", true);
@@ -1359,7 +2215,7 @@ function runTests() {
   });
 
   safe("court equipment and toxic props", function () {
-    const l1 = LEVEL_DATA[0].map.join(""), l2 = LEVEL_DATA[1].map.join("");
+    const l1 = LEVEL_DATA[1].map.join(""), l2 = LEVEL_DATA[2].map.join("");
     const equip = ["Q", "@", "%", "V", "z", "[", "J", "&"];
     const missing = equip.filter(function (c) { return l1.indexOf(c) < 0; });
     check("courts: every tennis equipment type appears in level 1", missing.length === 0, "missing " + missing.join(""));
@@ -1539,7 +2395,7 @@ function runTests() {
   // ---------------- boss ----------------
   safe("boss", function () {
     Player.resetForGame(); Game.score = 0;
-    Game.loadLevel(3); Game.setState(STATE.BOSS); nearBoss();
+    Game.loadLevel(4); Game.setState(STATE.BOSS); nearBoss();
     check("boss: arena starts with the boss and its health bar", Boss.active && Game.boss === Boss && Boss.hp === CONFIG.bossHp);
     (function () {   // boss drawn with the dark sprite outline
       fillRect(0, 0, W, H, "#ff00ff");
@@ -1599,7 +2455,7 @@ function runTests() {
   });
 
   safe("arena health", function () {
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS);
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS);
     Game.godMode = true;
     Game.pickups = []; Boss.healthTimer = 0.05; steps(5);
     check("boss arena: health pickups respawn", Game.pickups.some(function (p) { return p.type === "h"; }) && Game.arenaHealthSpots.length > 0);
@@ -1634,16 +2490,16 @@ function runTests() {
       return { seq: seq.join(","), digits: digits.join(""), texts: texts, state: Game.state };
     }
     const l2 = phaseSeq(1);
-    check("reel cards: level 2 shows countdown 3-2-1 then REEL 2 with the level name, then play",
-      l2.seq === "leader,card" && l2.digits === "321" && l2.texts.indexOf("REEL 2") >= 0 && l2.texts.indexOf("KREBSBACH") >= 0 && l2.state === STATE.PLAY,
+    check("reel cards: reel 2 shows countdown 3-2-1 then REEL 2 with the level name, then play",
+      l2.seq === "leader,card" && l2.digits === "321" && l2.texts.indexOf("REEL 2") >= 0 && l2.texts.indexOf("CLAY COURTS") >= 0 && l2.state === STATE.PLAY,
       l2.seq + " " + l2.digits);
     check("reel cards: no MISSING REEL before a normal level", l2.texts.indexOf("MISSING REEL") < 0);
-    const boss = phaseSeq(3);
+    const boss = phaseSeq(4);
     check("reel cards: MISSING REEL card before the boss arena's intro", boss.seq === "missing,leader,card" &&
       boss.texts.indexOf("MISSING REEL") >= 0 && boss.texts.indexOf("FINAL REEL") >= 0 && boss.state === STATE.BOSS, boss.seq);
-    Player.resetForGame(); Game.loadLevel(0); steps(20); tap("enter");
+    Player.resetForGame(); Game.loadLevel(1); steps(20); tap("enter");
     check("reel cards: Enter skips straight to play", Game.state === STATE.PLAY && Game.stateT < 0.1);
-    Game.loadLevel(0); steps(20); tap("jump");
+    Game.loadLevel(1); steps(20); tap("jump");
     check("reel cards: Space skips straight to play", Game.state === STATE.PLAY);
   });
 
@@ -1671,7 +2527,7 @@ function runTests() {
     check("title: version inside the screen and clear of badge, PRESS ENTER and the bottom lines",
       vx >= 0 && vy + 8 <= H && hitBox.length === 0, "x " + vx + " y " + vy + " overlaps " + hitBox.join(","));
     // level links: start-reel note bottom left, only for levels 2-4
-    const notes = ["#level=3", "#level=4", "", "#level=1", "#level=9"].map(function (h) { Game.startHash = h; return [h, titleStartNote(), textsOf(STATE.TITLE)]; });
+    const notes = ["#level=3", "#level=5", "", "#level=1", "#level=9"].map(function (h) { Game.startHash = h; return [h, titleStartNote(), textsOf(STATE.TITLE)]; });
     Game.startHash = null;
     check("title: a level link shows STARTS AT REEL 3 / STARTS AT FINAL REEL",
       notes[0][2].indexOf("STARTS AT REEL 3") >= 0 && notes[1][2].indexOf("STARTS AT FINAL REEL") >= 0, notes[0][1] + " / " + notes[1][1]);
@@ -1720,7 +2576,7 @@ function runTests() {
       Sound.toggleMute();
       check("touch texts: sound status without the M key", ts.indexOf("SOUND OFF") >= 0 && ts.indexOf("(M)") < 0, ts);
       // prompts on the other screens
-      Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+      Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
       const pz = textsOf(STATE.PAUSE).join("|");
       check("touch texts: pause says TAP II TO CONTINUE", pz.indexOf("TAP II TO CONTINUE") >= 0 && pz.indexOf("PRESS") < 0, pz);
       Game.setState(STATE.PLAY); Game.completeLevel(); Game.tally.shown = Game.tally.total; Game.tally.done = true;
@@ -2044,7 +2900,7 @@ function runTests() {
     steps(200);
     check("cover: a hero standing on a platform is not hit by the shockwave", onPlat && Player.hp === hp, "on platform " + onPlat + ", hp " + hp + " -> " + Player.hp);
     // summoned crayfish appear inside the camera view, left of the boss
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
     Game.enemies = [];
     Camera.snap(Player, Game.level);
     let inView = true, n = 0;
@@ -2063,7 +2919,7 @@ function runTests() {
   });
 
   safe("wide boss arena", function () {
-    const d = LEVEL_DATA[3], m = d.map, Hh = m.length, Ww = m[0].length;
+    const d = LEVEL_DATA[4], m = d.map, Hh = m.length, Ww = m[0].length;
     const count = function (ch) { return m.join("").split(ch).length - 1; };
     const platRows = {};
     m.forEach(function (r, y) { if (y < Hh - 2 && r.indexOf("=") >= 0) platRows[y] = true; });
@@ -2072,7 +2928,7 @@ function runTests() {
     check("arena: 4-5 fans", count("F") >= 4 && count("F") <= 5, count("F"));
     const hRows = {}; m.forEach(function (r, y) { if (r.indexOf("h") >= 0) hRows[y] = true; });
     check("arena: health spots on more than one height", Object.keys(hRows).length >= 2, Object.keys(hRows).join(","));
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
     Camera.snap(Player, Game.level);
     check("arena: hero starts in the left screen, boss in the right one", Player.x < W && Boss.ox >= W && Ww === 40,
       "hero " + Math.round(Player.x) + ", boss " + Math.round(Boss.ox));
@@ -2096,11 +2952,11 @@ function runTests() {
   });
 
   safe("level links", function () {
-    // parser: "level=N" as its own fragment parameter, N = 1..4 -> 0-based index; anything else -> 0
-    const cases = [["#level=1", 0], ["#level=4", 3], ["#debug&level=3", 2], ["#level=2&debug", 1], ["#level=0", 0], ["#level=5", 0],
+    // parser: "level=N" as its own fragment parameter, N = 1..5 (reel) -> 0-based index; anything else -> 0
+    const cases = [["#level=1", 0], ["#level=5", 4], ["#level=4", 3], ["#debug&level=3", 2], ["#level=2&debug", 1], ["#level=0", 0], ["#level=6", 0],
       ["#level=x", 0], ["#xlevel=3", 0], ["#level=3x", 0], ["", 0], ["#test", 0], [null, 0]];
     const bad = cases.filter(function (c) { return startLevelFromHash(c[0]) !== c[1]; });
-    check("level links: #level=N parsed (1..4), invalid values ignored", bad.length === 0,
+    check("level links: #level=N parsed (1..5), invalid values ignored", bad.length === 0,
       bad.map(function (c) { return c[0] + " -> " + startLevelFromHash(c[0]); }).join(", "));
     // starting a game from the title with a link
     function startFrom(hash) {
@@ -2115,11 +2971,13 @@ function runTests() {
       const texts = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
       return { idx: Game.levelIndex, state: Game.state, texts: texts, score: Game.score, hp: Player.hp, lives: Player.lives, weapon: Player.weapon };
     }
-    const boss = startFrom("#level=4");
-    check("level links: #level=4 starts the boss arena (MISSING REEL, FINAL REEL) fresh, with the disc cutter",
-      boss.idx === 3 && boss.state === STATE.BOSS && boss.texts.indexOf("MISSING REEL") >= 0 && boss.texts.indexOf("FINAL REEL") >= 0 &&
+    const boss = startFrom("#level=5");
+    check("level links: #level=5 starts the boss arena (MISSING REEL, FINAL REEL) fresh, with the disc cutter",
+      boss.idx === 4 && boss.state === STATE.BOSS && boss.texts.indexOf("MISSING REEL") >= 0 && boss.texts.indexOf("FINAL REEL") >= 0 &&
       boss.score === 0 && boss.hp === CONFIG.maxHp && boss.lives === 3 && boss.weapon === "cutter",
       JSON.stringify({ idx: boss.idx, state: boss.state, score: boss.score, hp: boss.hp, lives: boss.lives, weapon: boss.weapon }));
+    const old4 = startFrom("#level=4");
+    check("level links: old boss link #level=4 now starts the clubhouse (reel 4)", old4.idx === 3 && old4.state === STATE.PLAY && /CLUBHOUSE/.test(Game.level.name), old4.idx + " " + old4.state);
     const l2 = startFrom("#level=2");
     check("level links: #level=2 starts REEL 2 with the blaster", l2.idx === 1 && l2.state === STATE.PLAY && l2.texts.indexOf("REEL 2") >= 0 && l2.weapon === "blaster",
       l2.idx + " " + l2.state + " " + l2.weapon);
@@ -2134,12 +2992,12 @@ function runTests() {
     const again = startFrom("#level=3");
     check("level links: the next game starts at the linked level again", again.idx === 2 && again.state === STATE.PLAY, again.idx + " " + again.state);
     const plain = startFrom("");
-    check("level links: without a link, level 1 starts", plain.idx === 0 && plain.state === STATE.PLAY, plain.idx);
+    check("level links: without a link, reel 1 (the mofa ride) starts", plain.idx === 0 && plain.state === STATE.PLAY && Game.level.name === "THE ROAD TO WOLLERAU", plain.idx);
     Game.startHash = null; Input.reset(); FX.clear();
   });
 
   safe("boss summon limit", function () {
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
     check("summons: a fresh boss fight starts with no summons used", Boss.summons === 0);
     Boss.log = []; Boss.state = "idle"; Boss.t = 0.01;
     // run at least 6 full attack cycles, health held up so the fight goes on
@@ -2161,14 +3019,14 @@ function runTests() {
       after.length >= 4 && after.every(function (a, i) { return i === 0 || a !== after[i - 1]; }) && after.every(function (a) { return a === "slam" || a === "bubbles"; }), after.join(","));
     check("summons: a respawn in the arena does not reset the count", deathDone && Game.level.isBoss && Boss.summons === summonsAtDeath && nSum === CONFIG.bossSummons,
       "at death " + summonsAtDeath + ", now " + Boss.summons);
-    Game.loadLevel(3); Game.setState(STATE.BOSS);
+    Game.loadLevel(4); Game.setState(STATE.BOSS);
     check("summons: loading the arena again allows 3 summons again", Boss.summons === 0);
     Game.godMode = false; Input.reset(); FX.clear();
   });
 
   safe("mega cutter", function () {
     function arena() {
-      Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+      Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
       Game.enemies = []; Game.enemyShots = []; Boss.state = "idle"; Boss.t = 999;
     }
     function upgrade() { return Game.pickups.filter(function (q) { return q.type === "w"; })[0]; }
@@ -2249,7 +3107,7 @@ function runTests() {
   safe("boss reveal", function () {
     // into the arena through its reel intro card, as in a real game
     function enterArena() {
-      Player.resetForGame(); Game.loadLevel(3);
+      Player.resetForGame(); Game.loadLevel(4);
       let g = 0;
       while (Game.state === STATE.LEVEL_INTRO && g++ < 900) steps(1);
     }
@@ -2289,7 +3147,7 @@ function runTests() {
 
   safe("boss camera", function () {
     const sxOf = function () { return Player.x + Player.w / 2 - Camera.x; };
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
     Game.enemies = []; Game.enemyShots = []; Boss.state = "idle"; Boss.t = 999;
     check("boss camera: the arena anchors Buck near the left edge", Camera.anchorX === CONFIG.bossCamX && CONFIG.bossCamX >= 60 && CONFIG.bossCamX <= 100);
     // walk right along the floor from column 8 to column 20 (crates are jumped over)
@@ -2317,7 +3175,7 @@ function runTests() {
     Player.x = 30 * TILE; Player.y = 13 * TILE - Player.h; Camera.snap(Player, Game.level);
     check("boss camera: at the right end the camera stops at the map edge", Camera.x === Game.level.pxW - W && sxOf() > 100, Camera.x + ", screen x " + Math.round(sxOf()));
     // level 1 keeps the centred camera
-    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
     Player.x = 40 * TILE; Camera.snap(Player, Game.level);
     let off = 0;
     press("right");
@@ -2374,9 +3232,10 @@ function runTests() {
     load(grid(40, 12, [[2, 9, "P"], [14, 8, "B"], [14, 9, "B"]]));
     Game.enemies = []; FX.clear();
     Game.enemyShots = [{ kind: "lawbook", code: 1, x: 10 * 16, y: 8 * 16 + 4, w: 10, h: 8, vx: 125, vy: 0, grav: 0, dmg: 1, t: 0 }];
-    steps(60);
+    // most pages in the air at once (they live a random ~1 s, so counting only at the end is flaky)
+    let pages = 0;
+    steps(60, function () { pages = Math.max(pages, FX.parts.filter(function (q) { return q.color === "#f4ecd0" || q.color === "#ffffff"; }).length); });
     const tWall = FX.texts.map(function (t) { return t.str; });
-    const pages = FX.parts.filter(function (q) { return q.color === "#f4ecd0" || q.color === "#ffffff"; }).length;
     check("law books: hitting a wall, a book bursts into pages with an article label", Game.enemyShots.length === 0 && pages >= 4 &&
       tWall.some(function (t) { return LAWBOOK_CODES[1].arts.indexOf(t) >= 0; }), tWall.join("|") + ", " + pages + " pages");
     // ... and when it hits Buck
@@ -2519,6 +3378,54 @@ function runTests() {
     check("fans: a floating heart rises and is gone after about 1 s", made && rose && Fans.hearts.length === 0);
   });
 
+  safe("ride fan groups", function () {
+    Player.resetForGame(); Game.loadLevel(0);
+    const fs = Fans.list, by = { tennis: [], activist: [], rocker: [] };
+    fs.forEach(function (f) { by[f.style].push(f); });
+    const span = function (g) { const xs = g.map(function (f) { return f.tx; }); return Math.max.apply(null, xs) - Math.min.apply(null, xs); };
+    check("ride fans: 4-5 environmental activists and 4-5 rocker chicks, each group together, no tennis players",
+      by.tennis.length === 0 && by.activist.length >= 4 && by.activist.length <= 5 && by.rocker.length >= 4 && by.rocker.length <= 5 &&
+      span(by.activist) <= 20 && span(by.rocker) <= 20, "activists " + by.activist.length + " (span " + span(by.activist) + "), rockers " + by.rocker.length + " (span " + span(by.rocker) + "), tennis " + by.tennis.length);
+    const otherTennis = [1, 2, 3, 4].every(function (i) { Player.resetForGame(); Game.loadLevel(i); return Fans.list.every(function (f) { return f.style === "tennis"; }); });
+    check("ride fans: the other levels keep their tennis fans", otherTennis);
+    // distinct looks within a group, outlined frames (incl. the kiss)
+    ["activist", "rocker"].forEach(function (st) {
+      const vs = FAN_VARIANTS_BY_STYLE[st].map(function (v) { return JSON.stringify(v); });
+      const distinct = vs.every(function (v, k) { return vs.indexOf(v) === k; }) && vs.length >= 6;
+      let outlined = true;
+      SPR.fansBy[st].forEach(function (set) {
+        FAN_FRAMES.forEach(function (fr) {
+          const c = set[fr].r, w = c.width, h = c.height, d = c.getContext("2d").getImageData(0, 0, w, h).data;
+          const a = function (x, y) { return x < 0 || y < 0 || x >= w || y >= h ? 0 : d[(y * w + x) * 4 + 3]; };
+          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            if (!d[i + 3] || (d[i] === OUTLINE_COLOR[0] && d[i + 1] === OUTLINE_COLOR[1] && d[i + 2] === OUTLINE_COLOR[2])) continue;
+            if (!a(x - 1, y) || !a(x + 1, y) || !a(x, y - 1) || !a(x, y + 1)) outlined = false;
+          }
+        });
+      });
+      check("ride fans: " + st + "s have 6 distinct looks and outlined frames (incl. the kiss)", distinct && outlined, vs.length + " looks");
+    });
+    // their own lines
+    const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN)\b/;
+    ["activist", "rocker"].forEach(function (st) {
+      const L = FAN_LINES_BY_STYLE[st], all = [].concat(L.shout, L.kill, L.trophy, L.checkpoint);
+      const sizes = L.shout.length >= 6 && L.kill.length >= 3 && L.trophy.length >= 3 && L.checkpoint.length >= 3;
+      const okLines = all.every(function (l) { return l.length <= 20 && !bad.test(l) && l.split("").every(function (c) { return FONT_CHARS.indexOf(c) >= 0; }); });
+      check("ride fans: " + st + " lines (>= 6 shout-outs, >= 3 per other occasion), <= 20 chars, drawable, not explicit", sizes && okLines,
+        all.filter(function (l) { return l.length > 20; }).join("|"));
+    });
+    // a car destroyed near the activists: they cheer with an activist line
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    const a0 = Fans.list.filter(function (f) { return f.style === "activist"; })[0];
+    Fans.list.forEach(function (f) { f.bubble = null; });
+    Fans.react(a0.x + FAN_W / 2 + 10, a0.y + 10, "kill");
+    const said = Fans.list.filter(function (f) { return f.bubble && f.style === "activist"; }).map(function (f) { return f.bubble.text; });
+    check("ride fans: a car destroyed near the activists gets an activist kill line",
+      said.length > 0 && said.every(function (t) { return FAN_LINES_ACTIVIST.kill.indexOf(t) >= 0; }), said.join("|"));
+    Game.setState(STATE.TITLE);
+  });
+
   safe("fans in the levels", function () {
     let ok = true; const info = [];
     for (let i = 0; i < LEVEL_DATA.length; i++) {
@@ -2526,7 +3433,7 @@ function runTests() {
       const L = Game.level, fs = Fans.list, n = fs.length;
       const countOk = L.isBoss ? n >= 4 && n <= 5 : n >= 8 && n <= 10;
       const floorOk = fs.every(function (f) { return L.isSolid(f.tx, f.ty + 1) || L.isPlatform(f.tx, f.ty + 1); });
-      const looks = fs.map(function (f) { return f.variant; });
+      const looks = fs.map(function (f) { return (f.style || "tennis") + ":" + f.variant; });   // a look = group + variant
       const distinct = looks.every(function (v, k) { return looks.indexOf(v) === k; });
       if (!(countOk && floorOk && distinct)) ok = false;
       info.push("L" + (i + 1) + ": " + n + (floorOk ? "" : " floor!") + (distinct ? "" : " same-look!"));
@@ -2536,20 +3443,21 @@ function runTests() {
 
   safe("sound coverage", function () {
     const needed = ["shot", "shotUp", "jump", "hit", "explode", "pickup", "health", "hurt", "door", "locked", "slam", "bubble",
-      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle", "crate"];
+      "deflect", "bosshurt", "die", "key", "powerup", "oneup", "checkpoint", "throw", "rev", "mower", "leap", "bigexplode", "grinder", "pullstart", "choke", "cheer", "whistle", "crate", "horn", "mg", "pop"];
     const missing = needed.filter(function (n) { return !allSounds[n]; });
     check("sound: every effect was triggered by its game event", missing.length === 0, "missing: " + missing.join(","));
   });
 
   safe("flow", function () {
-    // Title -> 3 levels -> boss -> victory, using the real game flow (hero teleported to each exit).
+    // Title -> ride + 3 levels -> boss -> victory, using the real game flow (hero teleported to each exit).
     Game.setState(STATE.TITLE); Input.reset();
     tap("enter");
     let ok = true;
-    for (let lv = 0; lv < 3; lv++) {
+    for (let lv = 0; lv < 4; lv++) {
       steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5);
       ok = ok && Game.state === STATE.PLAY && Game.levelIndex === lv;
       const ex = Game.exit;
+      Game.enemies.slice().forEach(function (e) { if (e.type === "limo") damageEnemy(e, 999, 1); });   // the ride's gate opens
       Player.x = ex.x + 3; Player.y = ex.y + 4; steps(2);
       ok = ok && Game.state === STATE.LEVEL_COMPLETE;
       tap("enter"); steps(2); tap("enter");
@@ -2564,20 +3472,32 @@ function runTests() {
       press("fire"); steps(1);
     }
     release("fire"); Game.godMode = false;
-    check("flow: title -> 3 levels -> boss defeated by shooting -> victory", ok && Game.state === STATE.VICTORY,
+    check("flow: title -> ride + 3 levels -> boss defeated by shooting -> victory", ok && Game.state === STATE.VICTORY,
       "state " + Game.state + " after " + (guard / 60).toFixed(0) + "s of boss fight");
     steps(150); tap("enter");
     check("flow: victory returns to title", Game.state === STATE.TITLE);
   });
 
   safe("music tracks", function () {
-    // Track selection follows the game state: rock on the title, Valkyries everywhere else.
+    // Track selection follows the game state: rock on the title, the biker song on the mofa ride,
+    // Valkyries everywhere else.
     Input.reset(); FX.clear();
+    Game.startHash = "";
     Game.setState(STATE.TITLE);
     check("tracks: title screen selects the rock title theme", Sound.track === "title" && Sound.tempo === 1, Sound.track);
     Sound.step = 37;
     tap("enter");
-    check("tracks: Enter on the title switches to the Valkyries from their start",
+    check("tracks: Enter on the title starts the ride's biker rock song from its start on the REEL 1 card",
+      Game.state === STATE.LEVEL_INTRO && Game.level.isRide && Sound.track === "biker" && Sound.step === 0, Sound.track + " step " + Sound.step);
+    steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5);
+    Sound.step = 33; tap("pause"); tap("pause");
+    check("tracks: pause and resume keep the biker song running", Game.state === STATE.PLAY && Sound.track === "biker" && Sound.step === 33, Sound.step);
+    Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(2); steps(100);
+    check("tracks: a lost life on the ride keeps the biker song running", !Player.dead && Sound.track === "biker" && Sound.step === 33, Sound.track + " step " + Sound.step);
+    Game.completeLevel();
+    check("tracks: the ride's tally keeps the biker song", Game.state === STATE.LEVEL_COMPLETE && Sound.track === "biker" && Sound.step === 33);
+    Game.tally.done = true; Game.nextLevel();
+    check("tracks: the REEL 2 card switches to the Valkyries from their start",
       Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 0, Sound.track + " step " + Sound.step);
     steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5);
     Sound.step = 41; tap("pause"); tap("pause");
@@ -2585,14 +3505,49 @@ function runTests() {
     Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
     check("tracks: level complete -> next level keeps the Valkyries running",
       Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 41, Sound.step);
-    Game.loadLevel(3); Game.setState(STATE.BOSS);
+    Game.loadLevel(4); Game.setState(STATE.BOSS);
     Game.setState(STATE.GAME_OVER); Game.stateT = 0; steps(70); tap("enter");
     check("tracks: game over -> title brings back the title theme at normal tempo",
       Game.state === STATE.TITLE && Sound.track === "title" && Sound.tempo === 1 && Sound.step === 0, Sound.track + " tempo " + Sound.tempo);
-    tap("enter"); Game.loadLevel(3); Game.setState(STATE.VICTORY); FX.clear(); steps(150); tap("enter");
+    tap("enter"); Game.loadLevel(4); Game.setState(STATE.VICTORY); FX.clear(); steps(150); tap("enter");
     check("tracks: victory -> title brings back the title theme at normal tempo",
       Game.state === STATE.TITLE && Sound.track === "title" && Sound.tempo === 1, Sound.track + " tempo " + Sound.tempo);
     Input.reset();
+  });
+
+  safe("biker song", function () {
+    const song = SONGS.biker, kinds = {};
+    song.events.forEach(function (ev) { ev.forEach(function (e) { kinds[e.v] = (kinds[e.v] || 0) + 1; }); });
+    const bpm = 60 / (song.sixteenth * 4);
+    check("biker song: one loop has shuffled guitar double stops, power chords, a slide, bass, kick and snare",
+      kinds.dyad >= 32 && kinds.pow >= 8 && kinds.slide >= 2 && kinds.rbass >= 64 && kinds.kick >= 16 && kinds.snare >= 16, JSON.stringify(kinds));
+    check("biker song: its own tempo (not the title's 132 bpm) and a 16-bar loop", Math.abs(bpm - 132) > 5 && song.steps === 16 * 16, bpm.toFixed(0) + " bpm");
+    // swing: off-beat eighths play a third of a sixteenth late (fake clock, recorded event times)
+    const realAc = Sound.ac, realPlay = Sound.playEvent, realTrack = Sound.track, realStep = Sound.step, realNext = Sound.nextTime, realPlaying = Sound.playing, realTempo = Sound.tempo;
+    const clock = { currentTime: 0 }, times = {};
+    try {
+      Sound.ac = clock; Sound.playing = true; Sound.track = "biker"; Sound.step = 0; Sound.nextTime = 0; Sound.tempo = 1;
+      let k = 0;
+      Sound.playEvent = function (e, t) { const st = (Sound.step) % song.steps; if (!(st in times)) times[st] = t; };
+      for (k = 0; k < 40; k++) { clock.currentTime = k * 0.1; Sound.schedule(); }
+    } finally {
+      Sound.ac = realAc; Sound.playEvent = realPlay; Sound.track = realTrack; Sound.step = realStep; Sound.nextTime = realNext; Sound.playing = realPlaying; Sound.tempo = realTempo;
+    }
+    const len = song.sixteenth, d2 = times[2] - 2 * len, d0 = times[0], d4 = times[4] - 4 * len;
+    check("biker song: off-beat eighths are swung by a third of a sixteenth, on-beats stay on the grid",
+      Math.abs(d2 - len / 3) < 1e-6 && Math.abs(d0) < 1e-6 && Math.abs(d4) < 1e-6, "offbeat +" + (d2 * 1000).toFixed(1) + " ms");
+    // mute covers it
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    const m0 = Sound.muted; tap("mute"); const muted = Sound.muted && (!Sound.master || Sound.master.gain.value === 0); tap("mute");
+    check("biker song: M mutes the ride's music", Sound.track === "biker" && muted && Sound.muted === m0);
+    // a game started with #level=2 never plays it
+    Game.startHash = "#level=2"; Game.setState(STATE.TITLE); steps(2);
+    let biker = false;
+    tap("enter");
+    for (let i = 0; i < 400; i++) { steps(1); if (Sound.track === "biker") biker = true; }
+    Game.completeLevel(); Game.tally.done = true; Game.nextLevel(); steps(30); if (Sound.track === "biker") biker = true;
+    check("biker song: a game started with #level=2 never plays the biker song", !biker && Sound.track === "valkyries", Sound.track);
+    Game.startHash = null; Input.reset(); Game.setState(STATE.TITLE);
   });
 
   safe("title mute", function () {
@@ -2643,10 +3598,10 @@ function runTests() {
 
   safe("disc cutter", function () {
     // regular levels keep the blaster
-    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
     check("cutter: levels 1-3 start with the blaster", Player.weapon === "blaster");
     // the boss arena switches to the disc cutter
-    Player.resetForGame(); Game.loadLevel(2); Game.setState(STATE.PLAY); Player.weapon = "mega";
+    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.PLAY); Player.weapon = "mega";
     Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
     check("cutter: the boss arena switches to the disc cutter", Game.level.isBoss && Player.weapon === "cutter", Player.weapon);
     steps(Math.round(introTotal(true) * 60) + 5);
@@ -2691,9 +3646,9 @@ function runTests() {
     check("cutter: a blade hits a crayfish on the ground", cr.hp < crHp || cr.dead, "hp " + crHp + " -> " + cr.hp);
     // kept after respawn in the arena; blaster after respawn in a regular level
     Game.godMode = false;
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Player.respawn();
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Player.respawn();
     const inArena = Player.weapon;
-    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Player.weapon = "mega"; Player.respawn();
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY); Player.weapon = "mega"; Player.respawn();
     check("cutter: kept after respawning in the arena, Mega Blaster still lost in regular levels", inArena === "cutter" && Player.weapon === "blaster", inArena + "/" + Player.weapon);
     Input.reset();
   });
@@ -2778,7 +3733,7 @@ function runTests() {
     function graded(m, f, g, r) { Film.setMode(m); Film.grade(f, g, r); return filmCtx.getImageData(0, 0, W, H).data.slice(); }
     const scenes = [
       function () { Game.setState(STATE.TITLE); Game.stateT = 3; Game.render(); },
-      function () { Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY); Game.godMode = true; Game.render(); },
+      function () { Player.resetForGame(); Game.loadLevel(2); Game.setState(STATE.PLAY); Game.godMode = true; Game.render(); },
       function () { fillRect(0, 0, W, H, "#808080"); },
       function () { for (let i = 0; i < 256; i++) fillRect(i % 32 * 10, Math.floor(i / 32) * 30, 10, 30, "rgb(" + i + "," + ((i * 7) & 255) + "," + (255 - i) + ")"); },
     ];
@@ -2798,7 +3753,7 @@ function runTests() {
       Film.setMode(m);
       Math.random = makeRng(4242);
       Film.flick = 4; Film.scratches = [];
-      Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Game.render();
+      Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY); Game.render();
       const out = [];
       for (let f = 0; f < 12; f++) { Film.apply(); out.push(filmCtx.getImageData(0, 0, W, H).data.slice(), [Film.jx, Film.jy, Film.flick]); }
       Math.random = realRandom;
@@ -2881,12 +3836,12 @@ function runTests() {
     // CPU timings mean nothing on software WebGL (headless SwiftShader): measure the CPU grade there
     const perfMode = Film.mode;
     if (/swiftshader/i.test(filmGLRenderer())) Film.setMode("cpu");
-    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
     const t0 = performance.now();
     for (let i = 0; i < 300; i++) { Game.update(DT); Game.render(); present(); }
     const ms = (performance.now() - t0) / 300;
     check("performance: update+render+film filter under 8 ms per frame", Film.enabled && ms < 8, ms.toFixed(2) + " ms/frame, film " + Film.enabled + " (" + Film.mode + ")");
-    Player.resetForGame(); Game.loadLevel(3); Game.setState(STATE.BOSS); Game.godMode = true;
+    Player.resetForGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Game.godMode = true;
     const t1 = performance.now();
     for (let i = 0; i < 300; i++) { Game.update(DT); Game.render(); present(); }
     const ms2 = (performance.now() - t1) / 300; Game.godMode = false;
@@ -2900,7 +3855,7 @@ function runTests() {
     Film.setMode("gl"); Film.enabled = true;
     const ext = filmGL.getExtension("WEBGL_lose_context");
     ext.loseContext();
-    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY);
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
     let frames = 0;
     for (let i = 0; i < 5; i++) { Game.update(DT); Input.endStep(); Game.render(); present(); frames++; }
     const d = filmCtx.getImageData(150, 110, 20, 20).data; let lit = 0;
@@ -2923,11 +3878,15 @@ function runTests() {
 // Fixed benchmark scenes for the brightness/colour checks (runShot specs).
 const BENCH_SCENES = [
   { name: "title", spec: "title" },
-  { name: "L1 courts", spec: "play,0,40,13,60" },
-  { name: "L2 creek bank", spec: "play,1,12,26,60" },
-  { name: "L3 clubhouse", spec: "play,2,30,12,60" },
-  { name: "L3 hall", spec: "play,2,120,18,60" },
-  { name: "boss arena", spec: "boss,3,3,12,200" },
+  { name: "ride lake", spec: "play,0,30,17,60" },          // one scene per ride stretch (src/levels/1_road.txt "stretches:")
+  { name: "ride village", spec: "play,0,200,17,60" },
+  { name: "ride climb", spec: "play,0,450,15,60" },
+  { name: "ride club", spec: "play,0,600,10,60" },
+  { name: "L1 courts", spec: "play,1,40,13,60" },
+  { name: "L2 creek bank", spec: "play,2,12,26,60" },
+  { name: "L3 clubhouse", spec: "play,3,30,12,60" },
+  { name: "L3 hall", spec: "play,3,120,18,60" },
+  { name: "boss arena", spec: "boss,4,3,12,200" },
 ];
 
 // Screenshot mode for visual checks: #shot=<state>,<level>,<tileX>,<tileY>,<steps>
@@ -2968,6 +3927,72 @@ function runShot(spec) {
     present();
     return;
   }
+  if (what === "vehicles") {           // #shot=vehicles: the mofa (4 wheel frames, with Buck), the cars, wrecks, a runner
+    fillRect(0, 0, W, H, "#7a8a96");
+    fillRect(0, 200, W, 40, "#3a3a40");
+    SPR.mofa.frames.forEach(function (S, i) {
+      const x = 4 + i * 48, y = 4;
+      ctx.drawImage(S.r, x - S.pad, y + 14 - S.pad);
+      if (i === 0) { const R = SPR.mofa.rider; ctx.drawImage(R.r, x + MOFA_RIDER_X - R.pad, y + 14 + MOFA_SEAT_Y - MOFA_HIP_ROW - R.pad); }
+    });
+    ctx.drawImage(SPR.mofa.rider.r, 200, 4);
+    ["suv", "tesla", "ferrari"].forEach(function (k, i) {
+      const C = SPR.cars[k], base = 104 + i * 46;              // each row: car, Buck on the mofa (scale), wreck, mirrored
+      ctx.drawImage(C.frames[0].r, 2 - C.frames[0].pad, base - C.frames[0].h - C.frames[0].pad);
+      const M = SPR.mofa.frames[0], R = SPR.mofa.rider;
+      ctx.drawImage(M.r, 94 - M.pad, base - MOFA_SPR_H - M.pad);
+      ctx.drawImage(R.r, 94 + MOFA_RIDER_X - R.pad, base - MOFA_SPR_H + MOFA_SEAT_Y - MOFA_HIP_ROW - R.pad);
+      ctx.drawImage(C.wreck.r, 140 - C.wreck.pad, base - C.wreck.h - C.wreck.pad);
+      const L = C.frames[1].l;
+      ctx.drawImage(L, 230 - C.frames[0].pad, base - C.frames[0].h - C.frames[0].pad);
+    });
+    SPR.driverRun.forEach(function (S, i) { ctx.drawImage(S.r, 300 + i * 9, 40); });
+    Game.hazards = [Mofa.makeHazard("/", 7, 12)];
+    Mofa.drawHazards(0, 0);
+    present();
+    return;
+  }
+  if (what === "climb") {              // #shot=climb,<column>: a test climb (rows 19 -> 11 over columns 40-99), Buck riding up, an X7 ahead
+    const g = [];
+    for (let y = 0; y < 22; y++) g.push(new Array(170).fill("."));
+    for (let x = 0; x < 170; x++) {
+      const t = Math.min(1, Math.max(0, (x + 0.5 - 40) / 60)), top = Math.ceil(19 - 8 * t * t * (3 - 2 * t));
+      for (let y = top; y < 22; y++) g[y][x] = "#";
+    }
+    g[17][3] = "P";
+    const data = Object.assign({}, LEVEL_DATA[0], { map: g.map(function (r) { return r.join(""); }), climb: "40-99 19-11" });
+    Player.resetForGame(); Game.loadLevel(0, data); Game.setState(STATE.PLAY); Game.godMode = true;
+    Player.x = (+p[1] || 62) * TILE; Player.y = Game.level.roadTop(Player.x + Player.w / 2) - Player.h; Player.vx = 60;
+    const e = makeEnemy("suv", Player.x + 110, 0, Game.level, 1); e.y = Game.level.roadTop(e.x + e.w / 2) - e.h; Game.enemies.push(e);
+    Camera.snap(Player, Game.level);
+    for (let i = 0; i < 40; i++) { Input.simulate("right", true); Game.update(DT); Input.endStep(); }
+    Game.render(); present();
+    return;
+  }
+  if (what === "limo") {               // #shot=limo: the president's limo before the club gate, corks flying
+    const g = [];
+    for (let y = 0; y < 15; y++) g.push(new Array(90).fill("."));
+    for (let x = 0; x < 90; x++) { g[13][x] = "#"; g[14][x] = "#"; }
+    g[12][3] = "P"; g[12][30] = "9"; g[9][60] = "}"; g[12][62] = "E";
+    const data = Object.assign({}, LEVEL_DATA[0], { map: g.map(function (r) { return r.join(""); }), climb: "", stretches: "0 bg_club" });
+    Player.resetForGame(); Game.loadLevel(0, data); Game.setState(STATE.PLAY); Game.godMode = true;
+    const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    Player.x = L.x - 90; Camera.snap(Player, Game.level);
+    L.corkT = 0.2;
+    for (let i = 0; i < 50; i++) { Input.simulate("fire", true); Game.update(DT); Input.endStep(); }
+    Game.render(); present();
+    return;
+  }
+  if (what === "rearshot") {           // #shot=rearshot: the twin gun firing forward and backward, a Tesla behind
+    Player.resetForGame(); Game.loadLevel(0); Game.setState(STATE.PLAY); Game.godMode = true;
+    Player.x = 40 * TILE; Camera.snap(Player, Game.level);
+    const e = makeEnemy("tesla", 0, Player.y + Player.h, Game.level, 1);
+    e.awake = true; e.hp = 999; Game.enemies.push(e);
+    const gap = +p[1] || 24;                                // #shot=rearshot,120: the car still off screen
+    for (let i = 0; i < 14; i++) { e.x = Player.x - gap - e.w; e.state = "x"; Input.simulate("fire", true); Game.update(DT); Input.endStep(); }
+    Game.render(); present();
+    return;
+  }
   if (what === "cheer") {              // #shot=cheer,<level>,<fan>: Buck next to a fan who is cheering him
     Player.resetForGame(); Game.score = 4200; Game.loadLevel(+p[1] || 0);
     Game.setState(Game.level.isBoss ? STATE.BOSS : STATE.PLAY); Game.godMode = true;
@@ -2981,7 +4006,7 @@ function runShot(spec) {
   }
   if (what === "fans") {               // all fan looks: idle, wave, jump, kiss (facing right), 4 looks per row
     fillRect(0, 0, W, H, "#5a8a40");
-    SPR.fans.forEach(function (f, i) {
+    (SPR.fansBy[p[1]] || SPR.fans).forEach(function (f, i) {            // #shot=fans[,activist|rocker]
       FAN_FRAMES.forEach(function (fr, j) {
         ctx.drawImage(f[fr].r, 2 + (i % 4) * 80 + j * 19, 2 + Math.floor(i / 4) * 36);
       });

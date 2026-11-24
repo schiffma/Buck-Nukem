@@ -55,9 +55,12 @@ class PlannerTest(unittest.TestCase):
             self.assertLessEqual(cost, opt * 1.15 + 1e-9, "trial %d: %.2f vs optimum %.2f" % (trial, cost, opt))
 
     def test_real_levels_plan_everything_fast(self):
-        prev_times = {"1_courts.txt": 165, "2_creek.txt": 53, "3_clubhouse.txt": 234}   # old JS autopilot, seconds
+        prev_times = {"2_courts.txt": 165, "3_creek.txt": 53, "4_clubhouse.txt": 234}   # old JS autopilot, seconds
         for f in sorted((SRC / "levels").glob("*.txt")):
-            raw = parse_level(f)["map"]
+            meta = parse_level(f)
+            if meta.get("ride") == "1":         # the mofa ride: not played by the agent (promo starts at reel 2)
+                continue
+            raw = meta["map"]
             its = items_of(raw)
             p = Planner(clean(raw))
             tour = p.plan(find(raw, "P")[0], its, exit_nodes(raw))

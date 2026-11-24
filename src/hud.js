@@ -15,10 +15,10 @@ function drawHud() {
   drawHead(ctx, 120, 0);
   drawText("X" + Math.max(0, Player.lives), 137, 5, "#ffffff");
   // weapon
-  const mega = Player.weapon === "mega", cutter = Player.weapon === "cutter", megaCut = Player.weapon === "megacutter";
+  const mega = Player.weapon === "mega", cutter = Player.weapon === "cutter", megaCut = Player.weapon === "megacutter", mg = Player.weapon === "mofamg";
   ctx.drawImage(megaCut ? SPR.megaCutterIcon : cutter ? SPR.cutterIcon : mega ? SPR.megaIcon : SPR.blasterIcon, 158, 5);
-  drawText(megaCut ? "MEGA CUTTER" : cutter ? "DISC CUTTER" : mega ? "MEGA" : "BLASTER", 171, 5,
-    megaCut ? "#ffb040" : cutter ? "#ff9a30" : mega ? "#60c0ff" : "#c0c4cc");
+  drawText(mg ? "MOFA MG" : megaCut ? "MEGA CUTTER" : cutter ? "DISC CUTTER" : mega ? "MEGA" : "BLASTER", 171, 5,
+    mg ? "#ff6040" : megaCut ? "#ffb040" : cutter ? "#ff9a30" : mega ? "#60c0ff" : "#c0c4cc");
   // keys
   let kx = cutter || megaCut ? 240 : 222;            // "DISC CUTTER" / "MEGA CUTTER" are longer labels
   ["R", "U", "G"].forEach(function (k) {
@@ -29,6 +29,14 @@ function drawHud() {
   // level number
   drawText("L" + (Game.levelIndex + 1), W - 4, 5, "#8890a0", { align: "right" });
 
+  const limo = Game.limoOnScreen && Game.limoOnScreen();
+  if (limo) {                                            // the president's limo (ride mini-boss)
+    const w = 160, x = (W - w) / 2, y = HUD_H + 4;
+    fillRect(x - 1, y - 1, w + 2, 8, "#000");
+    fillRect(x, y, w, 6, "#401010");
+    fillRect(x, y, Math.round(w * Math.max(0, limo.hp) / CONFIG.limoHp), 6, "#e0c040");
+    drawText("THE PRESIDENT'S LIMO", W / 2, y + 9, "#fff0c0", { align: "center", shadow: "#000" });
+  }
   if (Game.boss && Game.boss.active) {
     const b = Game.boss;
     const w = 160, x = (W - w) / 2, y = HUD_H + 4;

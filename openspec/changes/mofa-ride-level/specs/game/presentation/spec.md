@@ -1,0 +1,290 @@
+# Spec Delta
+
+## MODIFIED Requirements
+
+### Requirement: Cheering tennis fans
+Every level SHALL show a crowd of adult female tennis players in the background cheering for Buck: 8–10 in each regular level and 4–5 in the boss arena. On the mofa ride, two groups replace them ("Ride fan groups"). Within a level each SHALL look different. They SHALL idle with a cheer animation, face Buck, and each SHALL talk to him in her own speech bubble with cheeky, flirty lines (suggestive innuendo, never explicit). They are purely decorative.
+
+#### Scenario: Fans in every level
+- **WHEN** any level is loaded
+- **THEN** it contains 8 to 10 fans (4 to 5 in the boss arena), each standing on solid ground or a platform
+
+#### Scenario: All different
+- **WHEN** the fans of one level are compared
+- **THEN** no two of them share the same combination of hair style, hair colour, skin tone, outfit accent and accessory, and the game has at least 14 distinct looks
+
+#### Scenario: Idle cheer and facing Buck
+- **WHEN** a fan is on screen
+- **THEN** her sprite animates (at least two different frames within one second) and she faces the side Buck is on
+
+#### Scenario: Reaction to Buck's success
+- **WHEN** Buck kills an enemy, picks up a trophy or touches a checkpoint within 12 tiles of fans
+- **THEN** every fan within that range plays a jump-and-wave cheer for about one second, the nearest ones show speech bubbles with lines for that occasion, and no two bubbles on screen show the same line
+
+#### Scenario: Shout-outs when Buck walks past
+- **WHEN** Buck comes within 4 tiles of a fan who has not called out to him in the last 8 seconds
+- **THEN** she blows him a kiss, a small heart floats up from her, and she shows a flirty shout-out bubble (such as "HEY HANDSOME!")
+
+#### Scenario: Flirty but not explicit
+- **WHEN** the line pools are checked
+- **THEN** there are at least 30 distinct lines across the occasions (shout-out, kill, trophy, checkpoint), each at most 20 characters and drawable with the game font (including a heart), and none contains explicit sexual words
+
+#### Scenario: Readable bubbles
+- **WHEN** several fans talk at the same time
+- **THEN** at most 3 bubbles are shown, nearest fans first, they don't overlap each other, each fan shows at most one bubble at a time, and every bubble disappears after about 1.5 seconds
+
+#### Scenario: Rate limit
+- **WHEN** several reactions or shout-outs happen within a short time
+- **THEN** the cheer sound plays at most once per 1.5 seconds and the wolf whistle at most once per 4 seconds
+
+#### Scenario: No gameplay effect
+- **WHEN** Buck, his shots or enemies pass a fan
+- **THEN** nothing collides with her, nothing is blocked or damaged, and the level checker's results are unchanged
+
+#### Scenario: Outlined pixel art
+- **WHEN** any fan frame is drawn, including the blow-a-kiss frame
+- **THEN** every opaque edge pixel borders a dark outline pixel, as for the other sprites
+
+#### Scenario: No tennis players on the ride
+- **WHEN** the mofa ride is loaded
+- **THEN** none of its fans wears tennis whites or holds a racket; all of them belong to the two ride groups
+
+### Requirement: Ride of the Valkyries soundtrack
+The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, during play: on level intro cards, in every level except the mofa ride, and in the boss arena. Because browsers block audio until the user interacts, music SHALL start on the first key press, mouse click or touch, or immediately on page load where the browser allows autoplay. The title screen plays the 70s rock title theme, the ride its biker rock song.
+
+#### Scenario: Music starts after first input
+- **WHEN** the player presses any key on the title screen
+- **THEN** the 70s rock title theme starts playing and loops
+
+#### Scenario: Music starts after a click or touch
+- **WHEN** the player's first interaction with the page is a mouse click or a touch on the title screen
+- **THEN** the 70s rock title theme starts playing and loops
+
+#### Scenario: Valkyries play once the game starts
+- **WHEN** a game reaches its first reel other than the mofa ride (the reel 2 intro after the ride, or the first intro of a game started with `#level=2` or later)
+- **THEN** the theme playing before stops and the Ride of the Valkyries theme plays from its start and loops
+
+#### Scenario: Boss music intensifies
+- **WHEN** the boss arena starts
+- **THEN** the theme plays at a faster tempo
+
+
+### Requirement: Themed foreground tiles
+Foreground tiles SHALL match each level's theme, drawn worn and dirty (cracks, stains, rust, grime): asphalt with lane markings, curbs and guard rails for the mofa ride; clay-court surfaces, nets, fences and tennis equipment for TC Wollerau; grass, gravel and toxic red water for the Krebsbach creek; a furnished clubhouse interior (see "Clubhouse interior") followed by walls and floors of the indoor hall for the clubhouse level.
+
+#### Scenario: Creek water
+- **WHEN** the Krebsbach level is shown
+- **THEN** creek water tiles are visible, toxic red and animated
+
+#### Scenario: Worn tile variants
+- **WHEN** a row of identical solid tiles is drawn
+- **THEN** at least two visibly different worn variants of the tile are used so the surface does not repeat uniformly
+
+### Requirement: Title and end screens
+The game SHALL show a title screen styled as a 1970s exploitation-movie poster: the game name "BUCK NUKEM" in large distressed, outlined lettering, a tagline, a fake rating badge, the pixelated portrait from the hero photo, a controls summary, "PRESS ENTER" and the build version in small print. It SHALL also have level-complete, game-over and victory screens; game over and victory SHALL be "THE END" film cards.
+
+#### Scenario: Starting the game
+- **WHEN** the player presses Enter on the title screen
+- **THEN** reel 1, the mofa ride, starts with score 0, full health and 3 lives
+
+#### Scenario: Controls summary
+- **WHEN** the title screen is shown outside touch mode
+- **THEN** the controls list shows Space for jump, X/Ctrl/Alt for fire and Up/Down for climbing and kneeling
+
+#### Scenario: Version shown
+- **WHEN** the title screen is shown
+- **THEN** the version text embedded by the build (for example "V1.0.2" or "V1.0.2-3-GAB12CD3") is drawn in small print in a corner of the poster, fully inside the screen, readable on the poster tint and not overlapping the other title elements
+
+### Requirement: Film-grain post-processing
+Every rendered 320×240 frame SHALL pass through a film filter that applies a warm, saturated colour-print grade, animated grain, occasional vertical scratches, dust specks, a light vignette, a 0–1 pixel frame jitter and slight brightness flicker. The grade SHALL NOT desaturate the image. The filter SHALL keep update and render together under 8 ms per frame on a desktop browser.
+
+#### Scenario: Filter visible
+- **WHEN** two consecutive frames of a static scene are rendered with the filter on
+- **THEN** the frames differ (grain/flicker animate) and the screen corners are darker than the centre
+
+#### Scenario: Grade keeps colour
+- **WHEN** a uniform saturated colour frame (for example pure clay-court orange) is passed through the filter
+- **THEN** the output's average chroma is at least as high as the input's
+
+#### Scenario: Light vignette
+- **WHEN** a uniform mid-grey frame is passed through the filter
+- **THEN** the corners are darker than the centre but at least 70% as bright
+
+#### Scenario: Performance budget
+- **WHEN** 300 frames of the clay-court level are updated and rendered with the filter on
+- **THEN** the average time per frame is under 8 ms
+
+### Requirement: Reel title cards
+Each level intro SHALL be shown as a film-reel title card: a short countdown leader (3, 2, 1) followed by "REEL n" and the level name. Before the boss arena, a "MISSING REEL" gag card SHALL be shown briefly. Pressing Enter or Space SHALL skip the card.
+
+#### Scenario: Level intro
+- **WHEN** level 2 starts
+- **THEN** a countdown leader is shown, then "REEL 2" with the level name, then play begins
+
+#### Scenario: Missing reel before the boss
+- **WHEN** the hero exits the clubhouse level (reel 4)
+- **THEN** a "MISSING REEL" card is shown before the boss arena's intro card
+
+### Requirement: Clubhouse interior
+The clubhouse part of the clubhouse level SHALL be drawn as the furnished interior of the TC Wollerau clubhouse. It SHALL have a wall backdrop of wood panelling and wallpaper instead of the photo, a bar area and a restaurant area, plus club decoration: trophy cabinet, framed photos or posters, tennis rackets on the wall and hanging lamps.
+
+#### Scenario: Interior backdrop
+- **WHEN** the camera shows the clubhouse part of the clubhouse level
+- **THEN** empty space inside the clubhouse is drawn as panelled wall and wallpaper, and the aerial photo is not visible there
+
+#### Scenario: Photo outside the clubhouse
+- **WHEN** the camera shows the indoor hall part of the clubhouse level
+- **THEN** the graded photo backdrop is used as in the other levels
+
+### Requirement: Clubhouse bar
+The clubhouse SHALL contain a bar with a counter, bar stools, Einsiedler beer taps on a chrome tower, an "EINSIEDLER" back-bar sign, a back-bar shelf of bottles, a neon beer sign, a cash register, glasses and beer mats on the counter, three bar guys sitting at the counter and a blonde waitress behind it. The guys and the waitress SHALL be decoration only.
+
+#### Scenario: Bar visible
+- **WHEN** the hero walks through the bar area of the clubhouse level
+- **THEN** the counter, stools, taps, bottle shelf and neon sign are visible, and the neon sign flickers
+
+#### Scenario: Einsiedler taps and sign
+- **WHEN** the bar is drawn
+- **THEN** the tap tower shows 3 tall red-and-white tap handles over a drip tray, and a back-bar sign reads "EINSIEDLER"
+
+#### Scenario: Three different bar guys
+- **WHEN** the bar guys are drawn
+- **THEN** there are three, sitting on stools at the counter, each with a different look, and each lifts his glass now and then (at least two different frames)
+
+#### Scenario: Prost
+- **WHEN** the bar guys clink glasses
+- **THEN** a "PROST!" speech bubble shows for about 1.5 seconds, at most once per 6 seconds for the whole bar
+
+#### Scenario: Blonde waitress behind the counter
+- **WHEN** the waitress is drawn
+- **THEN** she has blonde hair, stays within the counter's columns, is hidden below the waist by the counter, walks between the taps and sometimes pours a beer with a foam animation
+
+#### Scenario: Decoration only
+- **WHEN** the hero, his shots or enemies pass the bar guys or the waitress
+- **THEN** nothing collides with them, nothing is damaged and the level checker's results are unchanged
+
+#### Scenario: Outlined pixel art
+- **WHEN** any bar guy or waitress frame is drawn
+- **THEN** every opaque edge pixel borders a dark outline pixel, as for the other sprites
+
+### Requirement: Clubhouse restaurant
+The clubhouse SHALL contain a restaurant with tables with checked tablecloths, chairs, a menu chalkboard listing CERVELAT, RIVELLA and FONDUE with prices, a kitchen pass-through and potted plants.
+
+#### Scenario: Restaurant visible
+- **WHEN** the hero walks through the restaurant area of the clubhouse level
+- **THEN** tables with chairs, the menu chalkboard and the kitchen pass-through are visible
+
+#### Scenario: Menu board text
+- **WHEN** the menu chalkboard is drawn
+- **THEN** it shows the lines "CERVELAT", "RIVELLA" and "FONDUE" with prices in the pixel font
+
+### Requirement: Tennis court equipment
+The TC Wollerau clay-court level SHALL be furnished with tennis equipment drawn as background decoration: an umpire chair, a ball machine, ball baskets, racket bags, player benches, a scoreboard showing "TC WOLLERAU" and a score, court drag brushes and a water cooler. The equipment SHALL NOT block movement, and the level SHALL remain completable.
+
+#### Scenario: Equipment present
+- **WHEN** the clay-court level is loaded
+- **THEN** every listed equipment type appears at least once in the level
+
+#### Scenario: Equipment does not block
+- **WHEN** the hero walks along the ground past the equipment
+- **THEN** none of it blocks horizontal movement
+
+#### Scenario: Level 1 completable
+- **WHEN** the level reachability check runs on the furnished clay-court level
+- **THEN** the exit, the key and all pickups are reachable from the start
+
+### Requirement: Bright, colourful grindhouse look
+With the film filter on, the title screen and every level SHALL look bright and colourful while keeping the grindhouse film character. Measured on the fixed benchmark scenes of the test suite (title, mofa ride, clay courts, creek, clubhouse and hall, boss arena), each final frame SHALL reach a mean brightness of at least 70 of 255 and a mean chroma of at least 0.25, and no more than 3% of pixels SHALL be clipped to pure white.
+
+#### Scenario: Bright enough
+- **WHEN** any benchmark scene is rendered with the film filter on
+- **THEN** its mean luma (0.299 R + 0.587 G + 0.114 B) is at least 70
+
+#### Scenario: Colourful enough
+- **WHEN** any benchmark scene is rendered with the film filter on
+- **THEN** its mean chroma ((max − min of R, G, B) / 255) is at least 0.25
+
+#### Scenario: No blown-out highlights
+- **WHEN** any benchmark scene is rendered with the film filter on
+- **THEN** at most 3% of its pixels have all three channels at 250 or above
+
+#### Scenario: Grindhouse character kept
+- **WHEN** a benchmark scene is rendered over several frames with the film filter on
+- **THEN** grain, flicker, scratches or dust still make consecutive frames differ, and the corners stay darker than the centre
+
+### Requirement: Start reel note on the title
+When the URL selects a start level other than reel 1, the title screen SHALL show a small note naming it: "STARTS AT REEL N" for reels 2 to 4, "STARTS AT FINAL REEL" for the boss arena. Without a valid level parameter, or with `level=1`, no note SHALL be shown.
+
+#### Scenario: Note shown
+- **WHEN** the title screen is shown with `#level=3`
+- **THEN** the text "STARTS AT REEL 3" is drawn in small print, fully inside the screen, readable on the poster tint and not overlapping the other title elements (including the version text)
+
+#### Scenario: Boss arena note
+- **WHEN** the title screen is shown with `#level=5`
+- **THEN** the text "STARTS AT FINAL REEL" is drawn
+
+#### Scenario: No note by default
+- **WHEN** the title screen is shown without a level parameter, with `level=1` or with an invalid value
+- **THEN** no start-reel note is drawn
+
+## ADDED Requirements
+
+### Requirement: Mofa look
+Buck's mofa SHALL be outlined, 3-tone pixel art drawn after `assets/img/sachs-mofa.jpg`: a red frame, a chrome tank, a black seat, a luggage rack, spoked wheels and a two-stroke engine, with a machine gun mounted on the handlebars. Buck SHALL be drawn sitting on it in his usual look. The red, chrome and black colours SHALL be sampled from the photo at build time. The wheels SHALL turn with the speed.
+
+#### Scenario: Colours from the photo
+- **WHEN** the mofa sprite is built
+- **THEN** its frame, tank and seat colours come from the corresponding regions of `assets/img/sachs-mofa.jpg`, and the build fails with an error naming the file if the photo is missing
+
+#### Scenario: Riding frames
+- **WHEN** the mofa moves
+- **THEN** its wheel spokes animate in step with the speed, the gun shows a muzzle flash when firing, and every opaque edge pixel borders a dark outline pixel
+
+### Requirement: Car and driver looks
+The cars SHALL be outlined pixel-art side views drawn after the reference photos in `assets/img/`, at the mofa sprite's scale, recognisable by shape and colour without copied logos or number plates: a BMW X7 (`car-bmw-x7.webp`), a Tesla (`car_tesla.jpg`) and a Ferrari (`car_ferrari.avif`). Each SHALL show a posh driver in the side window. The wheels SHALL turn; a destroyed car SHALL leave a burning wreck that fades.
+
+#### Scenario: Like the photos
+- **WHEN** the three car sprites are drawn
+- **THEN** the X7 is a tall, boxy dark-grey metallic SUV with a large chrome twin-kidney grille, roof rails and dark window trim; the Tesla a smooth deep-red sedan with a black glass roof, no grille and aero wheels; the Ferrari a low, bright red mid-engine coupe with a black rear, side air intakes and yellow brake calipers
+
+#### Scenario: Three distinct cars
+- **WHEN** the three car sprites are drawn
+- **THEN** they differ in height and length (the X7 is the tallest, the Ferrari the lowest at no more than 32 pixels), their main colours differ, and every opaque edge pixel borders a dark outline pixel
+
+#### Scenario: In proportion to Buck
+- **WHEN** a car is drawn next to Buck on the mofa
+- **THEN** at the mofa sprite's scale of about 25 pixels per metre it is 110 to 130 pixels long, the X7 about 45 pixels tall, the Tesla about 36 and the Ferrari about 30, and the driver's head is at least 8 pixels high
+
+### Requirement: Road scenery
+The ride SHALL show the road along Lake Zurich up to TC Wollerau, stretch by stretch (see "Ride stretches"): parallax photo backdrops in the game's graded look, an asphalt road with lane markings, curbs and guard rails, Swiss road signs (a "WOLLERAU" place sign and "TC WOLLERAU" direction signs counting down the distance), and the club gate with a "TC WOLLERAU" sign at the end. Scenery SHALL be decoration only and SHALL NOT block the mofa.
+
+#### Scenario: Signs on the way
+- **WHEN** the ride level is loaded
+- **THEN** it contains a "WOLLERAU" place sign, at least two "TC WOLLERAU" direction signs with decreasing distances, and the club gate at the exit
+
+#### Scenario: Decoration only
+- **WHEN** the mofa rides past signs, guard rails and the gate's posts
+- **THEN** none of them blocks it or hurts Buck
+
+### Requirement: Ride fan groups
+On the mofa ride, the background fans SHALL be two groups of adult women instead of tennis players: environmental activists and rocker chicks, 4 to 5 of each, each group standing together. They SHALL behave like the other fans (cheer animation, face Buck, blow a kiss, speech bubbles, decoration only) but look and talk like their group. Their lines SHALL stay cheeky and flirty, never explicit.
+
+#### Scenario: Two groups
+- **WHEN** the mofa ride is loaded
+- **THEN** it has 4 to 5 environmental activists standing together and 4 to 5 rocker chicks standing together, 8 to 10 fans in all, each on the ground or a platform
+
+#### Scenario: Activist look
+- **WHEN** an environmental activist is drawn
+- **THEN** she wears 70s protest clothes (a green parka or poncho, bell-bottom jeans, a flower or headband) and holds up a protest sign with a symbol (a crossed-out car, a leaf or a globe), and no two activists share the same look
+
+#### Scenario: Rocker look
+- **WHEN** a rocker chick is drawn
+- **THEN** she wears a black leather jacket with studs, a band T-shirt, big teased hair and boots, makes the devil-horns hand sign when she cheers, and no two rocker chicks share the same look
+
+#### Scenario: Group lines
+- **WHEN** a ride fan calls out to Buck, cheers a destroyed car, a trophy or a checkpoint
+- **THEN** the line comes from her group's own pool for that occasion (activists, for example "BIKES NOT SUVS!", "ONE SUV LESS! ♥"; rockers, for example "BORN TO RIDE! ♥", "BURN, BABY, BURN!"): at least 6 shout-outs and 3 lines per other occasion per group, each at most 20 characters, drawable with the game font, not explicit
+
+#### Scenario: Outlined pixel art
+- **WHEN** any activist or rocker frame is drawn, including the blow-a-kiss frame
+- **THEN** every opaque edge pixel borders a dark outline pixel

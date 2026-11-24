@@ -20,7 +20,7 @@ const SOLID_CH = "#BRUGDd";
 const CRATE_HP = 6;               // breakable crate strength (blaster 1, blade 3, shockwave 3)
 const DECO_CH = "nflbv";
 const PLATFORM_CH = "=aAT";
-const ENTITY_CH = "PLKMXortuhsg+wCEFOW";   // O bar guy, W waitress (clubhouse bar)
+const ENTITY_CH = "PLKMXortuhsg+wCEFOW/13456789S>}e](){";   // / ramp, e ] ride fans (activists, rockers), ( ) roadside props (ride)   // O bar guy, W waitress (clubhouse bar); ! _ : / road hazards (ride)
 
 // Water palettes: clear blue by default, toxic red in the Krebsbach creek.
 const WATER_BLUE = { deep: "rgba(40,110,200,0.88)", mid: "rgba(120,190,255,0.6)", surface: "#cfe8ff",
@@ -34,6 +34,9 @@ const THEMES = {
            plat: "#b87c38", plat2: "#7e5024", water: WATER_TOXIC },
   hall:  { solid: "#a84c30", solid2: "#783222", top: "#dca452", line: "#946430", alt: "#8c9ab0", alt2: "#5c6880",
            plat: "#dc6a2a", plat2: "#904414" },
+  // the mofa ride: asphalt with dashed lane marks, a concrete curb below
+  road:  { solid: "#76544a", solid2: "#5c3e36", top: "#886052", line: "#f0ece0", alt: "#a8a49c", alt2: "#7c786e",
+           plat: "#8c7a5c", plat2: "#5c4c38" },
 };
 
 function buildTileset(themeName) {
@@ -69,6 +72,11 @@ function buildTileset(themeName) {
     }
   }
   function solidBase(g) {
+    if (themeName === "road") {                     // below the road surface: a grassy verge with soil
+      noise(g, "#4e7e2e", "#38601e", 50);
+      g.fillStyle = "#6a4a2a"; for (let i = 0; i < 6; i++) g.fillRect(Math.floor(rng() * 16), 4 + Math.floor(rng() * 12), 2, 1);
+      return;
+    }
     noise(g, T.solid, T.solid2, 40);
     if (themeName === "hall") { // bricks
       g.fillStyle = T.solid2;
@@ -78,6 +86,12 @@ function buildTileset(themeName) {
   function solidTopDeco(g) {
     g.fillStyle = T.top; g.fillRect(0, 0, 16, 4);
     if (themeName === "court") { g.fillStyle = T.line; g.fillRect(0, 1, 16, 1); }
+    else if (themeName === "road") {                // the road surface: a full tile of asphalt, lane dash, concrete curb
+      noise(g, T.solid, T.solid2, 40);
+      g.fillStyle = "#3e3c42"; g.fillRect(0, 0, 16, 1);
+      g.fillStyle = T.line; g.fillRect(3, 5, 9, 1);
+      g.fillStyle = T.alt; g.fillRect(0, 13, 16, 3); g.fillStyle = T.alt2; g.fillRect(0, 15, 16, 1);
+    }
     else if (themeName === "creek") {
       g.fillStyle = T.line;
       for (let x = 0; x < 16; x += 3) g.fillRect(x, 4, 1, 1 + Math.floor(rng() * 3));
@@ -256,7 +270,10 @@ function buildTileset(themeName) {
       for (let i = 0; i < 16; i += 3) { g.fillRect(i, 4, 1, 12); }
       for (let j = 6; j < 16; j += 3) g.fillRect(0, j, 16, 1);
     }),
-    f: tile(function (g) {
+    f: themeName === "road" ? tile(function (g) {            // road: steel guard rail on posts
+      g.fillStyle = "#6a6e72"; g.fillRect(2, 6, 2, 10); g.fillRect(12, 6, 2, 10);
+      g.fillStyle = "#c8ccd0"; g.fillRect(0, 5, 16, 4); g.fillStyle = "#8a8e92"; g.fillRect(0, 7, 16, 1); g.fillStyle = "#e8ecee"; g.fillRect(0, 5, 16, 1);
+    }) : tile(function (g) {
       g.fillStyle = "rgba(40,120,70,0.8)";
       for (let i = -16; i < 16; i += 4) for (let y = 0; y < 16; y++) {
         g.fillRect(i + y, y, 1, 1); g.fillRect(i + 16 - y, y, 1, 1);
@@ -295,6 +312,7 @@ class Level {
     this.theme = data.theme || "court";
     this.bgName = data.bg || "bg_court";
     this.isBoss = data.boss === "1";
+    this.isRide = data.ride === "1";       // the mofa ride (src/ride.js)
     this.rows = data.map.map(function (r) { return r.split(""); });
     this.h = this.rows.length;
     this.w = this.rows[0].length;
@@ -312,11 +330,73 @@ class Level {
       }
     }
     this.tiles = buildTileset(this.theme);
+    if (this.isRide) this.buildRoad(data.climb);
     const ir = /^(\d+)-(\d+)$/.exec(data.interior || "");
     this.interior = ir ? [+ir[1], +ir[2]] : null;
     const bg = IMG[this.bgName];
     this.bgStrip = bg ? makeMirroredStrip(bg) : null;
+    // Header "stretches: 0 bg_lake, 160 bg_village, ...": from that column on, the backdrop changes
+    // (cross-faded over one screen around each border); the roadside props follow the stretch too.
+    this.stretches = (data.stretches || "").split(",").map(function (s) { return s.trim().split(/\s+/); })
+      .filter(function (p) { return p.length === 2 && IMG[p[1]]; })
+      .map(function (p) { return { x0: +p[0] * TILE, name: p[1], img: IMG[p[1]] }; });
+    this.stretches.forEach(function (s, k, a) { s.x1 = k + 1 < a.length ? a[k + 1].x0 : this.pxW; }, this);
     this.waterPalette = this.tiles.waterPalette;
+  }
+  // ---- the ride's road: a smooth surface instead of tile steps ----
+  // colTop[tx]: the top row of the road in that column (first solid tile from the top).
+  // Header "climb: x0-x1 r0-r1": between columns x0 and x1 the road top rises smoothly from row
+  // r0 to row r1, eased in and out (the map's floor is stepped there; the drawing and the physics use the line).
+  buildRoad(climb) {
+    this.colTop = [];
+    for (let tx = 0; tx < this.w; tx++) {
+      let top = this.h;
+      for (let ty = 0; ty < this.h; ty++) if (this.isSolid(tx, ty)) { top = ty; break; }
+      this.colTop.push(top);
+    }
+    const m = /^(\d+)-(\d+)\s+(\d+)-(\d+)$/.exec((climb || "").trim());
+    this.climb = m ? { x0: +m[1] * TILE, x1: (+m[2] + 1) * TILE, y0: +m[3] * TILE, y1: +m[4] * TILE } : null;
+  }
+  roadTop(x) {
+    const c = this.climb;
+    if (c && x >= c.x0 && x <= c.x1) {                  // eased in and out: steepest in the middle (1.5x the mean grade)
+      const t = (x - c.x0) / (c.x1 - c.x0);
+      return c.y0 + (c.y1 - c.y0) * t * t * (3 - 2 * t);
+    }
+    const tx = clamp(Math.floor(x / TILE), 0, this.w - 1);
+    return this.colTop[tx] * TILE;
+  }
+  // how far the smooth road lies above (-) or below (+) the map's stepped floor at x
+  slopeShift(x) {
+    if (!this.isRide) return 0;
+    const tx = clamp(Math.floor(x / TILE), 0, this.w - 1);
+    return this.roadTop(x) - this.colTop[tx] * TILE;
+  }
+  // Road and grass verge along the profile (ride levels): from a pre-built band (the road tile and
+  // the verge below, repeated across W + 16 px), one draw per run of columns at the same height:
+  // a single draw on the flat, one per pixel step on the climb.
+  drawRoad(camX, camY) {
+    const ts = this.tiles;
+    if (!this.roadBand) {
+      const b = makeCanvas(W + TILE, TILE + VIEW_H), g = b.getContext("2d");
+      for (let x = 0; x < b.width; x += TILE) {
+        g.drawImage(ts.solidTop[0], x, 0);
+        for (let y = TILE; y < b.height; y += TILE) g.drawImage(ts.solid[(y / TILE) % 3], x, y);
+      }
+      this.roadBand = b;
+    }
+    const x0 = Math.floor(camX), bottom = HUD_H + VIEW_H, band = this.roadBand;
+    let sx = 0;
+    while (sx < W) {
+      const top = Math.round(this.roadTop(x0 + sx) - camY + HUD_H);
+      let ex = sx + 1;
+      while (ex < W && Math.round(this.roadTop(x0 + ex) - camY + HUD_H) === top) ex++;
+      if (top < bottom) {
+        const u = (((x0 + sx) % TILE) + TILE) % TILE, h = Math.min(bottom - top, band.height);
+        ctx.drawImage(band, u, 0, ex - sx, h, sx, top, ex - sx, h);
+      }
+      sx = ex;
+    }
   }
   at(tx, ty) {
     if (tx < 0 || tx >= this.w) return "#";       // side walls
@@ -368,15 +448,48 @@ class Level {
     return n;
   }
 
+  // index of the stretch at world x (0 without stretches)
+  stretchAt(x) {
+    let i = 0;
+    for (let k = 1; k < this.stretches.length; k++) if (x >= this.stretches[k].x0) i = k;
+    return i;
+  }
+  // The backdrop: the stretch at the camera's centre; within half a screen of a border the next
+  // stretch fades in (alpha 0 -> 1 over one screen), so there is no hard cut.
   drawBackground(camX, camY) {
+    const st = this.stretches;
+    if (st.length) {
+      const cx = camX + W / 2;
+      for (let k = 1; k < st.length; k++) {
+        const t = (cx - st[k].x0 + W / 2) / W;
+        if (t > 0 && t < 1) {
+          this.drawStretch(st[k - 1], camX, camY);
+          ctx.globalAlpha = t; this.drawStretch(st[k], camX, camY); ctx.globalAlpha = 1;
+          return;
+        }
+      }
+      this.drawStretch(st[this.stretchAt(cx)], camX, camY);
+      return;
+    }
     if (!this.bgStrip) { fillRect(0, HUD_H, W, VIEW_H, "#203040"); return; }
-    const sw = this.bgStrip.width;
+    this.drawStrip(this.bgStrip, camX, camY);
+    if (this.theme === "hall") fillRect(0, HUD_H, W, VIEW_H, "rgba(10,8,24,0.35)");
+  }
+  // a stretch's photo pans once from its left edge (camera half a screen before the stretch) to its
+  // right edge (half a screen after it): slow, distant scenery, never mirrored
+  drawStretch(s, camX, camY) {
+    const u = clamp((camX + W - s.x0) / (s.x1 - s.x0 + W), 0, 1);
+    const maxCamY = Math.max(1, this.pxH - VIEW_H);
+    const oy = HUD_H - Math.round((camY / maxCamY) * (s.img.height - VIEW_H));
+    ctx.drawImage(s.img, -Math.round(u * (s.img.width - W)), oy);
+  }
+  drawStrip(strip, camX, camY) {
+    const sw = strip.width;
     const ox = Math.floor((camX * 0.3) % sw);
     const maxCamY = Math.max(1, this.pxH - VIEW_H);
-    const oy = HUD_H - Math.round((camY / maxCamY) * (this.bgStrip.height - VIEW_H));
-    ctx.drawImage(this.bgStrip, -ox, oy);
-    if (sw - ox < W) ctx.drawImage(this.bgStrip, sw - ox, oy);
-    if (this.theme === "hall") fillRect(0, HUD_H, W, VIEW_H, "rgba(10,8,24,0.35)");
+    const oy = HUD_H - Math.round((camY / maxCamY) * (strip.height - VIEW_H));
+    ctx.drawImage(strip, -ox, oy);
+    if (sw - ox < W) ctx.drawImage(strip, sw - ox, oy);
   }
 
   drawTiles(camX, camY, time, layer) {
@@ -386,6 +499,7 @@ class Level {
     const ts = this.tiles;
     const wf = Math.floor(time * 6) % 4;
     if (layer === "back" && this.interior) this.drawInterior(camX, camY);
+    if (layer === "main" && this.isRide) this.drawRoad(camX, camY);
     for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
       if (tx < 0 || ty < 0 || tx >= this.w || ty >= this.h) continue;
       const ch = this.rows[ty][tx];
@@ -397,6 +511,7 @@ class Level {
         else if (PROP_DEFS[ch]) img = propCanvas(ch, time);
       } else if (layer === "main") {
         const v = tileVariant(tx, ty);
+        if (ch === "#" && this.isRide) continue;     // the ride's road is drawn along its profile (drawRoad)
         if (ch === "#") img = this.isSolid(tx, ty - 1) && !this.isCrate(tx, ty - 1) ? ts.solid[v] : ts.solidTop[v];
         else if (ch === "D") img = ts.crateSturdy;
         else if (ch === "d") img = this.crateStrength(tx, ty) <= CRATE_HP / 2 ? ts.crateCracked : ts.crate;
@@ -441,8 +556,11 @@ const Camera = {
   x: 0, y: 0, anchorX: W / 2,
   snap(target, level) {
     this.x = this.anchorX === W / 2 ? target.x - W / 2 : target.x + target.w / 2 - this.anchorX;
-    this.y = target.y - VIEW_H / 2; this.clamp(level);
+    this.y = level.isRide ? this.rideY(target, level) : target.y - VIEW_H / 2; this.clamp(level);
   },
+  // The ride: the camera rides on the road profile, the road surface 24 px above the bottom of the
+  // view (as on a one-screen-high map), rising with the climb; hops and ramp jumps don't move it.
+  rideY(target, level) { return level.roadTop(target.x + target.w / 2) - (VIEW_H - 24); },
   follow(target, level) {
     const cx = target.x + target.w / 2, cy = target.y + target.h / 2;
     const ax = this.anchorX, dzX = ax === W / 2 ? 24 : 12, top = 70, bottom = 140;
@@ -450,8 +568,9 @@ const Camera = {
     if (sx < ax - dzX) this.x = cx - (ax - dzX);
     if (sx > ax + dzX) this.x = cx - (ax + dzX);
     const sy = cy - this.y;
-    if (sy < top) this.y = cy - top;
-    if (sy > bottom) this.y = cy - bottom;
+    if (level.isRide) this.y = this.rideY(target, level);
+    else if (sy < top) this.y = cy - top;
+    else if (sy > bottom) this.y = cy - bottom;
     this.clamp(level);
   },
   clamp(level) {

@@ -39,6 +39,22 @@ const CONFIG = {
   punkRev: 0.5, punkCooldown: 2.0, punkPoints: 500,
   bossHp: 50, bossPoints: 10000,
   bossSummons: 3,
+  // mofa ride (src/ride.js): px/s and px/s^2
+  mofaTop: 150, mofaAccel: 70, mofaBrake: 200, mofaCoast: 30, mofaReverse: 0.25, mofaHopVel: -330,
+  mofaW: 28, mofaH: 30, mofaClimbK: 4,          // uphill: top speed x max(0.4, 1 - k * grade)
+  mofaRampVel: -360, mofaRampGrav: 0.5,         // ramp launch at top speed; gravity factor in that flight
+  // posh drivers (src/cars.js)
+  suvHp: 12, teslaHp: 8, ferrariHp: 6,               // suv: the BMW X7
+  suvPoints: 800, teslaPoints: 700, ferrariPoints: 1000,
+  wd40Heal: 2,                                         // WD-40 can (ride health pickup)
+  limoHp: 30, limoPoints: 3000, limoGateGap: 60,       // the president's limo: parks this far before the club gate
+  limoTalkEvery: [2, 3],                              // the president or a lady at the window speaks
+  corkEvery: [1.0, 1.5],                               // champagne corks from the sunroof, while Buck is within a screen
+  suvSpeed: 90, ferrariSpeed: 340, carKnockback: 160, carContact: 2, suvThrowEvery: [1.5, 2.5], wreckLife: 20,
+  driverTalkT: 1.5, driverTalkEvery: [2.5, 3.5],    // posh drivers: a line on first sight, then every 2.5-3.5 s
+  rideBubbles: 2,                                    // ride: at most this many car bubbles at once (never overlapping)
+  mofaRate: 10, mofaShotSpeed: 300, mofaAim: 30,   // mounted machine gun: shots/s, px/s, Up angle (degrees)
+  rideCamX: 96,                  // ride: the camera keeps Buck's centre about this far from the left edge
   bossCamX: 80,                  // boss arena: the camera keeps Buck's centre about this far from the left edge
   reveal: { pan: 0.8, hold: 1.2, back: 0.8, skipBack: 0.3 },   // boss reveal camera pan at arena start (s)                // summon attacks per boss fight; then it alternates slam and bubbles
   shockwaveCrateDmg: 3,
@@ -69,4 +85,9 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function overlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
+// two screen boxes closer than `gap` px (or overlapping)
+function rectsTouch(a, b, gap) {
+  return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+}
 function rnd(a, b) { return a + Math.random() * (b - a); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[k]; a[k] = t; } return a; }

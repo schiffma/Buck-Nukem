@@ -391,14 +391,15 @@ class Agent:
 
 
 def dry_run(browser="chrome", seed=1977, which="all", log=print, max_minutes=30, trace=False):
-    """Plays without video. which: 'all' or a level index (diagnostics: starts that level directly)."""
-    from .session import Session
+    """Plays without video. which: 'all' or the index of one of the agent's levels, 0 = clay courts ...
+    3 = boss arena (diagnostics: starts that level directly; the ride, reel 1, is skipped)."""
+    from .session import Session, PROMO_FIRST_REEL
     with Session(browser=browser, seed=seed, log=log) as s:
         agent = Agent(s, seed=seed, log=log)
         if trace:
             agent.trace = []
         if which != "all":
-            s.page.evaluate("(i) => PromoBridge.devStartLevel(i)", int(which))
+            s.page.evaluate("(i) => PromoBridge.devStartLevel(i)", int(which) + PROMO_FIRST_REEL - 1)
         rep = agent.run(max_minutes=max_minutes, outro_s=0 if which == "all" else 0,
                         on_progress=lambda f, snap, a: log("  %4.0fs %s L%d node %s hp %d stop %d/%d %s" % (
                             snap["time"], snap["state"], snap["levelIndex"] + 1, a.world.node() if a.world else "-",

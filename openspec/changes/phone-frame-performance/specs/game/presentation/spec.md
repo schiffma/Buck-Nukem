@@ -22,9 +22,9 @@ Where the browser supports WebGL, the film filter's colour-print grade, grain an
 - **THEN** every colour channel of every pixel differs by at most 2 levels between the two outputs, and the film tests (warm grade, colour kept, vignette, animated grain, scratches, jitter, brightness and colour of the benchmark scenes) pass on both paths
 
 #### Scenario: Cheaper per frame
-- **WHEN** the phone performance check updates and draws level 1 for 300 frames with the filter on, once on the GPU path and once on the CPU path, in the same browser with hardware graphics
+- **WHEN** the phone performance check updates and draws the clay-court level for 300 frames with the filter on, once on the GPU path and once on the CPU path, in the same browser with hardware graphics
 - **THEN** the average CPU time per frame on the GPU path is at most 60% of the CPU path's
 
 #### Scenario: Phone budget
-- **WHEN** level 1 is played in phone emulation (987×444 CSS pixels, device pixel ratio 2.75, CPU slowed 4×) with the filter on, using the phone performance check
+- **WHEN** the clay-court level is played in phone emulation (987×444 CSS pixels, device pixel ratio 2.75, CPU slowed 4×) with the filter on, using the phone performance check
 - **THEN** the average CPU time per drawn frame (update, drawing, film filter and scaling to the screen) is under 5 ms

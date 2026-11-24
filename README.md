@@ -1,14 +1,14 @@
 # Buck Nukem – The Wollerau Crayfish Crisis
 
-A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsbach creek.
+A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsbach creek. It opens with Buck riding his Sachs mofa, a machine gun on the handlebars, up the lake road to the club.
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
 Version **1.0.7** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
-Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. On a phone, hold it in landscape and use Chrome on Android or Safari on iOS: the same file switches to touch controls (see [Playing on a phone](#playing-on-a-phone)). Press any key to start the music (a 70s hard-rock title theme), then Enter to play; the levels switch to Ride of the Valkyries.
+Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. On a phone, hold it in landscape and use Chrome on Android or Safari on iOS: the same file switches to touch controls (see [Playing on a phone](#playing-on-a-phone)). Press any key to start the music (a 70s hard-rock title theme), then Enter to play. The mofa ride has its own biker rock song; from reel 2 on, the levels play Ride of the Valkyries.
 
-**Direct level links:** add `#level=N` (N = 1–4, the reel number; 4 is the boss arena) to start every new game at that level, e.g. `buck_nukem.html#level=4` or online <https://schiffma.github.io/Buck-Nukem/dist/buck_nukem.html#level=4>. The title shows "STARTS AT REEL N" ("STARTS AT FINAL REEL"); Enter starts a fresh game there (score 0, 3 lives). It combines with other flags (`#debug&level=3`); invalid values start at level 1.
+**Direct level links:** add `#level=N` (N = 1–5, the reel number: 1 mofa ride, 2 clay courts, 3 creek, 4 clubhouse, 5 boss arena) to start every new game at that level, e.g. `buck_nukem.html#level=5` or online <https://schiffma.github.io/Buck-Nukem/dist/buck_nukem.html#level=5>. Since 1.1.0 the mofa ride is reel 1, so older links point one reel earlier (the old `#level=4` boss link now opens the clubhouse). The title shows "STARTS AT REEL N" ("STARTS AT FINAL REEL"); Enter starts a fresh game there (score 0, 3 lives). It combines with other flags (`#debug&level=3`); invalid values start at reel 1.
 
 ## Controls
 
@@ -27,7 +27,7 @@ Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work
 
 ## Playing on a phone
 
-The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartphone held in **landscape**, in current Chrome on Android and Safari on iOS. On a touch device the game switches to *touch mode* by itself. On a desktop, add `#touch` to the URL (`buck_nukem.html#touch`, or with other flags, e.g. `#level=4&touch`) to try it with the mouse. A touchscreen laptop switches on its first touch. A connected keyboard keeps working in touch mode.
+The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartphone held in **landscape**, in current Chrome on Android and Safari on iOS. On a touch device the game switches to *touch mode* by itself. On a desktop, add `#touch` to the URL (`buck_nukem.html#touch`, or with other flags, e.g. `#level=5&touch`) to try it with the mouse. A touchscreen laptop switches on its first touch. A connected keyboard keeps working in touch mode.
 
 - The 4:3 picture fills the screen height. The controls sit in the black bars beside it, never over the action, and clear of the notch.
 - **Left bar:** the D-pad. Left/Right walk; Up/Down climb ladders; Down kneels; the diagonals combine (Down-Right kneels facing right). Slide your thumb between directions without lifting.
@@ -39,7 +39,21 @@ The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartph
 
 ## Game rules
 
-- 3 levels plus the boss arena: TC Wollerau clay courts, Krebsbach creek and sports fields, the clubhouse and indoor hall (with the Einsiedler bar: a chrome tap tower with red-and-white Einsiedler handles, an EINSIEDLER sign, beers and beer mats on the counter, three regulars on stools who lift their glasses and clink "PROST!", and a blonde waitress pulling beers behind the counter), then the giant mutant crayfish.
+- **Reel 1, the mofa ride "THE ROAD TO WOLLERAU":** Buck rides a red Sachs mofa (drawn after `assets/img/sachs-mofa.jpg`) up the road along Lake Zurich to the TC Wollerau gate, passing the WOLLERAU place sign and TC WOLLERAU direction signs: about 75 s at full throttle, twice as long with the fights.
+  - **Four stretches,** each with its own photo backdrop (cross-faded from one to the next) and roadside props: the lake promenade (railings, benches), Wollerau village (flower boxes, Swiss flags), the vineyard climb (vine rows, dry-stone walls) and the club on the hill (hedges, club flags). A checkpoint at each border.
+  - **The climb:** in the last third the road rises smoothly up the hill to the club, 7 tiles in all. Uphill the mofa is up to 30% slower and its engine strains at full throttle.
+  - **Controls on the mofa:** Right accelerates to the top speed (about 1.5× Buck's running speed); Left brakes and then rolls back slowly; with neither held the mofa coasts. Jump hops (high enough for a Ferrari). Fire shoots the **twin machine gun** (10 volleys per second, with a machine-gun rattle): one gun on the handlebars fires forward, the other on the luggage rack fires backward at the same time, at cars ahead and behind. Up angles the front gun 30° upward, for example at things thrown over the BMW X7's roof; the rear gun fires level. The mofa trails blue-grey two-stroke smoke, a thick cloud when the throttle is open. The HUD shows "MOFA MG". The touch controls work the same way.
+  - **The road** has no obstacles of its own, only wooden ramps (a long jump at speed, up to trophies and an extra life): the danger is the traffic. **WD-40 spray cans** (+2 health) are the ride's health pickups.
+  - **Posh drivers** in their cars, drawn after the photos in `assets/img/`, call out arrogant one-liners ("DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!") as soon as their car shows up and every few seconds after; up to two bubbles at a time, never on top of each other or the fans' bubbles. Cars hurt Buck on contact (2 health and a hard knockback), explode when destroyed, and the driver runs off:
+    - the huge dark-grey **BMW X7** blocks the road ahead; its driver tosses latte cups and golf balls over the roof and honks at a mofa close behind (12 hits, 800 points)
+    - the red **Tesla Model 3** creeps up almost silently from behind with its driver on the phone, and rams (8 hits, 700)
+    - the red **Ferrari** comes from ahead at twice the mofa's speed, announced by its roar (hop over it or shoot it: 6 hits, 1000)
+    - **traffic waves:** an X7 convoy, two Teslas from behind, a Ferrari pair, an X7 ahead with a Tesla behind
+    - **the president's limo** (mini-boss): the club president's white super-stretch limousine, bigger than any car on the road, is parked before the gate and blocks the road. The president pops champagne corks from the sunroof every 1–1.5 s (1 health; they can be shot down). Two posh ladies in big hats and pearls sit at its side windows and call out lines with the president ("IS THAT A MOFA? EW.", "RUN HIM OVER, DEAR"); when the limo blows up, they run off with him. A bar shows THE PRESIDENT'S LIMO; the gate stays closed (red sign, barrier) until the limo is destroyed (30 hits, 3000 points).
+  - **Fans on the road:** instead of tennis players, a demo of environmental activists at the WOLLERAU sign (parkas, ponchos and bell-bottoms, protest signs with a crossed-out car, a leaf or a globe: "BIKES NOT SUVS!", "ONE SUV LESS! ♥"), and rocker chicks at the club gate (studded leather, band tees, big hair, devil horns: "BORN TO RIDE! ♥", "BURN, BABY, BURN!").
+  - **Checkpoints:** a Swiss flag at each stretch border (3). After a lost life Buck restarts at the last flag on the mofa, standing on the road; the cars on screen are gone, the limo keeps its damage.
+  - The ride ends at the club gate; reel 2 starts with Buck on foot and the standard blaster.
+- Then 3 levels plus the boss arena: TC Wollerau clay courts, Krebsbach creek and sports fields, the clubhouse and indoor hall (with the Einsiedler bar: a chrome tap tower with red-and-white Einsiedler handles, an EINSIEDLER sign, beers and beer mats on the counter, three regulars on stools who lift their glasses and clink "PROST!", and a blonde waitress pulling beers behind the counter), then the giant mutant crayfish.
 - 8 health points and 3 lives. The lives counter includes the current life, so the game ends when the counter would reach 0. You respawn at the last checkpoint (Swiss flag) with full health, but the Mega Blaster power-up is lost.
 - Pickups: tennis balls (50 points), trophies (1000), Rivella (+2 HP), Cervelat (+3 HP), extra life (hero head), key cards (red/blue/green open doors of the same colour), Mega Blaster (faster shots, double damage).
 - Enemies: lawyers (sharp women in skirt suits with short hair; they throw Swiss law books — OR, ZGB, StGB, SchKG — that burst into pages with an article like "ART. 41 OR", and call out legal one-liners such as "OBJECTION!" or "SEE YOU IN BERN!"), mutant crayfish (realistic glossy red-brown crayfish; they leap and hide in the creek), gardener-punks with a petrol lawn mower (mohawk, blunt; its two-stroke engine putt-putts louder as you get closer and puffs exhaust smoke, revs in a black cloud and charges at full throttle, throwing grass and stones; it sputters and dies with the punk).
@@ -82,9 +96,9 @@ python tools/run_tests.py                 # in-game scenario tests, headless Chr
 python tools/run_tests.py --browser edge  # same in headless Edge
 python tools/run_tests.py --size 844,390 --hash touch   # the whole suite in touch mode at phone size (landscape)
 python tools/run_tests.py --size 390,844 --hash touch   # ... in a portrait window
-python tools/check_levels.py              # every level completable, all pickups reachable
-python tools/screenshot.py out.png title play,0,40,13,60 play,3,24,9,150 sprites
-python tools/screenshot.py --touch out.png title play,0,40,13,60   # touch mode, whole 844x390 window with the control bars
+python tools/check_levels.py              # every level completable, all pickups reachable (the ride: road, hazards, hop and ramp reach)
+python tools/screenshot.py out.png title play,1,40,13,60 play,4,24,9,150 sprites
+python tools/screenshot.py --touch out.png title play,1,40,13,60   # touch mode, whole 844x390 window with the control bars
 python tools/screenshot.py --touch 500x900 out.png title          # portrait card (headless Chrome windows are at least 500 px wide)
 ```
 
@@ -93,7 +107,7 @@ python tools/screenshot.py --touch 500x900 out.png title          # portrait car
 Phone performance (needs Playwright, see the promo tools below):
 
 ```
-python tools/perf_phone.py            # CPU ms per frame and stage in phone emulation (987x444 @2.75, CPU 1x and 4x), GPU vs CPU film grade
+python tools/perf_phone.py            # CPU ms per frame and stage in phone emulation (987x444 @2.75, CPU 1x and 4x): clay courts GPU vs CPU film grade, and the mofa ride
 python tools/perf_phone.py --headed   # same with a visible window, if headless only gets software WebGL
 ```
 
@@ -120,10 +134,12 @@ src/render.js            320x240 back buffer, integer scaling (fractional betwee
 src/film.js              film filter: colour-print grade on the GPU (WebGL shader) or CPU, grain, scratches, dust, jitter
 src/input.js             keyboard, fullscreen; actions held per source (keys, fingers, simulate)
 src/touch.js             touch mode: side-bar layout, on-screen controls, taps, portrait card
+src/ride.js              the mofa ride: riding physics, machine gun, road hazards, signs and gate, mofa art
+src/cars.js              posh drivers: BMW X7, Tesla, Ferrari after the photos (behaviour, triggers, wrecks, one-liners, art)
 src/font.js              5x7 bitmap font
 src/sprites.js           procedural pixel art (hero body, enemies, pickups)
 src/fx.js                particles, explosions, screen shake
-src/audio.js             Web Audio synth: 70s rock title theme, Ride of the Valkyries arrangement, sound effects
+src/audio.js             Web Audio synth: 70s rock title theme, biker rock ride theme, Ride of the Valkyries arrangement, sound effects, engines
 src/level.js             tile maps, themed tiles, camera, collision
 src/player.js            the hero
 src/enemies.js           lawyers, crayfish, gardener-punks, projectiles
@@ -140,7 +156,7 @@ tools/promo/             promo-video recorder: Playwright bridge + Python agent 
 
 ## Level format
 
-Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `theme` = court|creek|hall, `bg`, `boss: 1`), followed by map segments separated by `---` lines. Segments are joined side by side and must all have the same number of rows. Lines starting with `;` are comments.
+Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `theme` = court|creek|hall|road, `bg`, `boss: 1`, `ride: 1` for the mofa ride; a ride map may contain no weapon pickups `w`; on a ride, `stretches: 0 bg_lake, 160 bg_village, ...` changes the backdrop and the roadside props from that column on, cross-faded over one screen, and `climb: x0-x1 r0-r1` makes the road rise smoothly from row r0 to row r1 between columns x0 and x1, while the map's floor steps up underneath), followed by map segments separated by `---` lines. Segments are joined side by side and must all have the same number of rows. Lines starting with `;` are comments.
 
 | Char | Meaning | Char | Meaning |
 |---|---|---|---|
@@ -161,6 +177,14 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 | `O` | bar regular on a stool (decoration, clubhouse bar) | `W` | blonde waitress (put in the cell above the counter; decoration) |
 | `I` | "EINSIEDLER" back-bar sign (4×1) | | |
 | `F` | cheering tennis fan (background, stands on floor or a platform; 8–10 per level, 4–5 in the arena) | `D` `d` | cover crate: sturdy (indestructible), breakable (6 strength) |
+| `/` | ramp (ride; 2 tiles, put on the left cell, in the cell above the road; launches a long jump at speed) | | |
+| `1` | BMW X7 on the road (ride) | `3` `4` | triggers (ride): when Buck passes the column, a Tesla comes from behind, a Ferrari from ahead |
+| `5` `6` | traffic waves (ride): an X7 convoy ahead (2, 160 px apart); two Teslas from behind (0.8 s apart) | `7` `8` | traffic waves (ride): a Ferrari pair from ahead (0.6 s apart); an X7 ahead and a Tesla behind |
+| `9` | the president's limo (ride mini-boss; parked 60 px before the gate `}`, which stays closed until it is destroyed) | | |
+| `e` `]` | ride fans: environmental activist, rocker chick (like `F`, on the floor; 4–5 of each, standing together) | | |
+| `S` `>` | road signs (ride): yellow "WOLLERAU" place sign; brown "TC WOLLERAU" direction sign showing its distance to the exit | `}` | club gate (ride), 4×4 tiles from its top-left cell, around the exit `E` |
+| `{` | WD-40 can (ride only; +2 health; a ride map may not contain `h` or `s`) | | |
+| `(` | roadside row (ride; 2 tiles, in the cell above the road): lake railing, village flower boxes, vine row on the climb, hedge at the club | `)` | roadside feature (ride): bench, Swiss flag, dry-stone wall, club flag (by stretch) |
 
 Multi-tile props are placed by their top-left cell; the rest of their footprint must be `.` (the build warns otherwise). The header line `interior: x0-x1` draws columns x0–x1 as the clubhouse interior (wallpaper and wood panelling instead of the photo; windows still show the photo).
 
@@ -170,5 +194,5 @@ A crayfish (`K`) placed next to water hides in the creek.
 
 - Hero and backgrounds: photos in `assets/img/` (hero portrait, TC Wollerau and Krebsbach).
 - Crayfish: original pixel art, drawn side-on after a reference photo of a real crayfish supplied for this project; the photo itself is not part of the game.
-- Music: original 70s-style hard-rock title theme, written for this game and synthesized live (distorted guitar, bass, drums), and a chiptune arrangement of Richard Wagner's "Ride of the Valkyries" (public domain composition) for the levels, also synthesized live. No recordings or samples are used.
+- Music: original 70s-style hard-rock title theme and an original 70s-style biker rock song for the mofa ride (boogie shuffle), both written for this game and synthesized live (distorted guitar, bass, drums), and a chiptune arrangement of Richard Wagner's "Ride of the Valkyries" (public domain composition) for the levels, also synthesized live. No recordings or samples are used.
 - Everything else (code, pixel art, sound effects) is original to this project.

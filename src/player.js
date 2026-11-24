@@ -1,5 +1,6 @@
 // Buck Nukem: movement, ladders, kneeling, shooting, health, lives and respawn.
 const STAND_H = 28, KNEEL_H = 16;      // body height standing / kneeling (feet stay put)
+const STAND_W = 10;                    // body width on foot (spawn points are stored for this box)
 const Player = {
   x: 0, y: 0, w: 10, h: 28, vx: 0, vy: 0,
   face: 1, onGround: false, coyote: 0, jumping: false,
@@ -13,7 +14,7 @@ const Player = {
     this.hp = CONFIG.maxHp; this.lives = CONFIG.startLives; this.weapon = "blaster"; this.keys = {};
   },
   placeAt(px, py) {
-    this.h = STAND_H; this.kneeling = false; this.dropT = 0;
+    this.w = STAND_W; this.h = STAND_H; this.kneeling = false; this.dropT = 0;
     this.x = px; this.y = py; this.vx = 0; this.vy = 0;
     this.climbing = false; this.dead = false; this.onGround = false; this.jumping = false;
     this.hurtT = 0; this.fireCd = 0; this.shootT = 0;
@@ -59,6 +60,14 @@ const Player = {
     if (this.shootT > 0) this.shootT -= dt;
     if (this.waterCd > 0) this.waterCd -= dt;
     if (this.dropT > 0) this.dropT -= dt;
+
+    if (level.isRide) {                  // on the mofa (src/ride.js): no climbing, kneeling or dropping
+      Mofa.update(this, dt, level);
+      // the twin gun: Fire held fires a volley forward and backward (no automatic fire)
+      if (Input.down("fire") && this.fireCd <= 0) this.fire();
+      if (this.y > level.pxH + 32) { this.hp = 0; this.die(); }
+      return;
+    }
 
     const dir = (Input.down("right") ? 1 : 0) - (Input.down("left") ? 1 : 0);
     const ctx_ = Math.floor(this.cx() / TILE);
@@ -182,6 +191,7 @@ const Player = {
   gunY() { return this.kneeling ? this.y + this.h - 6 : this.y + 14; },
 
   fire() {
+    if (this.weapon === "mofamg") { Mofa.fire(this); return; }
     if (this.isCutter()) { this.fireBlade(); return; }
     const up = this.weapon === "mega";
     this.fireCd = 1 / (up ? CONFIG.fireRateUp : CONFIG.fireRate);
@@ -252,12 +262,14 @@ const Player = {
     this.hp = CONFIG.maxHp;
     // power-up is lost with the life; in the boss arena the disc cutter is kept
     this.weapon = Game.level && Game.level.isBoss ? "cutter" : "blaster";
+    if (Game.level && Game.level.isRide) { Mofa.mount(this); this.weapon = "mofamg"; }   // back on the mofa, at a standstill
     this.invuln = 1.5;
   },
 
   draw(camX, camY) {
     if (this.dead) return;
     if (this.invuln > 0 && Math.floor(this.invuln * 15) % 2 === 0) return;   // blink
+    if (Game.level && Game.level.isRide) { Mofa.draw(this, camX, camY); return; }
     const cutter = this.isCutter();
     const S = cutter ? SPR.heroCutter : SPR.hero;
     let set;

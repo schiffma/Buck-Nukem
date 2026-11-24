@@ -184,7 +184,7 @@ def main():
     ap.add_argument("--browser", default="chrome", choices=["chrome", "edge"])
     ap.add_argument("--seed", type=int, default=1977, help="random seed (game and agent): same seed, same run")
     ap.add_argument("--no-audio", action="store_true")
-    ap.add_argument("--dry", default=None, help="no video: 'all' or a level index (0-3)")
+    ap.add_argument("--dry", default=None, help="no video: 'all' or a level index (0 = clay courts ... 3 = boss arena; the mofa ride is skipped)")
     ap.add_argument("--timeout", type=float, default=15, help="game minutes before giving up")
     args = ap.parse_args()
 

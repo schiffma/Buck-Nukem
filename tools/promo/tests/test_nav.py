@@ -31,6 +31,8 @@ class NavTest(unittest.TestCase):
     def test_real_levels_match_the_level_checker(self):
         for f in sorted((SRC / "levels").glob("*.txt")):
             meta = parse_level(f)
+            if meta.get("ride") == "1":         # the mofa ride: not played by the agent (promo starts at reel 2)
+                continue
             raw = meta["map"]
             reached, keys, missing, _, _ = check_levels.analyse(meta)
             self.assertTrue(reached, f.name)

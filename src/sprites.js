@@ -332,6 +332,11 @@ const RIVELLA = [
   "..rr..", "..vv..", "..vo..", ".vooo.", "vooooo", "vooooo", "rrrrrr",
   "rwwwwr", "rrrrrr", "vooooo", "vooooo", "vooooo", "vooooo", ".vvvv.",
 ];
+// WD-40 spray can (10 x 14): red cap and straw, blue can, yellow label (the ride's health pickup)
+const WD40 = [
+  "....kk....", "...rrrr...", "...rrrr...", "..vvvvvv..", ".UuuuuuuU.", ".UyyyyyyU.", ".UyrrrryU.",
+  ".UyrrrryU.", ".UyyyyyyU.", ".UuuuuuuU.", ".UuuyyuuU.", ".UuuuuuuU.", ".UuuuuuuU.", "..vvvvvv..",
+];
 const CERVELAT = [
   "...CCCCCCCC...", ".CCccccccccCC.", "ecccwccccwccce", "ecccccccccccce", ".CCccccccccCC.", "...CCCCCCCC...",
 ];
@@ -503,6 +508,7 @@ function buildSprites() {
   SPR.trophy = shadeAndOutline(spriteFromRows(TROPHY));
   SPR.rivella = shadeAndOutline(spriteFromRows(RIVELLA));
   SPR.cervelat = shadeAndOutline(spriteFromRows(CERVELAT));
+  SPR.wd40 = shadeAndOutline(spriteFromRows(WD40));
   SPR.megagun = shadeAndOutline(spriteFromRows(MEGAGUN));
   SPR.blasterIcon = spriteFromRows(BLASTER_ICON);
   SPR.megaIcon = spriteFromRows(MEGA_ICON);
@@ -537,4 +543,6 @@ function buildSprites() {
   if (typeof buildFanSprites === "function") buildFanSprites();
   SPR.bubble = spriteFromRows(["..uuuu..", ".u....u.", "u.ww...u", "u.w....u", "u......u", "u......u", ".u....u.", "..uuuu.."],
     Object.assign({}, PAL, { u: "#9ad0ff", w: "#ffffff" }));
+  buildCarSprites();                 // the posh drivers' cars (src/cars.js)
+  buildMofaSprites();                // Buck's mofa and his riding pose (src/ride.js)
 }

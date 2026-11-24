@@ -31,18 +31,32 @@ MAX_BYTES = 2 * 1024 * 1024
 # Concatenation order matters: later files use names defined earlier.
 JS_ORDER = [
     "config.js", "assets.js", "render.js", "film.js", "input.js", "touch.js", "font.js",
-    "sprites.js", "fx.js", "audio.js", "level.js", "props.js", "player.js",
-    "enemies.js", "boss.js", "fans.js", "bar.js", "hud.js", "screens.js", "main.js", "test.js",
+    "sprites.js", "fx.js", "audio.js", "level.js", "props.js", "player.js", "ride.js",
+    "enemies.js", "cars.js", "boss.js", "fans.js", "bar.js", "hud.js", "screens.js", "main.js", "test.js",
 ]
 
 REQUIRED_IMAGES = [
     "buck_nukem.jpg", "tc_wollerau.jpg", "tc_wollerau_02.jpg",
-    "krebsbach_02.jpg", "krebsbach_05.jpg", "krebsbach_06.jpg",
+    "krebsbach_02.jpg", "krebsbach_05.jpg", "krebsbach_06.jpg", "sachs-mofa.jpg",
 ]
 
-# Backgrounds: name -> (file, crop box (l, t, r, b) or None, size, colours, brightness)
+# The mofa's colours (src/ride.js), sampled from the reference photo of the red Sachs mofa:
+# name -> box (l, t, r, b) in sachs-mofa.jpg (1024 x 796); the median colour of the box.
+MOFA_BOXES = {
+    "frame": (560, 420, 760, 460),     # red lower frame panel
+    "chrome": (420, 250, 520, 300),    # chrome tank
+    "seat": (650, 205, 800, 240),      # black seat
+    "engine": (470, 480, 580, 540),    # aluminium engine cover
+}
+
+# Backgrounds: name -> (file, crop box (l, t, r, b) or None, size, colours, brightness[, extra saturation])
 BACKGROUNDS = {
     "bg_court": ("tc_wollerau.jpg", (0, 180, 1020, 690), (480, 240), 32, 1.0),
+    # the ride's four stretches, 640 wide: each pans once across its stretch, unmirrored (hazy aerial photo: more colour)
+    "bg_lake": ("tc_wollerau_02.jpg", (0, 0, 640, 240), (640, 240), 32, 1.0, 1.25),        # sky, Lake Zurich and the far shore
+    "bg_village": ("tc_wollerau_02.jpg", (130, 60, 640, 251), (640, 240), 32, 1.0, 1.25),  # Wollerau village roofs
+    "bg_climb": ("tc_wollerau_02.jpg", (0, 70, 400, 220), (640, 240), 32, 1.0, 1.25),       # hillside fields and farmhouses above the lake
+    "bg_club": ("tc_wollerau.jpg", (60, 180, 1020, 540), (640, 240), 32, 1.0),             # the club: courts, dome and hall on the hill
     "bg_creek": ("krebsbach_02.jpg", (0, 120, 1920, 1080), (480, 240), 32, 1.0),
     "bg_hall": ("krebsbach_06.jpg", (0, 0, 1920, 960), (480, 240), 32, 1.0),
     "bg_title": ("tc_wollerau_02.jpg", (0, 0, 640, 480), (320, 240), 32, 1.0),
@@ -128,15 +142,16 @@ SEPIA = np.array([[0.393, 0.769, 0.189], [0.349, 0.686, 0.168], [0.272, 0.534, 0
 
 
 def source_crop(spec):
-    file, crop, size, _colours, _bright = spec
+    file, crop, size = spec[:3]
     img = load(file)
     if crop:
         img = img.crop(crop)
     return img.resize(size, Image.Resampling.LANCZOS)
 
 
-def grade(img, bright):
-    img = ImageEnhance.Color(img).enhance(GRADE["color"])
+def grade(img, bright, color=1.0):
+    """color: extra saturation for a pale source photo (multiplies GRADE["color"])."""
+    img = ImageEnhance.Color(img).enhance(GRADE["color"] * color)
     arr = np.asarray(img, dtype=np.float32)
     sep = np.clip(arr @ SEPIA.T, 0, 255)
     arr = arr * (1 - GRADE["sepia"]) + sep * GRADE["sepia"]
@@ -158,13 +173,27 @@ def image_stats(img):
 
 def make_background(name, spec):
     src = source_crop(spec)
-    out = ordered_quantize(grade(src, spec[4]), spec[3])
+    out = ordered_quantize(grade(src, spec[4], spec[5] if len(spec) > 5 else 1.0), spec[3])
     s0, s1 = image_stats(src), image_stats(out)
     print(f"  grade {name:12s} sat {s0[0]:.2f}->{s1[0]:.2f}  bright {s0[1]:5.1f}->{s1[1]:5.1f}  "
           f"red-blue {s0[2]:+5.1f}->{s1[2]:+5.1f}")
     if not (s1[0] > s0[0] and s1[1] >= 0.9 * s0[1] and s1[2] > s0[2]):
         fail(f"{name}: colour-print grade must raise saturation, keep brightness >= 90% and shift toward warm")
     return out
+
+
+def sample_mofa(photo):
+    """Mofa colours from sachs-mofa.jpg (MOFA_BOXES), as hex, checked for plausibility."""
+    pal = {}
+    for name, box in MOFA_BOXES.items():
+        a = np.asarray(photo.crop(box), dtype=np.float32).reshape(-1, 3)
+        pal[name] = tuple(int(v) for v in np.median(a, axis=0))
+    fr, ch, se = pal["frame"], pal["chrome"], pal["seat"]
+    if not (fr[0] > fr[1] + 60 and fr[0] > fr[2] + 60):
+        fail(f"sachs-mofa.jpg: the frame sample {fr} is not red (check MOFA_BOXES)")
+    if not (sum(ch) / 3 > 170 and sum(se) / 3 < 90):
+        fail(f"sachs-mofa.jpg: chrome {ch} must be bright and the seat {se} dark (check MOFA_BOXES)")
+    return {k: "#%02x%02x%02x" % v for k, v in pal.items()}
 
 
 def sample_palette(photo):
@@ -290,12 +319,26 @@ def prop_overlaps(meta, name="level"):
                         warnings.append(f"{name}: prop '{ch}' at {x},{y} extends outside the map")
                     elif rows[yy][xx] != ".":
                         warnings.append(f"{name}: prop '{ch}' at {x},{y} overlaps '{rows[yy][xx]}' at {xx},{yy}")
-    # cheering fans (F) must stand on solid ground or a one-way platform
+    # cheering fans (F; ride: e activists, ] rockers) must stand on solid ground or a one-way platform
     for y, row in enumerate(rows):
         for x, ch in enumerate(row):
-            if ch == "F" and (y + 1 >= len(rows) or rows[y + 1][x] not in "#B=aAT"):
+            if ch in "Fe]" and (y + 1 >= len(rows) or rows[y + 1][x] not in "#B=aAT"):
                 warnings.append(f"{name}: fan 'F' at {x},{y} has no floor below")
     return warnings
+
+
+def ride_map_errors(meta, name="level"):
+    """Errors for a ride map: no weapon pickups (the mofa has its gun) and no Rivella/Cervelat
+    (its health pickup is the WD-40 can '{')."""
+    if meta.get("ride") != "1":
+        return []
+    errors = []
+    for ch, why in (("w", "weapon pickups ('w'): the mofa has its machine gun"),
+                    ("h", "Rivella ('h'): the ride's health pickup is the WD-40 can '{'"),
+                    ("s", "Cervelat ('s'): the ride's health pickup is the WD-40 can '{'")):
+        if any(ch in row for row in meta["map"]):
+            errors.append(f"{name}: a ride level must not contain {why}")
+    return errors
 
 
 def load_levels():
@@ -305,6 +348,9 @@ def load_levels():
     levels = []
     for f in files:
         meta = parse_level(f)
+        errors = ride_map_errors(meta, f.name)
+        if errors:
+            fail("; ".join(errors))
         for w in prop_overlaps(meta, f.name):
             print("WARNING: " + w)
         levels.append(meta)
@@ -366,6 +412,8 @@ def main():
         make_hero_compare(photo, head, hero_pal).save(DIST / "debug_hero_compare.png")
     print("Hero palette: " + ", ".join(f"{k}={v}" for k, v in hero_pal.items()))
     add("portrait", make_portrait())
+    mofa_pal = sample_mofa(load("sachs-mofa.jpg"))
+    print("Mofa palette: " + ", ".join(f"{k}={v}" for k, v in mofa_pal.items()))
 
     levels = load_levels()
     version = build_version()
@@ -376,7 +424,7 @@ def main():
             .replace("{{ASSETS}}", json.dumps(assets, indent=0))
             .replace("{{LEVELS}}", json.dumps(levels, indent=0))
             .replace("{{META}}", json.dumps({"heroPalette": hero_pal, "heroHeadRows": HEAD_ROWS, "heroFixed": FIXED_COLOURS,
-                                             "version": version}))
+                                             "mofaPalette": mofa_pal, "version": version}))
             .replace("{{SCRIPT}}", script))
     data = html.encode("utf-8")
     OUT.write_bytes(data)

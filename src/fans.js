@@ -21,6 +21,25 @@ const FAN_VARIANTS = [
   { hair: "curly", hairCol: "brown", skin: "tan", accent: "red", item: "headband" },
   { hair: "bun", hairCol: "ash", skin: "brown", accent: "teal", item: "cap" },
 ];
+// The mofa ride's two groups (map e: environmental activists, ]: rocker chicks), 6 looks each.
+const FAN_VARIANTS_ACTIVIST = [
+  { style: "activist", hair: "long", hairCol: "brown", skin: "light", accent: "yellow", top: "parka", item: "flower", sign: "nocar" },
+  { style: "activist", hair: "afro", hairCol: "black", skin: "dark", accent: "orange", top: "poncho", item: "headband", sign: "leaf" },
+  { style: "activist", hair: "pigtails", hairCol: "blonde", skin: "light", accent: "pink", top: "parka", item: "headband", sign: "globe" },
+  { style: "activist", hair: "curly", hairCol: "red", skin: "tan", accent: "purple", top: "poncho", item: "flower", sign: "nocar" },
+  { style: "activist", hair: "bob", hairCol: "auburn", skin: "brown", accent: "teal", top: "parka", item: "flower", sign: "leaf" },
+  { style: "activist", hair: "bun", hairCol: "ash", skin: "light", accent: "red", top: "poncho", item: "headband", sign: "globe" },
+];
+const FAN_VARIANTS_ROCKER = [
+  { style: "rocker", hair: "teased", hairCol: "black", skin: "light", accent: "red", item: "sunglasses" },
+  { style: "rocker", hair: "teased", hairCol: "blonde", skin: "tan", accent: "purple", item: "bandana" },
+  { style: "rocker", hair: "long", hairCol: "red", skin: "light", accent: "yellow", item: "choker" },
+  { style: "rocker", hair: "curly", hairCol: "black", skin: "dark", accent: "pink", item: "sunglasses" },
+  { style: "rocker", hair: "teased", hairCol: "auburn", skin: "brown", accent: "green", item: "choker" },
+  { style: "rocker", hair: "bob", hairCol: "ash", skin: "tan", accent: "blue", item: "bandana" },
+];
+const FAN_VARIANTS_BY_STYLE = { tennis: FAN_VARIANTS, activist: FAN_VARIANTS_ACTIVIST, rocker: FAN_VARIANTS_ROCKER };
+const FAN_STYLE_BY_CH = { F: "tennis", e: "activist", "]": "rocker" };
 const FAN_FRAMES = ["idle", "wave", "jump", "kiss"];
 const FAN_W = 20, FAN_H = 32;
 // What the fans call out, by occasion: cheeky 70s-grindhouse flirting, never explicit.
@@ -34,6 +53,22 @@ const FAN_LINES = {
   trophy: ["WHAT A TROPHY! ♥", "BIG CUP, BIG MAN!", "CHAMPION OF MY HEART", "GAME, SET, MATCH! ♥", "WIN ME NEXT, BUCK!"],
   checkpoint: ["SAVE ME TOO, BUCK!", "DON'T GO FAR! ♥", "COME BACK SOON!", "I'LL WAIT FOR YOU!", "KEEP IT UP, TIGER!"],
 };
+// The ride's groups: activists cheer every posh car that goes up in smoke, rockers the ride.
+const FAN_LINES_ACTIVIST = {
+  shout: ["BIKES NOT SUVS!", "SAVE THE LAKE! ♥", "PEDAL POWER, BUCK!", "CLIMATE HERO? ♥", "SMASH THE SUVS!", "PLANET B? NOPE!",
+    "GREEN IS SEXY! ♥", "STOP THE DIESEL!"],
+  kill: ["ONE SUV LESS! ♥", "EMISSIONS DOWN!", "THAT'S ACTIVISM!", "CO2 GOES BOOM!"],
+  trophy: ["ECO CHAMPION! ♥", "RECYCLE THAT CUP!", "GREEN GOLD, BUCK!"],
+  checkpoint: ["STAY GREEN, BUCK!", "SAVE ME TOO! ♥", "PROTEST ON!"],
+};
+const FAN_LINES_ROCKER = {
+  shout: ["BORN TO RIDE! ♥", "NICE WHEELS, BABY!", "ROCK 'N' ROLL!", "HELL YEAH, BUCK!", "TAKE ME FOR A RIDE", "LOUD AND PROUD! ♥",
+    "RIDE IT, TIGER!"],
+  kill: ["BURN, BABY, BURN!", "HELL YEAH! ♥", "WRECK 'EM, BUCK!", "HEAVY METAL!"],
+  trophy: ["ROCK STAR! ♥", "SHINY! GIMME!", "ENCORE, BUCK!"],
+  checkpoint: ["KEEP ROLLING! ♥", "SEE YA AT THE BAR!", "DON'T STOP NOW!"],
+};
+const FAN_LINES_BY_STYLE = { tennis: FAN_LINES, activist: FAN_LINES_ACTIVIST, rocker: FAN_LINES_ROCKER };
 const FAN_BUBBLE_T = 1.5, FAN_MAX_BUBBLES = 3;
 const FAN_SHOUT_RANGE = 4 * TILE, FAN_SHOUT_COOLDOWN = 8, FAN_WHISTLE_GAP = 4, FAN_KISS_T = 0.6;
 
@@ -46,15 +81,37 @@ function buildFanFrame(v, frame) {
   const ox = 2, oy = frame === "jump" ? 2 : 4;
   const P = function (col, x, y, w, h) { g.fillStyle = col; g.fillRect(ox + x, oy + y, w || 1, h || 1); };
   const WHITE = "#f4f4f0", SHADE = "#d4d4d0", cheer = frame === "wave" || frame === "jump", kiss = frame === "kiss";
-  // legs (tucked a little when jumping), socks with a stripe, sneakers
-  const lg = frame === "jump" ? 1 : 0;
-  P(skin, 5, 19, 2, 5 - lg); P(skin, 9, 19, 2, 5 - lg);
-  P(WHITE, 5, 23 - lg, 2, 2); P(WHITE, 9, 23 - lg, 2, 2); P(acc, 5, 23 - lg, 2, 1); P(acc, 9, 23 - lg, 2, 1);
-  P(WHITE, 4, 25 - lg, 3, 2); P(WHITE, 9, 25 - lg, 3, 2); P("#9aa0a8", 4, 26 - lg, 3, 1); P("#9aa0a8", 9, 26 - lg, 3, 1);
-  // tennis dress: top with a coloured collar, pleated skirt with a waist stripe
-  P(WHITE, 4, 10, 8, 5); P(acc, 6, 10, 4, 1); P(SHADE, 4, 14, 8, 1);
-  P(WHITE, 3, 15, 10, 4); P(acc, 3, 15, 10, 1); P(SHADE, 3, 18, 10, 1);
-  for (let x = 4; x < 13; x += 2) P(SHADE, x, 16, 1, 2);
+  const style = v.style || "tennis";
+  const lg = frame === "jump" ? 1 : 0;              // legs tucked a little when jumping
+  let sleeve = skin, cuff = acc;                    // arm colour, wristband / cuff
+  if (style === "activist") {                       // 70s protest: parka or poncho, flared jeans, sandals
+    const DENIM = "#3a5a9a", DENIM2 = "#2a4278";
+    const TOP = v.top === "poncho" ? "#b0783a" : "#5a7a32", TOP2 = v.top === "poncho" ? "#8a5a28" : "#425a24";
+    P(DENIM, 4, 15, 8, 3); P(DENIM, 4, 18, 3, 6 - lg); P(DENIM, 9, 18, 3, 6 - lg);
+    P(DENIM, 3, 23 - lg, 4, 2); P(DENIM, 9, 23 - lg, 4, 2); P(DENIM2, 6, 18, 1, 5 - lg); P(DENIM2, 9, 18, 1, 5 - lg);   // bell-bottoms
+    P("#6a4a2a", 4, 25 - lg, 3, 1); P("#6a4a2a", 9, 25 - lg, 3, 1); P(skin, 4, 26 - lg, 3, 1); P(skin, 9, 26 - lg, 3, 1);   // sandals
+    if (v.top === "poncho") { P(TOP, 2, 10, 12, 4); P(TOP, 3, 14, 10, 2); for (let x = 2; x < 14; x += 3) P(TOP2, x, 12, 1, 3); P(acc, 2, 13, 12, 1); }
+    else { P(TOP, 3, 10, 10, 6); P(TOP2, 7, 10, 1, 6); P(TOP2, 4, 9, 8, 1); P("#c8c0a0", 4, 12, 2, 1); }      // parka: zip, hood, badge
+    sleeve = TOP; cuff = TOP2;
+  } else if (style === "rocker") {                  // leather jacket over a band tee, leather mini, fishnets, boots
+    const LEATHER = "#1c1a20", STUD = "#d8d8d0", BOOT = "#0e0c10";
+    P(LEATHER, 4, 15, 8, 3); P(STUD, 5, 15); P(STUD, 10, 15);
+    P(skin, 5, 18, 2, 4 - lg); P(skin, 9, 18, 2, 4 - lg);
+    P("#3a2a2a", 5, 19); P("#3a2a2a", 6, 20); P("#3a2a2a", 9, 19); P("#3a2a2a", 10, 20);                    // fishnets
+    P(BOOT, 4, 22 - lg, 3, 5); P(BOOT, 9, 22 - lg, 3, 5); P(STUD, 5, 23 - lg); P(STUD, 10, 23 - lg);
+    P(LEATHER, 3, 10, 10, 5); P(acc, 6, 10, 4, 5); P(WHITE, 7, 12, 2, 1); P("#101010", 7, 13, 2, 1);          // band tee with a skull
+    P(STUD, 3, 10); P(STUD, 12, 10); P(STUD, 3, 12); P(STUD, 12, 12);
+    sleeve = LEATHER; cuff = STUD;
+  } else {
+    // legs, socks with a stripe, sneakers
+    P(skin, 5, 19, 2, 5 - lg); P(skin, 9, 19, 2, 5 - lg);
+    P(WHITE, 5, 23 - lg, 2, 2); P(WHITE, 9, 23 - lg, 2, 2); P(acc, 5, 23 - lg, 2, 1); P(acc, 9, 23 - lg, 2, 1);
+    P(WHITE, 4, 25 - lg, 3, 2); P(WHITE, 9, 25 - lg, 3, 2); P("#9aa0a8", 4, 26 - lg, 3, 1); P("#9aa0a8", 9, 26 - lg, 3, 1);
+    // tennis dress: top with a coloured collar, pleated skirt with a waist stripe
+    P(WHITE, 4, 10, 8, 5); P(acc, 6, 10, 4, 1); P(SHADE, 4, 14, 8, 1);
+    P(WHITE, 3, 15, 10, 4); P(acc, 3, 15, 10, 1); P(SHADE, 3, 18, 10, 1);
+    for (let x = 4; x < 13; x += 2) P(SHADE, x, 16, 1, 2);
+  }
   // neck and face (three-quarter view facing right): eye, mouth (open when cheering)
   P(skin, 7, 9, 2, 1);
   P(skin, 5, 3, 6, 6); P(skin, 11, 5, 1, 2);
@@ -72,28 +129,45 @@ function buildFanFrame(v, frame) {
     case "long": P(hair, 5, 2, 6, 2); P(hair, 3, 3, 3, 8); P(hair, 10, 3, 1, 1); break;
     case "pigtails": P(hair, 5, 2, 6, 2); P(hair, 4, 3, 2, 3); P(hair, 2, 4, 2, 4); P(hair, 12, 3, 1, 4); P(acc, 3, 4); P(acc, 12, 3); break;
     case "curly": P(hair, 4, 1, 7, 2); P(hair, 3, 2, 3, 6); P(hair, 2, 4, 1, 3); P(hair, 10, 2, 2, 1); P(hair, 4, 8, 1, 2); break;
+    case "teased": P(hair, 3, 0, 9, 1); P(hair, 2, 1, 11, 3); P(hair, 1, 3, 4, 7); P(hair, 11, 3, 2, 3); P(hair, 2, 10, 2, 1); break;   // big rock hair
   }
+  if (v.item === "flower") { P(acc, 4, 2, 2, 2); P("#f0e040", 4, 2); }
+  if (v.item === "bandana") { P(acc, 4, 2, 7, 1); P(acc, 3, 3, 2, 2); }
+  if (v.item === "choker") P("#101010", 7, 9, 2, 1);
   if (v.item === "headband") P(acc, 5, 3, 6, 1);
   if (v.item === "visor") { P(acc, 5, 3, 6, 1); P(acc, 11, 3, 2, 1); }
   if (v.item === "cap") { P(acc, 4, 1, 7, 2); P(acc, 11, 2, 3, 1); }
   if (v.item === "sunglasses" && !kiss) P("#101018", 8, 5, 3, 1);
   // arms (2 px wide) with wristbands: down at the sides, or raised up and out in a V
-  function armDown(x) { P(skin, x, 10, 1, 6); P(acc, x, 14); return { x: x, y: 16 }; }
+  function armDown(x) { P(sleeve, x, 10, 1, 6); P(cuff, x, 14); return { x: x, y: 16 }; }
   function armUp(dir) {            // dir 1 = front (right), -1 = back (left)
     const pts = dir > 0 ? [[12, 10], [13, 9], [13, 8], [14, 7], [14, 6], [15, 5]] : [[3, 10], [2, 9], [2, 8], [1, 7], [1, 6], [0, 5]];
-    pts.forEach(function (q) { P(skin, q[0], q[1], 1, 1); P(skin, q[0] - dir, q[1], 1, 1); });
-    P(acc, pts[3][0], pts[3][1]); P(acc, pts[3][0] - dir, pts[3][1]);
+    pts.forEach(function (q) { P(sleeve, q[0], q[1], 1, 1); P(sleeve, q[0] - dir, q[1], 1, 1); });
+    P(cuff, pts[3][0], pts[3][1]); P(cuff, pts[3][0] - dir, pts[3][1]);
     return { x: pts[5][0], y: pts[5][1] - 1 };
   }
   function armToLips() {           // front arm bent up, hand at the mouth
-    [[12, 10], [12, 9], [12, 8], [11, 7]].forEach(function (q) { P(skin, q[0], q[1], 1, 1); });
-    P(acc, 12, 9);
+    [[12, 10], [12, 9], [12, 8], [11, 7]].forEach(function (q) { P(sleeve, q[0], q[1], 1, 1); });
+    P(cuff, 12, 9);
     return { x: 11, y: 6 };
   }
   const hand = frame === "idle" ? armDown(12) : kiss ? armToLips() : armUp(1);
   const backHand = frame === "jump" ? armUp(-1) : armDown(3);
   P(skin, hand.x, hand.y); P(skin, backHand.x, backHand.y);
   const up = cheer;
+  if (style === "activist" && !kiss) {                 // protest sign on a stick, beside her face: crossed-out car, leaf or globe
+    const bx = 12, by = up ? Math.max(-oy, hand.y - 7) : 1;
+    P("#8a6a3a", 14, by + 6, 1, Math.max(1, hand.y - by - 6));
+    P("#efe4c0", bx, by, 6, 6);
+    if (v.sign === "nocar") {
+      P("#303030", bx + 1, by + 3, 4, 1); P("#303030", bx + 2, by + 2, 2, 1);
+      for (let k = 0; k < 6; k++) P("#d02020", bx + k, by + k);
+    } else if (v.sign === "leaf") { P("#30a030", bx + 2, by + 1, 3, 4); P("#30a030", bx + 1, by + 2, 1, 2); P("#1e6e1e", bx + 3, by + 1, 1, 4); }
+    else { P("#2a6ad0", bx + 1, by + 1, 4, 4); P("#40b040", bx + 2, by + 2, 2, 2); P("#40b040", bx + 4, by + 1, 1, 1); }
+  }
+  if (style === "rocker" && up) {                      // devil horns: index and little finger up
+    P(skin, hand.x - 1, hand.y - 2, 1, 2); P(skin, hand.x + 1, hand.y - 2, 1, 2);
+  }
   if (v.item === "racket" && !kiss) {              // wooden grip, black frame, light strings
     if (up) { P("#5a3a1a", hand.x, hand.y - 2, 1, 2); P("#202020", hand.x - 1, hand.y - 7, 3, 5); P("#e8e8d8", hand.x, hand.y - 6, 1, 3); }
     else { P("#5a3a1a", hand.x, hand.y + 1, 1, 2); P("#202020", hand.x - 1, hand.y + 3, 3, 5); P("#e8e8d8", hand.x, hand.y + 4, 1, 3); }
@@ -106,11 +180,15 @@ function buildFanFrame(v, frame) {
 
 // SPR.fans[variant][frame] = sprite set (outlined, mirrored, flash)
 function buildFanSprites() {
-  SPR.fans = FAN_VARIANTS.map(function (v) {
-    const set = {};
-    FAN_FRAMES.forEach(function (f) { set[f] = makeSet(buildFanFrame(v, f)); });
-    return set;
-  });
+  function sets(list) {
+    return list.map(function (v) {
+      const set = {};
+      FAN_FRAMES.forEach(function (f) { set[f] = makeSet(buildFanFrame(v, f)); });
+      return set;
+    });
+  }
+  SPR.fans = sets(FAN_VARIANTS);                     // tennis fans (every level except the ride)
+  SPR.fansBy = { tennis: SPR.fans, activist: sets(FAN_VARIANTS_ACTIVIST), rocker: sets(FAN_VARIANTS_ROCKER) };
 }
 
 // ---- behaviour: idle cheer, face Buck, react to his successes ----
@@ -130,9 +208,12 @@ const Fans = {
   spawn(level, levelIndex) {
     this.list = []; this.lastCheer = -99; this.lastWhistle = -99; this.time = 0; this.hearts = []; this.decks = {}; this.shown = [];
     const self = this;
-    level.spawns.filter(function (s) { return s.ch === "F"; }).forEach(function (s, i) {
-      self.list.push({ tx: s.tx, ty: s.ty, x: s.tx * TILE + TILE / 2 - FAN_W / 2, y: (s.ty + 1) * TILE - (FAN_H - 1),
-        variant: (levelIndex * 5 + i) % FAN_VARIANTS.length, face: -1, phase: i * 0.37, cheerT: 0, bubble: null, shoutT: 0, kissT: 0 });
+    const count = { tennis: 0, activist: 0, rocker: 0 };
+    level.spawns.filter(function (s) { return FAN_STYLE_BY_CH[s.ch]; }).forEach(function (s, i) {
+      const style = FAN_STYLE_BY_CH[s.ch], n = count[style]++;
+      const variant = style === "tennis" ? (levelIndex * 5 + n) % FAN_VARIANTS.length : n % FAN_VARIANTS_BY_STYLE[style].length;
+      self.list.push({ tx: s.tx, ty: s.ty, x: s.tx * TILE + TILE / 2 - FAN_W / 2, y: (s.ty + 1) * TILE - (FAN_H - 1), style: style,
+        variant: variant, face: -1, phase: i * 0.37, cheerT: 0, bubble: null, shoutT: 0, kissT: 0 });
     });
     return this.list;
   },
@@ -182,8 +263,10 @@ const Fans = {
     return ((this.time + f.phase) % 0.9) < 0.35 ? "wave" : "idle";   // idle cheer loop
   },
   // Next line for an occasion: a shuffled deck per occasion, never a line already on screen.
-  pickLine(kind) {
-    const pool = FAN_LINES[kind] || FAN_LINES.kill;
+  pickLine(kind, style) {
+    const lines = FAN_LINES_BY_STYLE[style || "tennis"] || FAN_LINES;
+    const pool = lines[kind] || lines.kill;
+    kind = (style || "tennis") + ":" + kind;             // one deck per group and occasion
     const onScreen = this.list.filter(function (f) { return f.bubble; }).map(function (f) { return f.bubble.text; });
     for (let tries = 0; tries < pool.length + 1; tries++) {
       let deck = this.decks[kind];
@@ -196,7 +279,7 @@ const Fans = {
     }
     return pool[0];
   },
-  say(f, kind) { f.bubble = { text: this.pickLine(kind), t: FAN_BUBBLE_T, kind: kind }; },
+  say(f, kind) { f.bubble = { text: this.pickLine(kind, f.style), t: FAN_BUBBLE_T, kind: kind }; },
   shout(f) {
     this.say(f, "shout");
     f.shoutT = FAN_SHOUT_COOLDOWN; f.kissT = FAN_KISS_T;
@@ -233,14 +316,14 @@ const Fans = {
     const talk = this.list.filter(function (f) { return f.bubble; }).sort(function (a, b) {
       return Math.hypot(a.x - pcx, a.y - pcy) - Math.hypot(b.x - pcx, b.y - pcy);
     });
-    const out = [];
+    const out = [], cars = typeof Talk !== "undefined" ? Talk.rects(camX, camY) : [];   // keep clear of the drivers' bubbles
     for (const f of talk) {
       if (out.length >= FAN_MAX_BUBBLES) break;
       const w = textWidth(f.bubble.text) + 6, h = 11;
       const fx = Math.round(f.x + FAN_W / 2 - camX);
       const y0 = Math.round(f.y - camY + HUD_H) - h - 2;
       const free = function (x, y) {
-        return x >= 2 && x + w <= W - 2 && out.every(function (r) { return x + w + 2 <= r.x || r.x + r.w + 2 <= x || y + h + 3 <= r.y || r.y + r.h + 3 <= y; });
+        return x >= 2 && x + w <= W - 2 && out.concat(cars).every(function (r) { return x + w + 2 <= r.x || r.x + r.w + 2 <= x || y + h + 3 <= r.y || r.y + r.h + 3 <= y; });
       };
       let spot = null;
       for (let k = 0; k < 3 && !spot; k++) {
@@ -261,7 +344,7 @@ const Fans = {
   },
   draw(camX, camY) {
     for (const f of this.list) {
-      const set = SPR.fans[f.variant][this.frame(f)];
+      const set = (SPR.fansBy ? SPR.fansBy[f.style || "tennis"] : SPR.fans)[f.variant][this.frame(f)];
       const hop = f.cheerT > 0 ? Math.round(Math.abs(Math.sin(f.cheerT * Math.PI * 3)) * 3) : 0;
       const px = Math.round(f.x - camX) - set.pad, py = Math.round(f.y - camY + HUD_H - hop) - set.pad;
       if (px < -FAN_W - 4 || px > W + 4) continue;

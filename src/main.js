@@ -4,6 +4,7 @@ const PICKUP_INFO = {
   t: { img: function () { return SPR.trophy; } },
   h: { img: function () { return SPR.rivella; } },
   s: { img: function () { return SPR.cervelat; } },
+  "{": { img: function () { return SPR.wd40; } },                    // WD-40 can (ride)
   "+": { img: function () { return SPR.life; } },
   w: { img: function () { return Game.level && Game.level.isBoss ? SPR.megaCutter : SPR.megagun; } },   // arena: Mega Cutter
   r: { img: function () { return SPR.keys.R; } },
@@ -21,7 +22,9 @@ const Game = {
 
   setState(s) {
     this.prevState = this.state; this.state = s; this.stateT = 0;
-    if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); } else Sound.setTrack("valkyries");
+    // title: the rock theme; the mofa ride: its biker rock song; everything else: the Valkyries
+    if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); }
+    else Sound.setTrack(this.level && this.level.isRide ? "biker" : "valkyries");
   },
 
   startHash: null,           // tests: stands in for location.hash when set
@@ -37,11 +40,13 @@ const Game = {
   loadLevel(i, data) {       // data: optional map override (used by the test harness)
     this.levelIndex = i;
     const L = this.level = new Level(data || LEVEL_DATA[i], i);
-    Camera.anchorX = L.isBoss ? CONFIG.bossCamX : W / 2;   // boss arena: Buck on the left, the boss ahead
+    // boss arena: Buck on the left, the boss ahead; ride: Buck at a third, the traffic ahead
+    Camera.anchorX = L.isBoss ? CONFIG.bossCamX : L.isRide ? CONFIG.rideCamX : W / 2;
     this.fans = Fans.spawn(L, i);
     Bar.spawn(L);
-    this.enemies = []; this.shots = []; this.enemyShots = []; this.pickups = []; this.checkpoints = [];
+    this.enemies = []; this.shots = []; this.enemyShots = []; this.pickups = []; this.checkpoints = []; this.hazards = []; this.signs = [];
     this.reveal = null;
+    Cars.reset();
     this.exit = null; this.boss = null; Boss.active = false; this.arenaHealthSpots = []; this.arenaUpgradeSpot = null; this.upgradeT = 0;
     this.stats = { shots: 0, kills: 0 }; this.levelTime = 0; this.hurtFlash = 0;
     FX.clear();
@@ -51,28 +56,50 @@ const Game = {
     L.spawns.forEach(function (s) {
       const bx = s.tx * TILE + TILE / 2, by = (s.ty + 1) * TILE;
       switch (s.ch) {
-        case "P": start = { x: bx - Player.w / 2, y: by - STAND_H }; break;
+        case "P": start = { x: bx - STAND_W / 2, y: by - STAND_H }; break;
         case "L": self.enemies.push(makeEnemy("lawyer", bx, by, L, -1)); break;
         case "K": self.enemies.push(makeEnemy("cray", bx, by, L, -1)); break;
         case "M": self.enemies.push(makeEnemy("punk", bx, by, L, -1)); break;
         case "X": Boss.init(s.tx * TILE, by); break;
         case "C": self.checkpoints.push({ x: bx - 4, y: by - 24, w: 8, h: 24, on: false }); break;
         case "E": self.exit = { x: s.tx * TILE, y: by - 32, w: 16, h: 32 }; break;
-        case "F": break;                                   // cheering fans: see Fans.spawn
+        case "F": case "e": case "]": break;               // cheering fans (tennis; ride: activists, rockers): see Fans.spawn
+        case "/": self.hazards.push(Mofa.makeHazard(s.ch, s.tx, s.ty)); break;          // ramps (ride)
+        case "1": self.enemies.push(makeEnemy("suv", bx, by, L, 1)); break;            // posh drivers (src/cars.js): the BMW X7
+        case "3": case "4": case "5": case "6": case "7": case "8":
+          Cars.addTrigger(s.ch, s.tx, s.ty); break;                                     // single cars and traffic waves (CAR_TRIGGERS)
+        case "9": self.enemies.push(makeEnemy("limo", bx, by, L, -1)); break;          // the president's limo (ride mini-boss)
+        case "S": case ">": case "}": case "(": case ")": self.signs.push({ ch: s.ch, tx: s.tx, ty: s.ty }); break;   // road signs, club gate, roadside props (ride)
         case "O": case "W": break;                         // bar regulars and waitress: see Bar.spawn
         case "h": if (L.isBoss) self.arenaHealthSpots.push({ x: bx, y: by }); self.addPickup(s.ch, bx, by); break;
         case "w": if (L.isBoss) self.arenaUpgradeSpot = { x: bx, y: by }; self.addPickup(s.ch, bx, by); break;
         default: self.addPickup(s.ch, bx, by);
       }
     });
+    if (L.isRide) {                                       // on the climb: things sit on the smooth road, not the steps
+      this.pickups.forEach(function (p) { p.y += L.slopeShift(p.x + p.w / 2); });
+      this.checkpoints.forEach(function (c) { c.y += L.slopeShift(c.x + c.w / 2); });
+      if (this.exit) this.exit.y += L.slopeShift(this.exit.x + 8);
+      this.signs.forEach(function (s) { s.dy = L.slopeShift(s.tx * TILE + 8); });
+      this.fans.forEach(function (f) { f.y += L.slopeShift(f.x + FAN_W / 2); });
+      const gate = this.signs.filter(function (g) { return g.ch === "}"; })[0];
+      this.enemies.forEach(function (e) {
+        if (e.type === "limo" && gate) e.x = gate.tx * TILE - CONFIG.limoGateGap - e.w;   // parked before the gate
+        if (e.T.car) e.y = L.roadTop(e.x + e.w / 2) - e.h;
+      });
+      this.hazards.forEach(function (z) { z.y += L.slopeShift(z.x + z.w / 2); });
+    }
     if (!start) start = { x: 32, y: 32 };
     Player.placeAt(start.x, start.y);
     Player.setCheckpoint(start.x, start.y);
+    if (L.isRide) Mofa.mount(Player);
     Player.hp = CONFIG.maxHp;
     Player.invuln = 0;
     Camera.snap(Player, L);
     Sound.setTempo(L.isBoss ? 1.25 : 1);
     if (L.isBoss) Player.weapon = "cutter";             // the finale is fought with the disc cutter
+    else if (L.isRide) Player.weapon = "mofamg";       // the ride: the machine gun on the handlebars
+    else if (Player.weapon === "mofamg") Player.weapon = "blaster";   // off the mofa: the standard blaster
     this.setState(STATE.LEVEL_INTRO);
   },
 
@@ -90,6 +117,11 @@ const Game = {
       case "t": this.addScore(CONFIG.trophyPoints); FX.text(cx, p.y, CONFIG.trophyPoints, "#ffd840"); Sound.play("pickup"); Fans.react(cx, p.y, "trophy"); break;
       case "h": P.heal(2); FX.text(cx, p.y, "RIVELLA +2", "#80ff80"); Sound.play("health"); break;
       case "s": P.heal(3); FX.text(cx, p.y, "CERVELAT +3", "#80ff80"); Sound.play("health"); break;
+      case "{":                                          // WD-40 for the mofa: a spray puff
+        P.heal(CONFIG.wd40Heal); FX.text(cx, p.y, "WD-40 +2", "#ffe040"); Sound.play("health");
+        for (let i = 0; i < 12; i++) FX.parts.push({ x: cx, y: p.y + 2, vx: rnd(30, 90), vy: rnd(-40, 10), life: 0.6, max: 0.6,
+          color: i % 2 ? "rgba(255,255,255,0.8)" : "rgba(170,210,255,0.8)", grav: -10, size: 2, smoke: true, wd40: true });
+        break;
       case "+": P.lives++; FX.text(cx, p.y, "1UP", "#ffffff"); Sound.play("oneup"); break;
       case "w":
         if (this.level.isBoss) {            // boss arena: the disc cutter upgrade; comes back later
@@ -121,6 +153,12 @@ const Game = {
       Player.respawn();
       this.enemyShots = []; this.shots = [];
       Camera.snap(Player, this.level);
+      if (this.level.isRide) {                           // a safe respawn: the cars on screen are gone (the limo stays, with its damage)
+        this.enemies = this.enemies.filter(function (e) {
+          return !(e.T.car && e.type !== "limo" && e.x + e.w > Camera.x - 32 && e.x < Camera.x + W + 32);
+        });
+        Cars.pending = [];
+      }
     } else {
       this.setState(STATE.GAME_OVER);
     }
@@ -149,22 +187,31 @@ const Game = {
 
   // ---------------- update ----------------
   // The (at most 2) nearest running, on-screen petrol mowers, for the engine sound.
+  // Cars (ride) are heard from further away: a Ferrari's roar about a second before it shows up.
+  // the ride's club gate stays closed while the president's limo is still there
+  gateLocked() { return this.enemies.some(function (e) { return e.type === "limo" && !e.dead; }); },
+  limoOnScreen() {
+    return this.enemies.filter(function (e) { return e.type === "limo" && !e.dead && e.x < Camera.x + W && e.x + e.w > Camera.x; })[0] || null;
+  },
   engineList() {
     const pcx = Player.cx(), pcy = Player.cy(), x0 = Camera.x - 16, x1 = Camera.x + W + 16;
     return this.enemies.filter(function (e) {
-      return e.type === "punk" && !e.dead && e.active && e.x + e.w > x0 && e.x < x1;
+      if (e.dead) return false;
+      if (e.T.car) return e.awake && Math.abs(e.x + e.w / 2 - pcx) < 800;
+      return e.type === "punk" && e.active && e.x + e.w > x0 && e.x < x1;
     }).map(function (e) {
       const dx = e.x + e.w / 2 - pcx, dy = e.y + e.h / 2 - pcy;
-      return { id: e, state: e.state, throttle: e.state === "rev" ? 1 - e.t / CONFIG.punkRev : 0, dist: Math.sqrt(dx * dx + dy * dy) };
+      return { id: e, kind: e.T.car || "mower", state: e.state, throttle: e.state === "rev" ? 1 - e.t / CONFIG.punkRev : 0, dist: Math.sqrt(dx * dx + dy * dy) };
     }).sort(function (a, b) { return a.dist - b.dist; }).slice(0, 2);
   },
   updateEngines() {
     const playing = this.state === STATE.PLAY || this.state === STATE.BOSS;
     const list = playing && this.level ? this.engineList() : [];
     list.forEach(function (m) {                        // pull-start when a mower's engine first runs
-      if (!m.id.engineStarted) { m.id.engineStarted = true; Sound.play("pullstart"); }
+      if (m.kind === "mower" && !m.id.engineStarted) { m.id.engineStarted = true; Sound.play("pullstart"); }
     });
     Sound.setEngines(list);
+    Sound.setMofa(playing && this.level && this.level.isRide && !Player.dead ? Mofa.load(Player) : null);   // the mofa's two-stroke (strains uphill)
   },
 
   update(dt) {
@@ -250,6 +297,7 @@ const Game = {
     if (this.lockedMsgT > 0) this.lockedMsgT -= dt;
     if (this.hurtFlash > 0) this.hurtFlash = Math.max(0, this.hurtFlash - dt);
     Player.update(dt, L);
+    if (L.isRide) Cars.update(dt);
     if (this.state !== STATE.PLAY && this.state !== STATE.BOSS) return;   // death -> game over
     updateHeroShots(dt, L);
     updateEnemies(dt, L);
@@ -271,13 +319,13 @@ const Game = {
       for (const c of this.checkpoints) {
         if (!c.on && overlap(c, Player)) {
           c.on = true;
-          Player.setCheckpoint(c.x + c.w / 2 - Player.w / 2, c.y + c.h - STAND_H);
+          Player.setCheckpoint(c.x + c.w / 2 - STAND_W / 2, c.y + c.h - STAND_H);
           FX.text(c.x + 4, c.y - 6, "CHECKPOINT", "#ffffff");
           Sound.play("checkpoint");
           Fans.react(c.x + c.w / 2, c.y + c.h / 2, "checkpoint");
         }
       }
-      if (this.exit && overlap(this.exit, Player)) { this.completeLevel(); return; }
+      if (this.exit && overlap(this.exit, Player) && !this.gateLocked()) { this.completeLevel(); return; }
     }
     FX.update(dt);
     if (!Player.dead) Camera.follow(Player, L);
@@ -316,12 +364,14 @@ const Game = {
     L.drawTiles(camX, camY, this.time, "main");
     Fans.draw(camX, camY);                               // background fans, behind everything that moves
     Bar.drawFront(camX, camY);
+    if (L.isRide) { Mofa.drawSigns(camX, camY); Mofa.drawHazards(camX, camY); }
     FX.drawStains(camX, camY - HUD_H);
     for (const p of this.pickups) {
       const bob = Math.round(Math.sin(p.t * 4) * 1.5);
       ctx.drawImage(p.img, Math.round(p.x - camX), Math.round(p.y - camY + HUD_H + bob));
     }
     Boss.draw(camX, camY);
+    if (L.isRide) Cars.draw(camX, camY);
     drawEnemies(camX, camY);
     Player.draw(camX, camY);
     for (const s of this.shots) {
@@ -334,7 +384,7 @@ const Game = {
     FX.draw(camX, camY - HUD_H);
     Fans.drawHearts(camX, camY);                         // hearts under the bubbles: text stays readable
     Fans.drawBubble(camX, camY);
-    LawyerTalk.draw(camX, camY);
+    Talk.draw(camX, camY);
     Bar.drawBubble(camX, camY);
     L.drawTiles(camX, camY, this.time, "water");
     if (this.hurtFlash > 0) {

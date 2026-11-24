@@ -23,29 +23,56 @@ function spawnEnemyShot(s) { Game.enemyShots.push(s); }
 // Legal one-liners the lawyers call out when throwing (at most 20 characters, game font).
 const LAWYER_LINES = ["ART. 41 OR!", "OBJECTION!", "SEE YOU IN BERN!", "YOU'RE SUED!", "TERMS APPLY!", "SIGN HERE!",
   "ZGB SAYS NO!", "SCHKG FOR YOU!", "OVERRULED!", "BILLABLE HOURS!", "ART. 8 ZGB, BUCK!", "STGB ART. 139!"];
-const LawyerTalk = {
-  deck: [],
-  line() {
-    if (!this.deck.length) {
-      this.deck = LAWYER_LINES.slice();
-      for (let i = this.deck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); const t = this.deck[i]; this.deck[i] = this.deck[k]; this.deck[k] = t; }
+// Speech bubbles of enemies (lawyers' legal lines, posh drivers in src/cars.js): a shuffled deck
+// per line pool, one bubble on screen at a time.
+const Talk = {
+  decks: new Map(),
+  line(pool) {
+    let deck = this.decks.get(pool);
+    if (!deck || !deck.length) {
+      deck = pool.slice();
+      for (let i = deck.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); const t = deck[i]; deck[i] = deck[k]; deck[k] = t; }
+      this.decks.set(pool, deck);
     }
-    return this.deck.pop();
+    return deck.pop();
   },
-  // a throw may come with a line: once per lawyerTalkCd per lawyer, one lawyer bubble at a time
+  // shows a line over e (dx: the speaker's x inside e, default its centre); returns true when it spoke.
+  // Elsewhere one bubble at a time; on the ride up to CONFIG.rideBubbles car bubbles, and a new one
+  // only where it overlaps no other car bubble and no fan bubble.
+  say(e, pool, secs, dx) {
+    const others = Game.enemies.filter(function (o) { return o !== e && o.bubble && !o.dead; });
+    const ride = Game.level && Game.level.isRide && e.T && e.T.car;
+    if (!ride && others.length) return false;
+    if (ride && others.length >= CONFIG.rideBubbles) return false;
+    const bubble = { text: this.line(pool), t: secs, dx: dx };
+    if (ride) {
+      const r = this.rect(e, bubble, Camera.x, Camera.y);
+      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+      if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
+    }
+    e.bubble = bubble;
+    return true;
+  },
+  // the bubble's box on screen (as drawn): {x, y, w, h, tx}
+  rect(e, bubble, camX, camY) {
+    const w = textWidth(bubble.text) + 6, h = 11;
+    const cx = Math.round(e.x + (bubble.dx !== undefined ? bubble.dx : e.w / 2) - camX), top = Math.round(e.y - camY + HUD_H) - h - 3;
+    return { x: clamp(cx - Math.floor(w / 2), 2, W - w - 2), y: Math.max(HUD_H + 2, top), w: w, h: h, tx: cx };
+  },
+  // the car bubbles currently up (screen boxes), for the fans to keep clear of
+  rects(camX, camY) {
+    return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); });
+  },
+  // a lawyer's throw may come with a line: once per lawyerTalkCd per lawyer
   maybe(e) {
     if (e.talkCd > 0 || Math.random() >= CONFIG.lawyerTalkChance) return;
-    if (Game.enemies.some(function (o) { return o !== e && o.bubble && !o.dead; })) return;
-    e.bubble = { text: this.line(), t: CONFIG.lawyerTalkT };
-    e.talkCd = CONFIG.lawyerTalkCd;
+    if (this.say(e, LAWYER_LINES, CONFIG.lawyerTalkT)) e.talkCd = CONFIG.lawyerTalkCd;
   },
   draw(camX, camY) {
     for (const e of Game.enemies) {
       if (!e.bubble || e.dead) continue;
-      const w = textWidth(e.bubble.text) + 6, h = 11;
-      const cx = Math.round(e.x + e.w / 2 - camX), top = Math.round(e.y - camY + HUD_H) - h - 3;
-      const x = clamp(cx - Math.floor(w / 2), 2, W - w - 2);
-      drawSpeechBubble(e.bubble.text, x, Math.max(HUD_H + 2, top), w, h, cx);
+      const r = this.rect(e, e.bubble, camX, camY);
+      drawSpeechBubble(e.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     }
   },
 };
@@ -71,7 +98,7 @@ const ENEMY_TYPES = {
         e.vx = CONFIG.lawyerSpeed * e.face;
         if (e.cd <= 0 && heroInFront(e, CONFIG.lawyerRange, 20)) {
           e.throwT = 0.6; e.thrown = false; e.cd = CONFIG.lawyerCooldown;
-          LawyerTalk.maybe(e);
+          Talk.maybe(e);
         }
       }
       e.vy = Math.min(CONFIG.maxFall, e.vy + CONFIG.gravity * dt);
@@ -273,13 +300,15 @@ function updateEnemies(dt, level) {
   for (let i = list.length - 1; i >= 0; i--) {
     const e = list[i];
     if (e.dead) { list.splice(i, 1); continue; }
-    if (!isActive(e)) { e.active = false; continue; }
-    e.active = true;
+    if (!(e.T.car && e.awake) && !isActive(e)) { e.active = false; continue; }   // a car once on the road keeps driving
+    e.active = true; e.awake = true;
     if (e.flash > 0) e.flash -= dt;
     e.T.update(e, dt, level);
     if (e.y > level.pxH + 32) { e.dead = true; continue; }
     const hidden = e.T.hidden && e.T.hidden(e);
-    if (!hidden && overlap(e, Player)) Player.hurt(e.T.contact);
+    if (!hidden && overlap(e, Player) && Player.hurt(e.T.contact) && e.T.car) {
+      Player.vx = (Player.cx() < e.x + e.w / 2 ? -1 : 1) * CONFIG.carKnockback; Player.vy = -200;   // cars throw the mofa back hard
+    }
   }
 }
 
@@ -348,6 +377,15 @@ function updateHeroShots(dt, level) {
           if (overlap(s, e)) { damageEnemy(e, s.dmg, Math.sign(s.vx)); remove = true; break; }
         }
       }
+      if (!remove) {                                     // thrown latte cups and golf balls can be shot down
+        for (let k = Game.enemyShots.length - 1; k >= 0; k--) {
+          const t = Game.enemyShots[k];
+          if (t.shootable && overlap(s, t)) {
+            FX.spark(t.x + t.w / 2, t.y + t.h / 2, t.kind === "latte" ? "#f0e8d8" : "#ffffff", 6, 70, 0.3);
+            Game.enemyShots.splice(k, 1); remove = true; Sound.play("hit"); break;
+          }
+        }
+      }
       if (!remove && Game.boss && Boss.hitByShot(s)) remove = !s.deflected;
     }
     // leaves the screen
@@ -384,6 +422,12 @@ function drawEnemyShots(camX, camY) {
     } else if (s.kind === "shockwave") {
       fillRect(sx, sy + 4, s.w, s.h - 4, "rgba(200,160,112,0.8)");
       fillRect(sx + 2, sy, s.w - 4, 4, "rgba(240,220,180,0.8)");
+    } else if (s.kind === "latte") {                    // take-away cup with lid
+      fillRect(sx, sy, 6, 8, "#0a0608"); fillRect(sx + 1, sy + 2, 4, 5, "#f4f0e8"); fillRect(sx + 1, sy + 1, 4, 1, "#8a5a30"); fillRect(sx + 1, sy + 4, 4, 1, "#a06030");
+    } else if (s.kind === "cork") {                      // champagne cork
+      fillRect(sx, sy, 5, 4, "#0a0608"); fillRect(sx + 1, sy + 1, 3, 2, "#c8985a"); fillRect(sx + 1, sy + 1, 1, 2, "#e8c080");
+    } else if (s.kind === "golfball") {
+      pxEllipse(ctx, sx + 3, sy + 2, 3, 2, "#0a0608"); pxEllipse(ctx, sx + 3, sy + 2, 2, 1, "#ffffff");
     } else if (s.kind === "clipping") {
       fillRect(sx, sy, s.w, s.h, s.stone ? "#8a8680" : (Math.floor(s.x) % 2 ? "#5ab040" : "#3e8a2c"));
     }

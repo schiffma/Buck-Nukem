@@ -33,6 +33,9 @@ GAME = ROOT / "dist" / "buck_nukem.html"
 CHANNELS = {"chrome": "chrome", "edge": "msedge"}
 FRAME_BYTES = 320 * 240 * 4
 
+# First reel the promo agent plays (reel 1 is the mofa ride, not supported by the agent yet).
+PROMO_FIRST_REEL = 2
+
 SEED_PRELUDE = """<link rel="icon" href="data:,">
 <script>(function () {
   var a = %d >>> 0 || 1;
@@ -116,7 +119,8 @@ class Session:
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
         self.origin = "http://127.0.0.1:%d" % self._server.server_address[1]
-        self.page.goto(self.origin + "/")
+        # The agent can't ride the mofa (reel 1) yet: promo runs start at reel 2, the clay courts.
+        self.page.goto(self.origin + "/#level=%d" % PROMO_FIRST_REEL)
         self.page.evaluate("() => PromoBridge.boot()")
         return self.snapshot(True)
 

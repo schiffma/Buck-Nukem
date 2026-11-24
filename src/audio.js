@@ -124,7 +124,62 @@ const ROCK = (function buildRock() {
   return { events: events, steps: events.length, sixteenth: 60 / 132 / 4 };
 })();
 
-const SONGS = { title: ROCK, valkyries: SONG };
+// ---- Ride theme: original 70s-style biker rock in A, 150 bpm, boogie shuffle, 16 bars ----
+// Written for this game (no quoted riffs). The boogie figure (root with fifth, sixth and
+// flat seventh, palm-muted, two eighths each) is a generic blues idiom. Voices: "dyad"
+// (palm-muted double stop), "pow", "rbass", "slide" (engine-rev guitar slide), kit.
+// Off-beat eighths are swung (song.swing: delayed by a third of a sixteenth).
+const BIKER = (function buildBiker() {
+  const STEPS = 16, events = [];
+  const A = NOTE.A2, D = NOTE.D3, E = NOTE.E3, G = NOTE.G2;
+  const bars = [
+    { boogie: A, slide: [NOTE.E2, NOTE.A2] }, { boogie: A, crash: true },                  // intro: riff, rev into the verse
+    { boogie: A, crash: true }, { boogie: A }, { boogie: D }, { boogie: A },                 // verse
+    { boogie: E }, { boogie: D }, { boogie: A }, { boogie: E, fill: true },
+    { pow: [A, G], crash: true }, { pow: [D, A] }, { pow: [A, G] }, { pow: [E, E], fill: true },   // chorus
+    { stabs: E, slide: [NOTE.E2, NOTE.E3] }, { stop: A },                                   // break, tom roll back to the top
+  ];
+  for (let i = 0; i < bars.length * STEPS; i++) events.push([]);
+  bars.forEach(function (bar, bi) {
+    const base = bi * STEPS;
+    function at(s, e) { events[base + s].push(e); }
+    if (bar.boogie) {
+      const R = bar.boogie;
+      [7, 7, 9, 9, 10, 10, 9, 9].forEach(function (iv, k) { at(k * 2, { v: "dyad", m: R, i: iv, d: 2 }); });
+      [0, 4, 7, 9, 10, 9, 7, 4].forEach(function (iv, k) { at(k * 2, { v: "rbass", m: R - 12 + iv, d: 2 }); });   // walking bass
+    }
+    if (bar.pow) {   // chug-chug-hit, then the held second chord
+      [[0, 3, 0], [3, 3, 0], [6, 2, 0], [8, 6, 1], [14, 2, 1]].forEach(function (h) { at(h[0], { v: "pow", m: bar.pow[h[2]], d: h[1] }); });
+      for (let s = 0; s < STEPS; s += 2) at(s, { v: "rbass", m: bar.pow[s < 8 ? 0 : 1] - 12, d: 2 });
+    }
+    if (bar.stabs) { [0, 2, 4, 6].forEach(function (s) { at(s, { v: "pow", m: bar.stabs, d: 1 }); at(s, { v: "kick" }); at(s, { v: "snare" }); }); }
+    if (bar.slide) at(bar.stabs ? 8 : 12, { v: "slide", m: bar.slide[0], m2: bar.slide[1], d: bar.stabs ? 8 : 4 });
+    if (bar.stop) {
+      at(0, { v: "pow", m: bar.stop, d: 4 }); at(0, { v: "kick" }); at(0, { v: "crash" });
+      [8, 10, 12, 14].forEach(function (s, i) { at(s, { v: "tom", f: [240, 190, 150, 115][i] }); });
+      return;
+    }
+    if (bar.stabs) return;
+    // shuffle beat: kick on 1 and 3 (+ push), snare on 2 and 4, eighth-note hats
+    [0, 8, 11].forEach(function (s) { at(s, { v: "kick" }); });
+    [4, 12].forEach(function (s) { at(s, { v: "snare" }); });
+    if (bar.fill) [13, 14, 15].forEach(function (s) { at(s, { v: "snare" }); });
+    for (let s = bar.crash ? 2 : 0; s < STEPS; s += 2) at(s, { v: "hat" });
+    if (bar.crash) at(0, { v: "crash" });
+  });
+  return { events: events, steps: events.length, sixteenth: 60 / 150 / 4, swing: 1 / 3, bpm: 150 };
+})();
+
+// Engine sound per car make (posh drivers, src/cars.js): firing rate (Hz), tone, filter, loudness.
+// The Tesla is an electric whine at a third of the X7's volume; the Ferrari roars.
+const CAR_ENGINES = {
+  suv:     { rate: 10, freq: 45, cut: 600, gain: 0.15 },    // BMW X7: low diesel rumble
+  tesla:   { rate: 90, freq: 330, cut: 800, gain: 0.05 },   // faint electric whine
+  ferrari: { rate: 55, freq: 160, cut: 3000, gain: 0.22 },  // loud and high
+  limo:    { rate: 8, freq: 38, cut: 400, gain: 0.08 },     // a parked V8 idling
+};
+
+const SONGS = { title: ROCK, valkyries: SONG, biker: BIKER };
 
 const Sound = {
   ac: null, master: null, music: null, sfx: null, noiseBuf: null,
@@ -187,7 +242,9 @@ const Sound = {
       const song = this.song();
       const len = song.sixteenth / this.tempo;
       const evs = song.events[this.step % song.steps];
-      for (const e of evs) this.playEvent(e, this.nextTime, len);
+      // swing: off-beat eighths come late (the biker shuffle); the step grid itself stays even
+      const at = this.nextTime + (song.swing && this.step % 4 === 2 ? song.swing * len : 0);
+      for (const e of evs) this.playEvent(e, at, len);
       this.nextTime += len;
       this.step = (this.step + 1) % song.steps;
     }
@@ -208,6 +265,9 @@ const Sound = {
       case "gtr": this.guitar([midiHz(e.m)], t, e.pm ? len * 0.8 : e.d * len * 0.95, e.pm ? 0.5 : 0.7, e.pm); break;
       case "pow": this.guitar([midiHz(e.m), midiHz(e.m + 7), midiHz(e.m + 12)], t, e.d * len * 0.9, 0.45, false); break;
       case "rbass": this.bassNote(midiHz(e.m), t, e.d * len * 0.85, 0.45); break;
+      // ride theme (biker rock) voices
+      case "dyad": this.guitar([midiHz(e.m), midiHz(e.m + e.i)], t, e.d * len * 0.8, 0.45, true); break;
+      case "slide": this.guitarSlide(midiHz(e.m), midiHz(e.m2), t, e.d * len, 0.6); break;
       case "crash": this.noise(t, 1.4, 0.3, 12000, this.music); break;
       case "tom": this.sweep("sine", e.f, e.f * 0.5, t, 0.2, 0.55, this.music); break;
     }
@@ -251,6 +311,21 @@ const Sound = {
         o.type = "sawtooth"; o.frequency.setValueAtTime(fr * k, t);
         o.connect(f); o.start(t); o.stop(t + dur + 0.02);
       });
+    });
+  },
+  // A sliding guitar note (pitch sweeps f0 -> f1): the engine-rev lick of the ride theme.
+  guitarSlide(f0, f1, t, dur, vol) {
+    if (!this.ac) return;
+    const ac = this.ac, g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
+    g.gain.setValueAtTime(vol, t + dur * 0.8);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    g.connect(this.ampInput());
+    [0.997, 1.003].forEach(function (k) {
+      const o = ac.createOscillator();
+      o.type = "sawtooth"; o.frequency.setValueAtTime(f0 * k, t); o.frequency.exponentialRampToValueAtTime(f1 * k, t + dur * 0.9);
+      o.connect(g); o.start(t); o.stop(t + dur + 0.02);
     });
   },
   bassNote(freq, t, dur, vol) {
@@ -307,6 +382,10 @@ const Sound = {
   // gain by distance), which the tests read; with an AudioContext they drive real voices.
   engines: [{ id: null, rate: 0, freq: 0, gain: 0, cut: 900 }, { id: null, rate: 0, freq: 0, gain: 0, cut: 900 }],
   engineTargets(e) {
+    if (e.kind && CAR_ENGINES[e.kind]) {                // a posh driver's car (src/cars.js): one sound per make
+      const C = CAR_ENGINES[e.kind];
+      return { rate: C.rate, freq: C.freq, cut: C.cut, gain: C.gain * clamp(1 - (e.dist || 0) / 800, 0.15, 1) };
+    }
     const p = e.state === "rev" ? clamp(e.throttle || 0, 0, 1) : e.state === "charge" ? 1 : 0;
     const charge = e.state === "charge";
     return {
@@ -352,9 +431,20 @@ const Sound = {
     v = this.engineVoices[i] = { bus: this.sfx, saw: saw, sub: sub, lfo: lfo, f: f, out: out };
     return v;
   },
-  applyEngine(i) {
+  // The mofa (ride): its own two-stroke voice; speed 0..1 or null (off: paused, level over, not riding).
+  mofa: { rate: 0, freq: 0, gain: 0, cut: 700 },
+  setMofa(speed) {
+    const m = this.mofa;
+    if (speed === null || speed === undefined) m.gain = 0;
+    else {
+      const p = clamp(speed, 0, 1);
+      m.rate = 9 + 19 * p; m.freq = 50 + 60 * p; m.cut = 700 + 1300 * p; m.gain = 0.1 + 0.04 * p;
+    }
+    this.applyEngine(2, m);
+  },
+  applyEngine(i, slot) {
     if (!this.ac || !this.sfx) return;
-    const s = this.engines[i], v = this.engineVoice(i), t = this.ac.currentTime;
+    const s = slot || this.engines[i], v = this.engineVoice(i), t = this.ac.currentTime;
     if (s.gain > 0) {
       v.saw.frequency.setTargetAtTime(s.freq, t, 0.05); v.sub.frequency.setTargetAtTime(s.freq / 2, t, 0.05);
       v.lfo.frequency.setTargetAtTime(s.rate, t, 0.05); v.f.frequency.setTargetAtTime(s.cut, t, 0.05);
@@ -369,6 +459,13 @@ const Sound = {
     const t = this.ac.currentTime;
     switch (name) {
       case "shot": this.sweep("square", 1100, 280, t, 0.08, 0.25); break;
+      case "mg": {        // the mofa's machine gun: a sharp crack, a low thump and the bolt's click, pitch varied per shot
+        const k = 1 + (Math.random() - 0.5) * 0.16;
+        this.noise(t, 0.04, 0.55, 3200 * k, null, 900);
+        this.sweep("sine", 160 * k, 50, t, 0.07, 0.6);
+        this.sweep("square", 2600 * k, 1900, t, 0.012, 0.1);
+        break;
+      }
       case "shotUp": this.sweep("sawtooth", 1500, 200, t, 0.1, 0.22); this.noise(t, 0.05, 0.15, 5000); break;
       case "jump": this.sweep("square", 220, 520, t, 0.1, 0.18); break;
       case "hit": this.sweep("square", 300, 120, t, 0.06, 0.25); this.noise(t, 0.05, 0.2, 3000); break;
@@ -385,6 +482,9 @@ const Sound = {
       case "door": this.sweep("square", 140, 60, t, 0.35, 0.3); this.noise(t, 0.3, 0.25, 900); break;
       case "locked": this.tone("square", 110, t, 0.12, 0.3); this.tone("square", 90, t + 0.12, 0.15, 0.3); break;
       case "throw": this.sweep("triangle", 500, 900, t, 0.08, 0.25); break;
+      case "pop": this.sweep("sine", 900, 300, t, 0.06, 0.4); this.noise(t, 0.05, 0.25, 3000); break;   // champagne cork
+      case "horn":        // posh car horn: two square tones together
+        this.tone("square", 392, t, 0.28, 0.12, this.sfx); this.tone("square", 494, t, 0.28, 0.1, this.sfx); break;
       case "cheer": {     // a few fans: rising "woo", crowd noise swell, two-note whistle
         const k = 0.95 + Math.random() * 0.1;
         this.sweep("sine", 320 * k, 560 * k, t, 0.45, 0.12); this.sweep("triangle", 400 * k, 660 * k, t + 0.04, 0.4, 0.08);

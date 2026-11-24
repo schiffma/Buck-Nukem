@@ -2,7 +2,7 @@
 """Render game states to PNG with headless Chrome (visual checks).
 
 Usage: python tools/screenshot.py [--touch [WxH]] OUT.png SPEC [SPEC ...]
-SPEC is the #shot= value, e.g. "title", "play,0,40,13,30", "boss,3,5,12,400".
+SPEC is the #shot= value, e.g. "title", "play,1,40,13,30", "boss,4,5,12,400" (level = 0-based index: 0 ride, 1 courts, ... 4 boss).
 Several specs are tiled into one image (2 columns), each at 2x scale.
 --touch renders in touch mode (#shot=...&touch) and keeps the whole window (picture plus the
 on-screen control bars), default size 844x390 (a phone in landscape; 390x844 shows portrait).
