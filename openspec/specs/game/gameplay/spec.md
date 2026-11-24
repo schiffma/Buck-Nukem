@@ -26,14 +26,18 @@ The game SHALL let the player move the hero left and right with the arrow keys o
 - **THEN** the hero does not jump
 
 ### Requirement: Climbable ladders
-Levels SHALL contain ladders that the hero can climb up and down with Up/Down while overlapping them.
+Levels SHALL contain ladders that the hero can climb up and down with Up/Down while overlapping them. While on a ladder, Left/Right SHALL turn the hero to face that side without leaving the ladder.
 
 #### Scenario: Climbing a ladder
 - **WHEN** the hero overlaps a ladder and the player holds Up
 - **THEN** the hero moves upward without gravity until leaving the ladder's top
 
+#### Scenario: Turning on a ladder
+- **WHEN** the hero is on a ladder and the player presses Left or Right
+- **THEN** the hero faces that side and stays on the ladder at the same position
+
 ### Requirement: Shooting
-The hero SHALL fire a projectile in the facing direction when the player presses X, Ctrl (left or right) or Alt, limited to a fixed fire rate. Projectiles SHALL disappear when they hit a solid tile, hit an enemy, or leave the screen.
+The hero SHALL fire a projectile in the facing direction when the player presses X, Ctrl (left or right) or Alt, limited to a fixed fire rate, whether standing, running, jumping or on a ladder. Projectiles SHALL disappear when they hit a solid tile, hit an enemy, or leave the screen, and SHALL never appear on the far side of a wall the hero is touching.
 
 #### Scenario: Shot damages an enemy
 - **WHEN** a hero projectile overlaps an enemy
@@ -46,6 +50,18 @@ The hero SHALL fire a projectile in the facing direction when the player presses
 #### Scenario: Firing with Ctrl
 - **WHEN** the player presses Left Ctrl or Right Ctrl during play
 - **THEN** the hero fires a shot in the facing direction and the browser performs no default action for the key
+
+#### Scenario: Firing on a ladder
+- **WHEN** the hero is on a ladder (also right after a brief tap of Up at its foot) and the player presses Fire
+- **THEN** a shot is fired in the facing direction at the normal fire rate and the hero stays on the ladder
+
+#### Scenario: Touching a wall
+- **WHEN** the hero stands pressed against a wall one tile thick and fires toward it
+- **THEN** sparks appear at the wall and no projectile appears or travels on the far side of the wall
+
+#### Scenario: Firing works in every situation
+- **WHEN** the player holds Fire while standing, running, jumping, on a ladder, right after being hit, or next to a cheering fan
+- **THEN** shots are fired in every case
 
 ### Requirement: Weapon power-up
 Levels SHALL contain a weapon pickup that increases the hero's firepower (faster shots that deal more damage) until the hero loses a life.
@@ -95,11 +111,15 @@ Each level SHALL have an exit that ends the level. Levels MAY contain locked doo
 - **THEN** a level-complete screen shows the score bonus and the next level starts
 
 ### Requirement: Level sequence
-The game SHALL contain three levels followed by a boss arena, played in order: TC Wollerau clay courts, Krebsbach creek and sports fields, the clubhouse/indoor hall, then the boss arena.
+The game SHALL contain five reels played in order: the mofa ride up the road to TC Wollerau, the TC Wollerau clay courts, the Krebsbach creek and sports fields, the clubhouse/indoor hall, then the boss arena.
 
 #### Scenario: Progressing to the boss
-- **WHEN** the hero exits the third level
+- **WHEN** the hero exits the clubhouse level (reel 4)
 - **THEN** the boss arena starts
+
+#### Scenario: From the road to the courts
+- **WHEN** the mofa reaches the club gate at the end of reel 1
+- **THEN** the clay courts (reel 2) follow
 
 ### Requirement: Checkpoints
 Each level SHALL contain at least one checkpoint in addition to the level start. Touching a checkpoint SHALL make it the respawn point for that level.
@@ -131,7 +151,7 @@ The player SHALL be able to pause and resume the game with P or Enter during pla
 - **THEN** the game is paused and stays paused until the player resumes
 
 ### Requirement: Clubhouse furniture platforms
-Restaurant tables and the bar counter in the clubhouse SHALL behave as one-way platforms: the hero and enemies can stand on their tops, jump up through them from below and walk past them at floor level. Chairs, stools and other decoration SHALL NOT block movement. Level 3 SHALL remain completable.
+Restaurant tables and the bar counter in the clubhouse SHALL behave as one-way platforms: the hero and enemies can stand on their tops, jump up through them from below and walk past them at floor level. Chairs, stools and other decoration SHALL NOT block movement. The clubhouse level SHALL remain completable.
 
 #### Scenario: Standing on a table
 - **WHEN** the hero jumps onto a restaurant table from the floor
@@ -142,7 +162,7 @@ Restaurant tables and the bar counter in the clubhouse SHALL behave as one-way p
 - **THEN** none of them block horizontal movement
 
 #### Scenario: Level 3 completable
-- **WHEN** the level reachability check runs on the refurnished level 3
+- **WHEN** the level reachability check runs on the refurnished clubhouse level
 - **THEN** the exit, both keys and all pickups are reachable from the start
 
 ### Requirement: Disc cutter in the boss arena
@@ -242,7 +262,7 @@ The boss arena SHALL be 40 x 15 tiles (two screens wide), with the hero starting
 - **THEN** the camera stops at the map edge and the hero moves further right on the screen
 
 #### Scenario: Other levels unchanged
-- **WHEN** the hero walks through levels 1 to 3
+- **WHEN** the hero walks through the clay courts, the creek or the clubhouse
 - **THEN** the camera keeps him near the middle of the screen as before
 
 #### Scenario: Platforms on several heights
@@ -292,31 +312,35 @@ When the hero takes a hit while standing on a one-way platform, he SHALL only st
 - **THEN** he is knocked back as before, clearly further than on a ledge
 
 ### Requirement: Start level from the URL
-The game SHALL accept a URL fragment parameter `level=N` (N = 1..4, the reel number: 1 courts, 2 creek, 3 clubhouse, 4 boss arena), also next to other fragment flags such as `debug`. While it is present and valid, every new game started from the title SHALL begin at that level with score 0, full health and 3 lives, with the weapon that level normally starts with. Missing or invalid values SHALL leave the normal start at level 1.
+The game SHALL accept a URL fragment parameter `level=N` (N = 1..5, the reel number: 1 mofa ride, 2 courts, 3 creek, 4 clubhouse, 5 boss arena), also next to other fragment flags such as `debug`. While it is present and valid, every new game started from the title SHALL begin at that level with score 0, full health and 3 lives, with the weapon that level normally starts with. Missing or invalid values SHALL leave the normal start at reel 1.
 
 #### Scenario: Starting at the boss arena
-- **WHEN** the game is opened with `#level=4` and the player presses Enter on the title screen
+- **WHEN** the game is opened with `#level=5` and the player presses Enter on the title screen
 - **THEN** the "MISSING REEL" and "FINAL REEL" cards play and the boss arena starts with score 0, full health, 3 lives and the disc cutter
 
 #### Scenario: Starting at a middle level
 - **WHEN** the game is opened with `#level=2` and the player presses Enter on the title screen
-- **THEN** the "REEL 2" card plays and level 2 starts with score 0, full health, 3 lives and the standard blaster
+- **THEN** the "REEL 2" card plays and the clay courts start with score 0, full health, 3 lives and the standard blaster
 
 #### Scenario: Next game starts there again
 - **WHEN** a game started via `#level=3` ends in game over or victory and the player starts a new game from the title
-- **THEN** the new game starts at level 3 again
+- **THEN** the new game starts at reel 3 again
 
 #### Scenario: Combined with other flags
 - **WHEN** the game is opened with `#debug&level=3`
-- **THEN** the debug overlay is on and new games start at level 3
+- **THEN** the debug overlay is on and new games start at reel 3
 
 #### Scenario: Invalid values ignored
-- **WHEN** the fragment holds `level=0`, `level=5`, `level=x` or no level parameter
-- **THEN** new games start at level 1 as before
+- **WHEN** the fragment holds `level=0`, `level=6`, `level=x` or no level parameter
+- **THEN** new games start at reel 1, the mofa ride
 
 #### Scenario: Progress continues normally
-- **WHEN** a game started at level 2 completes that level
-- **THEN** level 3 follows, and after level 3 the boss arena
+- **WHEN** a game started at reel 3 completes that level
+- **THEN** reel 4 follows, and after reel 4 the boss arena
+
+#### Scenario: Old boss links
+- **WHEN** the game is opened with `#level=4`
+- **THEN** new games start at the clubhouse (reel 4), not at the boss arena
 
 ### Requirement: Mega Cutter upgrade
 The boss arena SHALL contain a disc-cutter upgrade on its highest platform. Touching it SHALL turn the disc cutter into the Mega Cutter until the hero loses a life: each shot fires two blades (one level, one angled slightly upward) dealing 5 damage each, at the normal cutter fire rate. While the hero lacks the upgrade, the pickup SHALL reappear at its spot 20 seconds after it was taken.
@@ -338,7 +362,7 @@ The boss arena SHALL contain a disc-cutter upgrade on its highest platform. Touc
 - **THEN** the upgrade pickup is back at its spot on the top platform
 
 #### Scenario: Other levels unchanged
-- **WHEN** the hero touches a weapon pickup in levels 1 to 3
+- **WHEN** the hero touches a weapon pickup on the clay courts, at the creek or in the clubhouse
 - **THEN** he gets the Mega Blaster as before
 
 ### Requirement: Boss reveal at arena start
@@ -359,3 +383,26 @@ When the boss arena starts after its reel intro card, the camera SHALL pan from 
 #### Scenario: Not on respawn
 - **WHEN** the hero loses a life in the boss arena and respawns
 - **THEN** play continues at once without a reveal
+
+### Requirement: Fullscreen with Windows key lock
+Pressing F SHALL toggle fullscreen at any time. While fullscreen, the game SHALL lock the left and right Windows keys through the browser's Keyboard Lock API where available, so they do not open the Start menu or take focus from the game. Esc SHALL stay unlocked and leave fullscreen; the lock SHALL end when fullscreen ends.
+
+#### Scenario: Entering fullscreen
+- **WHEN** the player presses F in a normal window
+- **THEN** the game requests fullscreen and, once fullscreen, locks the MetaLeft and MetaRight keys and shows "WINDOWS KEY LOCKED" for about two seconds
+
+#### Scenario: Leaving fullscreen
+- **WHEN** the player presses F or Esc while fullscreen
+- **THEN** fullscreen ends and the Windows keys are unlocked
+
+#### Scenario: Browser without Keyboard Lock
+- **WHEN** fullscreen starts in a browser that has no Keyboard Lock API or refuses the lock
+- **THEN** the game still plays fullscreen and shows "FULLSCREEN (WINDOWS KEY NOT LOCKABLE HERE)" instead
+
+#### Scenario: Windows key while locked
+- **WHEN** the Windows key is pressed while the game is fullscreen with the lock active
+- **THEN** the game keeps focus, held keys stay held, and firing continues
+
+#### Scenario: Controls shown
+- **WHEN** the title screen is shown
+- **THEN** the controls list includes F for fullscreen

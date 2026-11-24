@@ -32,7 +32,7 @@ The built HTML file SHALL be no larger than 2 MB.
 - **THEN** it reports the output size and fails if the file exceeds 2 MB
 
 ### Requirement: Browser support
-The game SHALL run at a steady 60 frames per second in current desktop Chrome, Firefox and Edge, with game speed independent of the display refresh rate. It SHALL also be playable in landscape with touch in current Chrome on Android and Safari on iOS, from the same file, with game speed independent of the display refresh rate.
+The game SHALL run at a steady 60 frames per second in current desktop Chrome, Firefox and Edge, with game speed independent of the display refresh rate. It SHALL also be playable in landscape with touch in current Chrome on Android and Safari on iOS, from the same file, with game speed independent of the display refresh rate. It SHALL draw at most one frame per 60 Hz game update.
 
 #### Scenario: High refresh display
 - **WHEN** the game runs on a 144 Hz display
@@ -49,6 +49,14 @@ The game SHALL run at a steady 60 frames per second in current desktop Chrome, F
 #### Scenario: Slow device keeps game speed
 - **WHEN** a phone renders fewer than 60 frames per second
 - **THEN** the game still updates at 60 steps per second of game time, so the hero moves at the same speed as on the desktop
+
+#### Scenario: No extra frames on high refresh displays
+- **WHEN** the display refreshes at 120 Hz or 144 Hz for one second
+- **THEN** the game draws at most 61 frames in that second (one per game update), each showing the state after the latest update, and the debug overlay's FPS shows at most 61
+
+#### Scenario: Every update is shown at 60 Hz
+- **WHEN** the display refreshes at 60 Hz
+- **THEN** the game still draws a frame on every refresh where an update happened, about 60 per second as before
 
 ### Requirement: Build version
 The build SHALL embed a version text in the game file, derived from git: the release tag (for example "v1.0.2") when no files outside `dist/` changed since that tag, otherwise the tag plus the number of commits since it and the short commit hash (for example "v1.0.2-3-gab12cd3"), with "-dirty" appended when files outside `dist/` have uncommitted changes. When git or the tags are not available, it SHALL fall back to "v" plus the contents of the `VERSION` file.
