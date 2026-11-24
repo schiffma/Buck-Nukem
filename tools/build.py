@@ -327,6 +327,17 @@ def prop_overlaps(meta, name="level"):
     return warnings
 
 
+MUSIC_TRACKS = {"valkyries", "biker", "funk", "clarinetpolka"}   # SONGS in src/audio.js a level may name ("title" is the title screen's)
+
+
+def music_errors(meta, name="level"):
+    """Errors for a level's music header: the track must exist."""
+    m = meta.get("music")
+    if m is not None and m not in MUSIC_TRACKS:
+        return [f"{name}: unknown music track {m!r} (known: {', '.join(sorted(MUSIC_TRACKS))})"]
+    return []
+
+
 def ride_map_errors(meta, name="level"):
     """Errors for a ride map: no weapon pickups (the mofa has its gun) and no Rivella/Cervelat
     (its health pickup is the WD-40 can '{')."""
@@ -348,7 +359,7 @@ def load_levels():
     levels = []
     for f in files:
         meta = parse_level(f)
-        errors = ride_map_errors(meta, f.name)
+        errors = ride_map_errors(meta, f.name) + music_errors(meta, f.name)
         if errors:
             fail("; ".join(errors))
         for w in prop_overlaps(meta, f.name):

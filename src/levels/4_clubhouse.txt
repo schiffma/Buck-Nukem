@@ -1,4 +1,5 @@
 name: CLUBHOUSE AND INDOOR HALL
+music: clarinetpolka
 theme: hall
 bg: bg_hall
 interior: 0-63

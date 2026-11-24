@@ -15,6 +15,12 @@ const LIMO_LADY_LINES = ["IS THAT A MOFA? EW.", "RUN HIM OVER, DEAR", "HOW VERY 
 // Who speaks from the limo: px from its left edge (bubble anchor) and the lines.
 // (positions in the limo's 160-wide layout grid, scaled to its real width by limoX)
 const LIMO_SPEAKERS = [{ bx: 61, lines: PRESIDENT_LINES }, { bx: 37, lines: LIMO_LADY_LINES }, { bx: 107, lines: LIMO_LADY_LINES }];
+// The posh ladies crawling out of the limo's wreck (the finale), at most 20 characters each.
+const LIMO_FINALE_LINES = ["MY DRESS! IT'S DIOR!", "CALL MY HUSBAND!", "MY NAILS! MY NAILS!", "THIS IS AN OUTRAGE!", "WHO IS YOUR LAWYER?", "I'LL HAVE YOU FIRED!"];
+// Buck's dry Swiss German lines when he finishes off a car on the ride (at most 20 characters).
+const BUCK_LINES = ["SO, FERTIG.", "UFGRUMT!", "GÄLL, DAS HET GSESSE", "CHASCH VERGÄSSE.", "TSCHÜSS ZÄMME!", "FERTIG LUSCHTIG.",
+  "DAS ISCH ERLEDIGT.", "ZACK, UND WÄG.", "HOPP, WIITER!", "NÜT FÜR UNGUET.", "SO GAHTS HALT.", "GHÖRT ALLES ZUM JOB",
+  "BIS GLII, GELL.", "SCHO WIEDER EINE."];
 const POSH_LINES = ["DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!", "GET OFF MY ROAD!", "I PAY YOUR SALARY!",
   "DADDY'S CAR!", "MY LAWYER WILL CALL", "ZERO EMISSIONS, LOL", "0 TO 100 IN 2.9!", "PARKING IS FOR POOR",
   "TRUST FUND, BABY!", "ROSE O'CLOCK!", "MOVE IT, PEASANT!"];
@@ -153,12 +159,11 @@ function carType(kind) {
         for (let i = 0; i < 4; i++) FX.explode(e.x + e.w * (i + 0.5) / 4, y - 4 + rnd(-6, 6), false);
         FX.shake(8, 0.6);
         Cars.runners.push({ x: e.x + limoX(LIMO_SUNROOF_BX), y: e.y + e.h - 12, vx: 110, t: 3, anim: 0 });   // the president, in tails
-        [limoX(37), limoX(107)].forEach(function (dx, i) {                                                        // and the ladies, in their dresses
-          Cars.runners.push({ x: e.x + dx, y: e.y + e.h - 14, vx: i ? 95 : -95, t: 3, anim: 0, lady: i });
-        });
+        Mofa.startFinale(e);                                                                       // the ladies crawl out: the finale
       }
       Cars.wreck(e);
       Cars.bailOut(e);
+      if (k !== "limo") Talk.buckKill();                   // Buck comments dryly (the limo has its own finale)
     },
   };
 });
@@ -219,6 +224,7 @@ const Cars = {
       ctx.drawImage(S.r, Math.round(w.x - camX) - S.pad, Math.round(w.y + w.h - S.h + oy) - S.pad);
       ctx.globalAlpha = 1;
     }
+    Mofa.drawFinale(camX, camY);
     for (const r of this.runners) {
       const S = (r.lady !== undefined ? SPR.ladyRun[r.lady] : SPR.driverRun)[Math.floor(r.anim) % 2];
       ctx.drawImage(r.vx > 0 ? S.r : S.l, Math.round(r.x - camX) - S.pad, Math.round(r.y + oy) - S.pad);
@@ -365,6 +371,18 @@ function buildCarSprites() {
       frames: [makeSet(drawCar(k, 0)), makeSet(drawCar(k, 1))],
       wreck: makeSet(drawCar(k, 0, true)),
     };
+  });
+  // the limo's ladies crawling out of the wreck on hands and knees (12 x 7, hat askew), 2 frames each
+  SPR.ladyCrawl = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {
+    return [0, 1].map(function (f) {
+      const c = makeCanvas(12, 7), g = c.getContext("2d");
+      function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
+      r(8, 0, 4, 1, C[0]); r(9, 1, 2, 1, C[0]);                       // the hat, askew
+      r(8, 2, 3, 2, "#e8b898"); r(9, 2, 2, 1, "#101010");            // face, sunglasses
+      r(2, 2, 7, 3, C[1]); r(7, 2, 2, 1, "#f8f8f0");                 // dress, pearls
+      r(f ? 8 : 9, 4, 1, 3, "#e8b898"); r(f ? 3 : 2, 5, 1, 2, "#e8b898"); r(0, 4, 2, 1, "#e8b898");   // arms, knees, feet
+      return makeSet(c);
+    });
   });
   // the limo's ladies running off (big hat, dress, heels), 2 frames each: pink and white
   SPR.ladyRun = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {

@@ -41,19 +41,21 @@ const CONFIG = {
   bossSummons: 3,
   // mofa ride (src/ride.js): px/s and px/s^2
   mofaTop: 150, mofaAccel: 70, mofaBrake: 200, mofaCoast: 30, mofaReverse: 0.25, mofaHopVel: -330,
-  mofaW: 28, mofaH: 30, mofaClimbK: 4,          // uphill: top speed x max(0.4, 1 - k * grade)
+  mofaW: 22, mofaH: 30, mofaClimbK: 4,          // uphill: top speed x max(0.4, 1 - k * grade)
   mofaRampVel: -360, mofaRampGrav: 0.5,         // ramp launch at top speed; gravity factor in that flight
   // posh drivers (src/cars.js)
-  suvHp: 12, teslaHp: 8, ferrariHp: 6,               // suv: the BMW X7
+  suvHp: 10, teslaHp: 6, ferrariHp: 5,                // suv: the BMW X7 (hit counts fit the heavy guns' 8 volleys/s)
   suvPoints: 800, teslaPoints: 700, ferrariPoints: 1000,
   wd40Heal: 2,                                         // WD-40 can (ride health pickup)
-  limoHp: 30, limoPoints: 3000, limoGateGap: 60,       // the president's limo: parks this far before the club gate
+  limoHp: 24, limoPoints: 3000, limoGateGap: 60,       // the president's limo: parks this far before the club gate
   limoTalkEvery: [2, 3],                              // the president or a lady at the window speaks
   corkEvery: [1.0, 1.5],                               // champagne corks from the sunroof, while Buck is within a screen
   suvSpeed: 90, ferrariSpeed: 340, carKnockback: 160, carContact: 2, suvThrowEvery: [1.5, 2.5], wreckLife: 20,
   driverTalkT: 1.5, driverTalkEvery: [2.5, 3.5],    // posh drivers: a line on first sight, then every 2.5-3.5 s
+  finale: { lady1: 0.6, say1: 0.9, lady2: 1.8, say2: 2.1, buck: 3.2, light: 3.8, lit: 4.2, end: 5.0, skipAfter: 0.3, crawl: 12 },   // limo finale (s, px/s)
+  buckTalkCd: 3, buckTalkT: 1.5,                      // Buck's Swiss German line after a car kill (ride)
   rideBubbles: 2,                                    // ride: at most this many car bubbles at once (never overlapping)
-  mofaRate: 10, mofaShotSpeed: 300, mofaAim: 30,   // mounted machine gun: shots/s, px/s, Up angle (degrees)
+  mofaRate: 8, mofaShotSpeed: 300, mofaAim: 30,    // heavy twin guns: volleys/s, px/s, Up angle (degrees)
   rideCamX: 96,                  // ride: the camera keeps Buck's centre about this far from the left edge
   bossCamX: 80,                  // boss arena: the camera keeps Buck's centre about this far from the left edge
   reveal: { pan: 0.8, hold: 1.2, back: 0.8, skipBack: 0.3 },   // boss reveal camera pan at arena start (s)                // summon attacks per boss fight; then it alternates slam and bubbles

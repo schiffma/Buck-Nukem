@@ -41,13 +41,13 @@ const Talk = {
   // only where it overlaps no other car bubble and no fan bubble.
   say(e, pool, secs, dx) {
     const others = Game.enemies.filter(function (o) { return o !== e && o.bubble && !o.dead; });
-    const ride = Game.level && Game.level.isRide && e.T && e.T.car;
+    const ride = Game.level && Game.level.isRide && e.T && e.T.car, buck = ride && Player.bubble ? 1 : 0;
     if (!ride && others.length) return false;
-    if (ride && others.length >= CONFIG.rideBubbles) return false;
+    if (ride && others.length + buck >= CONFIG.rideBubbles) return false;   // Buck's line counts as one of the ride's bubbles
     const bubble = { text: this.line(pool), t: secs, dx: dx };
     if (ride) {
       const r = this.rect(e, bubble, Camera.x, Camera.y);
-      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], this.buckRects(Camera.x, Camera.y));
       if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
     }
     e.bubble = bubble;
@@ -59,9 +59,30 @@ const Talk = {
     const cx = Math.round(e.x + (bubble.dx !== undefined ? bubble.dx : e.w / 2) - camX), top = Math.round(e.y - camY + HUD_H) - h - 3;
     return { x: clamp(cx - Math.floor(w / 2), 2, W - w - 2), y: Math.max(HUD_H + 2, top), w: w, h: h, tx: cx };
   },
-  // the car bubbles currently up (screen boxes), for the fans to keep clear of
+  // the car bubbles (and Buck's) currently up (screen boxes), for the fans to keep clear of
   rects(camX, camY) {
-    return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); });
+    return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); })
+      .concat(this.buckRects(camX, camY));
+  },
+  // Buck on the mofa: his bubble sits above his head (the rider is drawn a little above the player box)
+  buckSpeaker() { return { x: Player.x, y: Player.y - 6, w: Player.w }; },
+  buckRects(camX, camY) { return Player.bubble && !Player.dead ? [this.rect(this.buckSpeaker(), Player.bubble, camX, camY)] : []; },
+  // Buck's dry Swiss German line after he finishes off a car (ride only), at most every buckTalkCd s;
+  // like a car bubble it must not overlap another bubble, else he stays quiet.
+  buckKill() {
+    if (!Game.level || !Game.level.isRide || Player.dead || (Player.talkCd || 0) > 0 || Player.bubble) return false;
+    const others = Game.enemies.filter(function (o) { return o.bubble && !o.dead; });
+    if (others.length >= CONFIG.rideBubbles) return false;
+    const bubble = { text: this.line(BUCK_LINES), t: CONFIG.buckTalkT };
+    const r = this.rect(this.buckSpeaker(), bubble, Camera.x, Camera.y);
+    const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+    if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
+    Player.bubble = bubble; Player.talkCd = CONFIG.buckTalkCd;
+    return true;
+  },
+  update(dt) {
+    if (Player.talkCd > 0) Player.talkCd -= dt;
+    if (Player.bubble && (Player.bubble.t -= dt) <= 0) Player.bubble = null;
   },
   // a lawyer's throw may come with a line: once per lawyerTalkCd per lawyer
   maybe(e) {
@@ -74,6 +95,12 @@ const Talk = {
       const r = this.rect(e, e.bubble, camX, camY);
       drawSpeechBubble(e.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     }
+    this.buckRects(camX, camY).forEach(function (r) { drawSpeechBubble(Player.bubble.text, r.x, r.y, r.w, r.h, r.tx); });
+    if (Mofa.finale) Mofa.finale.ladies.forEach(function (l, i) {           // the limo finale's ladies, staggered
+      if (!l.bubble) return;
+      const r = Talk.rect({ x: l.x, y: l.y - 4 - i * 14, w: 12 }, l.bubble, camX, camY);
+      drawSpeechBubble(l.bubble.text, r.x, r.y, r.w, r.h, r.tx);
+    });
   },
 };
 

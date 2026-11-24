@@ -20,6 +20,8 @@ const GLYPHS = {
   "=": [0, 0, 31, 0, 31, 0, 0], ">": [8, 4, 2, 1, 2, 4, 8], "<": [2, 4, 8, 16, 8, 4, 2],
   "%": [24, 25, 2, 4, 8, 19, 3], '"': [10, 10, 0, 0, 0, 0, 0], "*": [0, 21, 14, 31, 14, 21, 0],
   "♥": [0, 10, 31, 31, 14, 4, 0],
+  // Swiss German umlauts (Buck's lines): two dots in the top row over a five-row letter
+  "Ä": [10, 0, 14, 17, 31, 17, 17], "Ö": [10, 0, 14, 17, 17, 17, 14], "Ü": [10, 0, 17, 17, 17, 17, 14],
 };
 const FONT_CHARS = Object.keys(GLYPHS).join("");
 const fontAtlases = {};

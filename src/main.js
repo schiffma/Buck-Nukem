@@ -22,9 +22,10 @@ const Game = {
 
   setState(s) {
     this.prevState = this.state; this.state = s; this.stateT = 0;
-    // title: the rock theme; the mofa ride: its biker rock song; everything else: the Valkyries
+    // title: the rock theme; every other state: the level's own track (its "music:" header:
+    // the ride's biker song, the courts' funk, the clubhouse polka; the Valkyries by default)
     if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); }
-    else Sound.setTrack(this.level && this.level.isRide ? "biker" : "valkyries");
+    else Sound.setTrack(this.level ? this.level.music : "valkyries");
   },
 
   startHash: null,           // tests: stands in for location.hash when set
@@ -96,6 +97,7 @@ const Game = {
     if (L.isRide) Mofa.mount(Player);
     Player.hp = CONFIG.maxHp;
     Player.invuln = 0;
+    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null;
     Camera.snap(Player, L);
     Sound.setTempo(L.isBoss ? 1.25 : 1);
     if (L.isBoss) Player.weapon = "cutter";             // the finale is fought with the disc cutter
@@ -259,6 +261,7 @@ const Game = {
         if (this.stateT > 2 && Input.pressed("enter")) { FX.clear(); this.setState(STATE.TITLE); }
         break;
     }
+    Talk.update(dt);
     this.updateEngines();
     this.soundWasReady = Sound.ready();
   },

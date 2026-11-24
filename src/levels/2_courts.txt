@@ -1,4 +1,5 @@
 name: TC WOLLERAU - CLAY COURTS
+music: funk
 theme: court
 bg: bg_court
 ; Map segments are 32 columns wide and are joined left to right. Legend: see src/level.js

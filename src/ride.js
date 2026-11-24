@@ -29,20 +29,87 @@ const Mofa = {
     const s = this.speed01(P);
     return Input.down("right") && P.onGround && this.grade(P, Game.level) > 0.02 ? 1 : s;
   },
+  // ---------------- the limo finale ----------------
+  // When the limo is destroyed: play pauses (no gas, fire or jump; Buck can't be hurt) while the
+  // mofa rolls to a stop, the two posh ladies crawl out of the wreck one after the other with a
+  // line each, Buck answers "YOU HAVE NO CLUE" and lights a cigarette; Fire or Jump skips it.
+  finale: null,
+  startFinale(limo) {
+    const lines = shuffle(LIMO_FINALE_LINES.slice());
+    const floor = limo.y + limo.h;
+    this.finale = { t: 0, ladies: [limoX(37), limoX(107)].map(function (dx, i) {
+      return { x: limo.x + dx - 6, y: floor - 7, dir: i ? 1 : -1, style: i, out: false, line: lines[i], bubble: null, anim: 0 };
+    }) };
+    Cars.pending = []; Cars.triggers = []; Game.enemyShots = [];
+  },
+  updateFinale(P, dt) {
+    const F = this.finale, T = CONFIG.finale;
+    if (!F) return;
+    const t0 = F.t; F.t += dt;
+    const at = function (k) { return t0 < T[k] && F.t >= T[k]; };
+    const ladies = F.ladies;
+    if (at("lady1")) ladies[0].out = true;
+    if (at("lady2")) ladies[1].out = true;
+    if (at("say1")) ladies[0].bubble = { text: ladies[0].line, t: 1.6 };
+    if (at("say2")) ladies[1].bubble = { text: ladies[1].line, t: 1.6 };
+    if (at("buck")) { P.bubble = { text: "YOU HAVE NO CLUE", t: 1.8 }; P.talkCd = CONFIG.buckTalkCd; }
+    if (at("light")) P.lighterT = T.lit - T.light;
+    if (at("lit")) { P.cigarette = true; P.puffT = 0; }
+    ladies.forEach(function (l) {
+      if (l.out) { l.x += l.dir * T.crawl * dt; l.anim += dt * 4; }
+      if (l.bubble && (l.bubble.t -= dt) <= 0) l.bubble = null;
+    });
+    if (P.lighterT > 0) P.lighterT -= dt;
+    const skip = F.t > T.skipAfter && (Input.pressed("fire") || Input.pressed("jump"));
+    if (F.t >= T.end || skip) this.endFinale(P);
+  },
+  endFinale(P) {
+    const F = this.finale;
+    if (!F) return;
+    F.ladies.forEach(function (l) {                      // they get up and run off in their dresses
+      Cars.runners.push({ x: l.x + 6, y: l.y - 7, vx: l.dir * 95, t: 3, anim: 0, lady: l.style });
+    });
+    if (!P.cigarette) { P.cigarette = true; P.puffT = 0; }
+    P.lighterT = 0;
+    this.finale = null;
+  },
+  // a lit cigarette at Buck's mouth puffs a little smoke about every 1.1 s
+  updateCigarette(P, dt) {
+    if (!P.cigarette) return;
+    if ((P.puffT -= dt) > 0) return;
+    P.puffT = 1.1;
+    const m = this.mouth(P);
+    FX.parts.push({ x: m.x + 4, y: m.y - 1, vx: rnd(-6, 6) + P.vx * 0.3, vy: rnd(-22, -14), life: 1.2, max: 1.2, color: "rgba(200,200,205,0.6)", grav: -6, size: 2, smoke: true, cig: true });
+  },
+  mouth(P) {                                             // world position of Buck's mouth on the mofa
+    const mx = P.x + P.w / 2 - MOFA_SPR_W / 2, my = P.y + P.h - MOFA_SPR_H;
+    return { x: mx + MOFA_RIDER_X + 11, y: my + MOFA_SEAT_Y - MOFA_HIP_ROW + 7 };
+  },
+  drawFinale(camX, camY) {
+    const F = this.finale;
+    if (!F) return;
+    const oy = HUD_H - camY;
+    F.ladies.forEach(function (l) {
+      if (!l.out) return;
+      const S = SPR.ladyCrawl[l.style][Math.floor(l.anim) % 2];
+      ctx.drawImage(l.dir > 0 ? S.r : S.l, Math.round(l.x - camX) - S.pad, Math.round(l.y + oy) - S.pad);
+    });
+  },
   update(P, dt, level) {
     const grade = this.grade(P, level);
-    const climbF = Math.max(0.4, 1 - CONFIG.mofaClimbK * grade), top = CONFIG.mofaTop * climbF, gas = Input.down("right"), brake = Input.down("left");
+    const climbF = Math.max(0.4, 1 - CONFIG.mofaClimbK * grade), top = CONFIG.mofaTop * climbF, locked = !!this.finale, gas = !locked && Input.down("right"), brake = locked || Input.down("left");
     P.face = 1;                                          // rolling back still faces right
     if (P.onGround && P.hurtT <= 0) {
       if (gas && !brake) P.vx = P.vx > top ? Math.max(top, P.vx - 90 * dt) : Math.min(top, P.vx + (P.vx < 0 ? CONFIG.mofaBrake : CONFIG.mofaAccel * climbF) * dt);
       else if (brake && !gas) {
         if (P.vx > 0) P.vx = Math.max(0, P.vx - CONFIG.mofaBrake * dt);
+        else if (locked) P.vx = Math.min(0, P.vx + CONFIG.mofaBrake * dt);   // the finale: stop, don't roll back
         else P.vx = Math.max(-top * CONFIG.mofaReverse, P.vx - CONFIG.mofaAccel * dt);
       } else {                                           // coasting
         const c = (CONFIG.mofaCoast + 600 * grade) * dt;     // rolls out faster uphill
         P.vx = P.vx > 0 ? Math.max(0, P.vx - c) : Math.min(0, P.vx + c);
       }
-      if (Input.pressed("jump")) {                       // a fixed hop (no jump cut on the mofa)
+      if (!locked && Input.pressed("jump")) {            // a fixed hop (no jump cut on the mofa)
         P.vy = CONFIG.mofaHopVel; P.onGround = false;
         Sound.play("jump");
       }
@@ -189,9 +256,9 @@ const Mofa = {
     const left = P.x + P.w / 2 - MOFA_SPR_W / 2, top = P.y + P.h - MOFA_SPR_H, hy = Math.floor(img.height / 2);
     Game.stats.shots += 2;
     Sound.play("mg");                                    // a machine-gun report (the blaster keeps "shot")
-    Game.shots.push({ x: left + MOFA_SPR_W, y: top + MOFA_GUN_Y + 1 - hy, w: img.width, h: img.height,
+    Game.shots.push({ x: left + MOFA_GUN_X + MOFA_GUN_W, y: top + MOFA_GUN_Y + MOFA_BARREL_ROW - hy, w: img.width, h: img.height,
       vx: up ? v * Math.cos(a) : v, vy: up ? -v * Math.sin(a) : 0, dmg: 1, img: img, face: 1, mg: true });
-    Game.shots.push({ x: left + MOFA_REAR_X - img.width, y: top + MOFA_REAR_Y + 1 - hy, w: img.width, h: img.height,
+    Game.shots.push({ x: left + MOFA_REAR_X - img.width, y: top + MOFA_REAR_Y + MOFA_BARREL_ROW - hy, w: img.width, h: img.height,
       vx: -v, vy: 0, dmg: 1, img: img, face: -1, mg: true, rear: true });
   },
   // Two-stroke exhaust: blue-grey puffs from the pipe behind the rear wheel; a few at idle, a
@@ -212,7 +279,7 @@ const Mofa = {
     P.smokeT = (P.smokeT === undefined ? 0 : P.smokeT) - dt;
     if (P.smokeT > 0) return;
     P.smokeT = S.every;
-    const left = P.x + P.w / 2 - MOFA_SPR_W / 2, y = P.y + P.h - MOFA_SPR_H + 20;
+    const left = P.x + P.w / 2 - MOFA_SPR_W / 2, y = P.y + P.h - MOFA_SPR_H + MOFA_EXHAUST_Y;
     const size = Math.round(rnd(S.size[0], S.size[1]));
     for (let k = 0; k < 2; k++)
       FX.parts.push({ x: left - 1 - k * 2, y: y - k, vx: -rnd(12, 30), vy: -rnd(10, 24), life: 1.2, max: 1.2,
@@ -232,11 +299,18 @@ const Mofa = {
     ctx.drawImage(G.l, mx + MOFA_REAR_X - G.pad, my + MOFA_REAR_Y - G.pad);   // rear gun, barrel pointing back
     ctx.drawImage(H.r, mx + MOFA_RIDER_X - H.pad, my + MOFA_SEAT_Y - MOFA_HIP_ROW - H.pad);
     ctx.drawImage(G.r, mx + MOFA_GUN_X - G.pad, my + MOFA_GUN_Y - G.pad);     // front gun on the handlebars
-    if (P.shootT > 0.03) {                               // muzzle flashes at both barrels
+    if (P.cigarette || P.lighterT > 0) {                 // the cigarette (and the lighter while lighting it)
+      const m = this.mouth(P), cx = Math.round(m.x - camX), cy = Math.round(m.y - camY + HUD_H);
+      fillRect(cx, cy, 3, 1, "#f4f0e8");
+      if (P.cigarette) fillRect(cx + 3, cy, 1, 1, Math.floor(Game.time * 6) % 2 ? "#ff7020" : "#ffb040");
+      if (P.lighterT > 0) { fillRect(cx + 3, cy + 1, 2, 3, "#c03020"); fillRect(cx + 3, cy - 2, 1, 2, Math.floor(Game.time * 20) % 2 ? "#ffe060" : "#ff9020"); }
+    }
+    if (P.shootT > 0.03) {                               // big star-shaped muzzle flashes at both barrels
       const up = Input.down("up");
-      [[mx + MOFA_SPR_W, my + MOFA_GUN_Y - 2 - (up ? 2 : 0)], [mx + MOFA_REAR_X - 5, my + MOFA_REAR_Y - 2]].forEach(function (f) {
-        fillRect(f[0], f[1], 5, 5, "rgba(255,150,30,0.6)");
-        fillRect(f[0] + 1, f[1] + 1, 3, 3, "#fff6c0");
+      [[mx + MOFA_GUN_X + MOFA_GUN_W, my + MOFA_GUN_Y + MOFA_BARREL_ROW - 3 - (up ? 2 : 0)], [mx + MOFA_REAR_X - 7, my + MOFA_REAR_Y + MOFA_BARREL_ROW - 3]].forEach(function (f) {
+        fillRect(f[0], f[1] + 2, 7, 3, "rgba(255,150,30,0.7)"); fillRect(f[0] + 2, f[1], 3, 7, "rgba(255,150,30,0.7)");
+        fillRect(f[0] + 1, f[1] + 1, 5, 5, "rgba(255,200,60,0.6)");
+        fillRect(f[0] + 2, f[1] + 2, 3, 3, "#fff6c0");
       });
     }
   },
@@ -246,16 +320,23 @@ const Mofa = {
 // Side view facing right (rear at the left), drawn after assets/img/sachs-mofa.jpg: luggage rack,
 // black seat, chrome tank over the red frame, aluminium engine, chrome fork and headlight,
 // spoked wheels; a machine gun clamped on the handlebars. Colours: ASSETS_META.mofaPalette.
-const MOFA_SPR_W = 42, MOFA_SPR_H = 26;
-const MOFA_SEAT_Y = 10, MOFA_RIDER_X = 8, MOFA_HIP_ROW = BODY_Y + 13, MOFA_GUN_Y = 4;
-const MOFA_GUN_X = 28, MOFA_BARREL = 7;                  // gun mount (receiver starts here) and barrel length
-const MOFA_REAR_X = -5, MOFA_REAR_Y = 6;                 // rear gun on the luggage rack: left edge (barrel tip) and top
+// The mofa is drawn on a 42 x 26 grid and scaled to MOFA_K (75%) when the sprites are built, so a
+// full-size Buck sits on a small moped; the positions below are in the scaled sprite.
+const MOFA_BASE_W = 42, MOFA_BASE_H = 26, MOFA_BASE_SEAT_Y = 10, MOFA_K = 0.75;
+const MOFA_SPR_W = Math.round(MOFA_BASE_W * MOFA_K), MOFA_SPR_H = Math.round(MOFA_BASE_H * MOFA_K);   // 32 x 20
+const MOFA_SEAT_Y = Math.round(MOFA_BASE_SEAT_Y * MOFA_K), MOFA_RIDER_X = Math.round(8 * MOFA_K), MOFA_HIP_ROW = BODY_Y + 13;
+// heavy WW2 machine guns (17 x 7, barrel on row 2): the front one on the handlebars, the rear one
+// (mirrored) on the luggage rack; MOFA_GUN_X/Y is the front gun's top-left, MOFA_REAR_X/Y the rear gun's
+const MOFA_GUN_W = 17, MOFA_GUN_H = 7, MOFA_BARREL_ROW = 2;
+const MOFA_GUN_X = Math.round(26 * MOFA_K), MOFA_GUN_Y = Math.round(4 * MOFA_K) - 2;
+const MOFA_REAR_X = Math.round(9 * MOFA_K) - MOFA_GUN_W, MOFA_REAR_Y = Math.round(6 * MOFA_K) - 1;
+const MOFA_EXHAUST_Y = Math.round(20 * MOFA_K);
 function mofaPalette() {
   const m = (typeof ASSETS_META !== "undefined" && ASSETS_META.mofaPalette) || {};
   return { frame: m.frame || "#991115", chrome: m.chrome || "#edf1ee", seat: m.seat || "#2e363e", engine: m.engine || "#a7a8a2" };
 }
 function drawMofa(frame) {
-  const C = mofaPalette(), c = makeCanvas(MOFA_SPR_W, MOFA_SPR_H), g = c.getContext("2d");
+  const C = mofaPalette(), c = makeCanvas(MOFA_BASE_W, MOFA_BASE_H), g = c.getContext("2d");
   function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
   // wheels: black tyre, thin chrome rim, dark inside, two crossed spokes turning 22.5 degrees per frame
   [[8, 19], [34, 19]].forEach(function (w) {
@@ -272,7 +353,7 @@ function drawMofa(frame) {
   r(1, 12, 14, 1, C.chrome); r(2, 11, 12, 1, C.chrome);  // rear fender
   r(0, 9, 13, 1, C.chrome); r(1, 9, 1, 3, C.chrome); r(11, 9, 1, 3, C.chrome);   // luggage rack
   r(0, 11, 2, 2, "#e02010");                             // tail light
-  r(8, MOFA_SEAT_Y, 13, 3, C.seat); r(9, MOFA_SEAT_Y - 1, 11, 1, C.seat);        // seat
+  r(8, MOFA_BASE_SEAT_Y, 13, 3, C.seat); r(9, MOFA_BASE_SEAT_Y - 1, 11, 1, C.seat);        // seat
   r(12, 13, 17, 3, C.frame); r(14, 16, 4, 2, C.frame);   // red frame panel under the seat
   r(20, 8, 10, 5, C.frame);                              // tank underside
   r(20, 6, 10, 4, C.chrome); r(21, 5, 8, 1, C.chrome);   // chrome tank
@@ -283,18 +364,29 @@ function drawMofa(frame) {
   r(28, 2, 6, 1, "#202020"); r(27, 3, 2, 1, "#202020");   // handlebars
   return c;                                            // the gun is its own sprite (drawMofaGun), so it can swivel
 }
-// Machine gun on its handlebar mount, facing right: receiver, ammo box, barrel.
-function drawMofaGun(barrel) {
-  const c = makeCanvas(7 + barrel, 6), g = c.getContext("2d");
+// Heavy WW2 machine gun, facing right (17 x 7): receiver with a feed box below, a barrel inside a
+// perforated cooling jacket, a wide flash hider at the muzzle.
+function drawMofaGun() {
+  const c = makeCanvas(MOFA_GUN_W, MOFA_GUN_H), g = c.getContext("2d");
   function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-  r(0, 0, 7, 3, "#3a3e38"); r(1, 3, 3, 3, "#5a5a30");
-  r(7, 1, barrel, 1, "#2a2c2a"); r(7, 0, 2, 1, "#3a3e38");
+  r(0, 0, 7, 4, "#3a3e38"); r(0, 0, 7, 1, "#5a605a"); r(5, 1, 1, 1, "#20221f");        // receiver, top cover, sight
+  r(1, 4, 4, 3, "#5a5a30"); r(1, 4, 4, 1, "#6e6e3a");                                  // feed box
+  r(7, 1, 8, 3, "#2a2c2a");                                                            // cooling jacket
+  for (let x = 8; x < 15; x += 2) r(x, 2, 1, 1, "#7a807a");                            // its holes
+  r(15, 0, 2, 5, "#20221f"); r(16, 1, 1, 3, "#3a3e38");                                // flash hider
   return c;
+}
+// Scale a canvas by k with nearest-neighbour sampling (the outline is added afterwards by makeSet).
+function scaleCanvas(c, k) {
+  const o = makeCanvas(Math.round(c.width * k), Math.round(c.height * k)), g = o.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(c, 0, 0, o.width, o.height);
+  return o;
 }
 // Buck seated: usual head and torso, arms forward to the handlebars, legs bent onto the footpegs.
 const HERO_TORSO_RIDE = HERO_TORSO.slice(0, 9).concat(["...JJjJwwwwWJJJJs", "...JJjJwwwWJJ", "...sJJJwwWJJ", "....JJJJJJJJ"]);
 const LEGS_RIDE = ["....PPPPPPPPPPPP", "....PPPPPPPPPPPPP", "...........PPPp", "............PPP", "............FFFf", "...........dDDDD"];
 function buildMofaSprites() {
-  SPR.mofa = { frames: [0, 1, 2, 3].map(function (f) { return makeSet(drawMofa(f)); }),
-    rider: buildHeroFrame(HERO_TORSO_RIDE, LEGS_RIDE), gun: makeSet(drawMofaGun(MOFA_BARREL)) };
+  SPR.mofa = { frames: [0, 1, 2, 3].map(function (f) { return makeSet(scaleCanvas(drawMofa(f), MOFA_K)); }),
+    rider: buildHeroFrame(HERO_TORSO_RIDE, LEGS_RIDE), gun: makeSet(drawMofaGun()) };
 }

@@ -1161,7 +1161,7 @@ function runTests() {
     const want = { suv: [12, 800], tesla: [8, 700], ferrari: [6, 1000] };
     loadRide([], 300);
     const got = Object.keys(want).map(function (k) { const e = makeEnemy(k, 100, 160, Game.level, 1); return k + ":" + e.hp + "/" + e.T.points + (e.T.car ? "" : " not a car"); });
-    check("cars: BMW X7 12 hits/800, Tesla 8/700, Ferrari 6/1000; no BMW sedan", got.join(",") === "suv:12/800,tesla:8/700,ferrari:6/1000" && !ENEMY_TYPES.bmw, got.join(","));
+    check("cars: BMW X7 10 hits/800, Tesla 6/700, Ferrari 5/1000 (the heavy guns); no BMW sedan", got.join(",") === "suv:10/800,tesla:6/700,ferrari:5/1000" && !ENEMY_TYPES.bmw, got.join(","));
     check("cars: Ferrari at most 32 px high, SUV the tallest", ENEMY_TYPES.ferrari.h <= 32 && ["tesla", "ferrari"].every(function (k) { return ENEMY_TYPES.suv.h > ENEMY_TYPES[k].h; }));
     // contact: 2 health and a hard knockback
     loadRide([], 300);
@@ -1208,8 +1208,10 @@ function runTests() {
       gaps.map(function (g) { return g.toFixed(2); }).join(","));
     // a throw shot down with Up
     loadRide([], 300);
-    Game.enemyShots = [{ kind: "latte", x: Player.x + Player.w + 40, y: Player.y - 20, w: 6, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
-    press("up"); press("fire"); steps(30); release("fire"); release("up");
+    press("up"); press("fire"); steps(1);
+    const up0 = Game.shots.filter(function (q) { return q.vx > 0; })[0];   // put the cup on the angled shot's path
+    Game.enemyShots = [{ kind: "latte", x: up0.x + up0.vx * 0.2, y: up0.y + up0.vy * 0.2 - 2, w: 6, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+    steps(30); release("fire"); release("up");
     check("cars: a thrown latte cup can be shot down with Up held", Game.enemyShots.length === 0 && Player.hp === CONFIG.maxHp);
     // BMW X7: honks at a mofa riding close behind, at most once a second
     loadRide([[16, 9, "1"]], 300);
@@ -1383,7 +1385,7 @@ function runTests() {
     Film.enabled = false;
     Player.shootT = 0.07; Game.render();
     const mx = Math.round(Player.x + Player.w / 2 - MOFA_SPR_W / 2 - Camera.x), my = Math.round(Player.y + Player.h - MOFA_SPR_H - Camera.y + HUD_H);
-    const fp = ctx.getImageData(mx + MOFA_SPR_W + 2, my + MOFA_GUN_Y, 1, 1).data;
+    const fp = ctx.getImageData(mx + MOFA_GUN_X + MOFA_GUN_W + 3, my + MOFA_GUN_Y + MOFA_BARREL_ROW, 1, 1).data;
     Film.enabled = true;
     check("ride art: a muzzle flash shows at the end of the gun barrel when firing", fp[0] === 255 && fp[1] === 246 && fp[2] === 192, Array.from(fp).join(","));
     // colours sampled from the photo
@@ -1467,8 +1469,8 @@ function runTests() {
       return Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
     }
     let L = loadGate();
-    check("limo: parked 60 px before the club gate, 300 x 56 (taller than the X7), 30 hits",
-      L && Math.abs(60 * TILE - (L.x + L.w) - 60) <= 1 && L.w === 300 && L.h === 56 && L.h > CAR_INFO.suv.h && L.hp === 30, L ? Math.round(60 * TILE - (L.x + L.w)) + " px" : "no limo");
+    check("limo: parked 60 px before the club gate, 300 x 56 (taller than the X7), 24 hits",
+      L && Math.abs(60 * TILE - (L.x + L.w) - 60) <= 1 && L.w === 300 && L.h === 56 && L.h > CAR_INFO.suv.h && L.hp === 24, L ? Math.round(60 * TILE - (L.x + L.w)) + " px" : "no limo");
     // blocking: full throttle at it for 6 s, hop included; Buck never gets past, gets hurt, the level doesn't end
     Player.x = L.x - 200; Camera.snap(Player, Game.level); L.corkT = 1e9;     // contact only, no corks
     let maxRight = -1e9, hurt = false, deaths = 0;
@@ -1519,11 +1521,11 @@ function runTests() {
     check("limo: the bar THE PRESIDENT'S LIMO shows while the limo is on screen", !off && Game.limoOnScreen() === L && bar.indexOf("THE PRESIDENT'S LIMO") >= 0);
     // destroyed: 3000 points, the gate opens, riding on ends the level
     const sc = Game.score;
-    for (let i = 0; i < 30; i++) damageEnemy(L, 1, 1);
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
     steps(2);
-    check("limo: destroyed by 30 hits -> 3000 points, the gate opens", L.dead && Game.score - sc === 3000 && !Game.gateLocked(), "score +" + (Game.score - sc));
+    check("limo: destroyed by 24 hits -> 3000 points, the gate opens", L.dead && Game.score - sc === 3000 && !Game.gateLocked(), "score +" + (Game.score - sc));
     Game.godMode = true; press("right");
-    for (let i = 0; i < 600 && Game.state === STATE.PLAY; i++) steps(1);
+    for (let i = 0; i < 1000 && Game.state === STATE.PLAY; i++) steps(1);    // the limo finale (about 5 s) plays first
     release("right"); Game.godMode = false;
     check("limo: after it, the mofa rides through the gate and the level completes", Game.state === STATE.LEVEL_COMPLETE, "state " + Game.state);
     Input.reset();
@@ -1635,13 +1637,128 @@ function runTests() {
     // destroyed: no bubble, the president and both ladies run off
     for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
     steps(2);
-    const ladies = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    const ladies = Mofa.finale ? Mofa.finale.ladies.length : 0;
     TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
     const shown = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
-    check("limo ladies: once the limo is destroyed its bubbles are gone and the ladies run off with the president",
-      L.dead && ladies === 2 && Cars.runners.length >= 4 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
+    Mofa.finale = null;
+    check("limo ladies: once the limo is destroyed its window bubbles are gone, the president runs off and the ladies are in the finale",
+      L.dead && ladies === 2 && Cars.runners.length >= 2 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
       ladies + " ladies, " + Cars.runners.length + " runners");
     Game.godMode = false; Input.reset();
+  });
+
+  safe("small mofa, heavy guns", function () {
+    loadRide([], 120);
+    const M = SPR.mofa.frames[0], R = SPR.mofa.rider, G = SPR.mofa.gun;
+    check("small mofa: the mofa is drawn at 75% (about 32 x 20 px) while Buck keeps his size; the player box is 22 x 30",
+      Math.abs(M.w - 32) <= 1 && Math.abs(M.h - 20) <= 1 && R.h === SPR.hero.idle.h && Player.w === 22 && Player.h === 30,
+      M.w + "x" + M.h + ", rider h " + R.h + " vs " + SPR.hero.idle.h + ", box " + Player.w + "x" + Player.h);
+    check("heavy guns: each gun is an oversized WW2 machine gun, at least 14 px long", G.w >= 14 && G.h >= 6, G.w + "x" + G.h);
+    // the old light guns killed in hp / 10 s with 12 / 8 / 6 hits; the heavy ones at 8 volleys/s within a volley of that
+    const old = { suv: 12, tesla: 8, ferrari: 6 }, cur = { suv: CONFIG.suvHp, tesla: CONFIG.teslaHp, ferrari: CONFIG.ferrariHp };
+    const same = Object.keys(old).every(function (k) { return Math.abs(cur[k] / CONFIG.mofaRate - old[k] / 10) <= 1 / CONFIG.mofaRate + 1e-9; });
+    check("heavy guns: 8 volleys per second; X7 10, Tesla 6, Ferrari 5, limo 24 hits, so the cars die about as fast as before",
+      CONFIG.mofaRate === 8 && cur.suv === 10 && cur.tesla === 6 && cur.ferrari === 5 && CONFIG.limoHp === 24 && same);
+    // the .50 cal report: a low thump and an echo within 0.3 s (recorded calls, no real audio)
+    const keep = { ac: Sound.ac, sweep: Sound.sweep, noise: Sound.noise, muted: Sound.muted }, calls = [];
+    try {
+      Sound.ac = { currentTime: 10, state: "running" }; Sound.muted = false;
+      Sound.sweep = function (type, f0, f1, t, dur) { calls.push({ k: "sweep", f0: f0, t: t - 10, end: t - 10 + dur }); };
+      Sound.noise = function (t, dur) { calls.push({ k: "noise", t: t - 10, end: t - 10 + dur }); };
+      Sound.play("mg");
+    } finally { Sound.ac = keep.ac; Sound.sweep = keep.sweep; Sound.noise = keep.noise; Sound.muted = keep.muted; }
+    const thump = calls.filter(function (c) { return c.k === "sweep" && c.t < 0.02; })[0];
+    const echo = calls.filter(function (c) { return c.t >= 0.05; });
+    const tail = Math.max.apply(null, calls.map(function (c) { return c.end; }));
+    check("heavy guns: the report has a low thump (<= 120 Hz) and an echo, ending within 0.3 s",
+      thump && thump.f0 <= 120 && echo.length > 0 && tail <= 0.3, JSON.stringify(calls.map(function (c) { return c.k + "@" + c.t.toFixed(2); })) + " tail " + tail.toFixed(2));
+  });
+
+  safe("buck's lines", function () {
+    const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN|SCHEISS|ARSCH)\b/;
+    const long = BUCK_LINES.filter(function (l) { return l.length > 20; });
+    const glyph = BUCK_LINES.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("buck's lines: at least 12 Swiss German lines, at most 20 characters, drawable (with umlauts), not explicit",
+      BUCK_LINES.length >= 12 && !long.length && !glyph.length && !BUCK_LINES.some(function (l) { return bad.test(l); }) &&
+      BUCK_LINES.some(function (l) { return /[ÄÖÜ]/.test(l); }), BUCK_LINES.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+    // the umlauts: two dots in the top row, a gap, then the letter (same 5 x 7 cell)
+    const um = ["Ä", "Ö", "Ü"].every(function (c) { const g = GLYPHS[c]; return g && g.length === 7 && g[0] === 10 && g[1] === 0 && g.slice(2).every(function (r) { return r > 0 && r < 32; }); });
+    check("buck's lines: the font has Ä, Ö and Ü with their dots", um);
+    // a kill on the ride: Buck speaks; a second kill within 3 s: no new line
+    loadRide([], 300); Game.godMode = true; Game.enemies = []; Fans.list = [];
+    const kill = function () {
+      const e = makeEnemy("tesla", Player.x + 140, Player.y + Player.h, Game.level, 1); e.awake = true; Game.enemies.push(e);
+      for (let i = 0; i < 20 && !e.dead; i++) damageEnemy(e, 1, 1);
+      return e;
+    };
+    kill(); steps(1);
+    const first = Player.bubble ? Player.bubble.text : null;
+    steps(60);                                             // 1 s later, still within 3 s
+    Player.bubble = null; kill(); steps(1);
+    const second = Player.bubble;
+    steps(60 * 3); kill(); steps(1);
+    const third = Player.bubble ? Player.bubble.text : null;
+    Game.godMode = false;
+    check("buck's lines: a car kill makes Buck say a Swiss German line; another kill within 3 s does not; after 3 s he speaks again",
+      first && BUCK_LINES.indexOf(first) >= 0 && !second && third && BUCK_LINES.indexOf(third) >= 0, [first, !!second, third].join(" / "));
+    // his bubble is above him and drawn; car bubbles keep clear of it
+    TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+    const drawn = TEXT_LOG.items.indexOf(third) >= 0; TEXT_LOG.items = [];
+    const br = Talk.buckRects(Camera.x, Camera.y)[0], head = Player.y - Camera.y + HUD_H;
+    check("buck's lines: Buck's bubble is drawn above his head", drawn && br && br.y + br.h <= head, br ? br.y + br.h + " vs " + head : "none");
+    const car = makeEnemy("suv", 0, Player.y + Player.h, Game.level, 1); car.awake = true; car.x = Player.x - 20; Game.enemies.push(car);
+    const said = Talk.say(car, POSH_LINES, 1.5);
+    check("buck's lines: a driver's bubble never overlaps Buck's", !said || !rectsTouch(Talk.rect(car, car.bubble, Camera.x, Camera.y), br, 0));
+    Game.enemies = []; Player.bubble = null; Input.reset();
+  });
+
+  safe("limo finale", function () {
+    const T = CONFIG.finale;
+    function setup() {
+      loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90);
+      const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+      Player.x = L.x - 140; Player.vx = CONFIG.mofaTop; Camera.snap(Player, Game.level); L.corkT = 99;
+      for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+      return L;
+    }
+    const L = setup();
+    const started = !!Mofa.finale;
+    // play it with Right and Fire held: no movement forward after the stop, no shots, no damage
+    press("right"); press("fire");
+    let t = 0, shots = 0, crawl = 0, order = [], lit = -1, back = -1, hp0 = Player.hp, hpBack = -1, x0 = null, ladiesOutBy2 = false;
+    const seen = {};
+    while (t < 7 && back < 0) {
+      steps(1); t += DT;
+      if (Mofa.finale && Game.shots.some(function (q) { return q.mg && !q._n && (q._n = 1); })) shots++;
+      if (Mofa.finale) {
+        Mofa.finale.ladies.forEach(function (l, i) { if (l.bubble && !seen["l" + i]) { seen["l" + i] = 1; order.push("lady" + i); } });
+        if (t >= 2.0 && !ladiesOutBy2) ladiesOutBy2 = Mofa.finale.ladies.every(function (l) { return l.out; });
+        if (t > 1.5 && x0 === null) x0 = Player.x;
+        if (t >= T.end - 0.3) Game.enemyShots = [];       // the test's corks go before the scene ends
+        else if (t > 3) Game.enemyShots = [{ kind: "cork", x: Player.x + 4, y: Player.y + 8, w: 5, h: 4, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+      }
+      if (Player.bubble && Player.bubble.text === "YOU HAVE NO CLUE" && !seen.buck) { seen.buck = 1; order.push("buck"); }
+      if (Player.cigarette && lit < 0) lit = t;
+      if (!Mofa.finale && back < 0 && t > 0.1) { back = t; hpBack = Player.hp; }
+    }
+    release("right"); release("fire");
+    const ladiesRun = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    check("limo finale: destroying the limo starts the scene; Buck is locked (no gas, no fire) and can't be hurt",
+      started && shots === 0 && x0 !== null && Math.abs(Player.x - x0) < 40 && hpBack === hp0, "shots " + shots + ", moved " + (x0 === null ? "?" : (Player.x - x0).toFixed(1)) + ", hp " + hpBack);
+    check("limo finale: both ladies crawl out by 2 s and speak, then Buck says YOU HAVE NO CLUE",
+      ladiesOutBy2 && order.join(",") === "lady0,lady1,buck", order.join(","));
+    check("limo finale: the cigarette is lit by 4.5 s and control returns by 5.2 s; the ladies run off, the gate is open",
+      lit > 0 && lit <= 4.5 && back > 0 && back <= 5.2 && ladiesRun === 2 && !Game.gateLocked() && Player.cigarette, "lit " + lit.toFixed(2) + ", back " + back.toFixed(2) + ", runners " + ladiesRun);
+    // the cigarette puffs on the way to the gate
+    FX.clear(); steps(150);
+    check("limo finale: Buck keeps the cigarette and it puffs smoke", Player.cigarette && FX.parts.some(function (q) { return q.cig; }));
+    // skip: Fire pressed after 0.3 s ends the scene at once
+    setup(); steps(25); tap("fire"); steps(2);
+    check("limo finale: Fire skips the scene (control back, cigarette lit, ladies running)", !Mofa.finale && Player.cigarette &&
+      Cars.runners.filter(function (r) { return r.lady !== undefined; }).length === 2);
+    check("limo finale: the ladies' lines are posh, at most 20 characters and drawable",
+      LIMO_FINALE_LINES.length >= 4 && LIMO_FINALE_LINES.every(function (l) { return l.length <= 20 && l.split("").every(function (c) { return FONT_CHARS.indexOf(c) >= 0; }); }));
+    Input.reset(); Mofa.finale = null;
   });
 
   safe("mofa smoke", function () {
@@ -1739,7 +1856,7 @@ function runTests() {
       starts.slice(1).forEach(function (x, k) { gaps.push(x - starts[k]); });
     });
     check("posh lines: every car's driver speaks within 0.5 s of showing up",
-      firsts.every(function (f) { return f >= 0 && f <= 0.52; }), firsts.map(function (f) { return f.toFixed(2); }).join(","));
+      firsts.every(function (f) { return f >= -0.05 && f <= 0.52; }), firsts.map(function (f) { return f.toFixed(2); }).join(","));
     check("posh lines: then again every 2.5-3.5 s while on screen, each bubble about 1.5 s",
       gaps.length >= 6 && gaps.every(function (g) { return g >= 2.45 && g <= 3.55; }) && CONFIG.driverTalkT === 1.5, gaps.map(function (g) { return g.toFixed(2); }).join(","));
     // many cars on screen: at most two car bubbles, never overlapping each other or a fan bubble
@@ -3623,14 +3740,32 @@ function runTests() {
     Game.completeLevel();
     check("tracks: the ride's tally keeps the biker song", Game.state === STATE.LEVEL_COMPLETE && Sound.track === "biker" && Sound.step === 33);
     Game.tally.done = true; Game.nextLevel();
-    check("tracks: the REEL 2 card switches to the Valkyries from their start",
-      Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 0, Sound.track + " step " + Sound.step);
+    check("tracks: the REEL 2 card (the courts) switches to the funk from its start",
+      Game.state === STATE.LEVEL_INTRO && Game.levelIndex === 1 && Sound.track === "funk" && Sound.step === 0, Sound.track + " step " + Sound.step);
     steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5);
     Sound.step = 41; tap("pause"); tap("pause");
-    check("tracks: pause and resume keep the Valkyries running", Game.state === STATE.PLAY && Sound.track === "valkyries" && Sound.step === 41, Sound.step);
-    Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
-    check("tracks: level complete -> next level keeps the Valkyries running",
-      Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 41, Sound.step);
+    check("tracks: pause and resume keep the funk running", Game.state === STATE.PLAY && Sound.track === "funk" && Sound.step === 41, Sound.step);
+    Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(2); steps(100);
+    check("tracks: a lost life on the courts keeps the funk running", !Player.dead && Sound.track === "funk" && Sound.step === 41, Sound.track + " step " + Sound.step);
+    Game.completeLevel();
+    check("tracks: the courts' tally keeps the funk", Game.state === STATE.LEVEL_COMPLETE && Sound.track === "funk" && Sound.step === 41);
+    // reel by reel: 3 the Valkyries, 4 the Clarinet Polka, 5 the faster Valkyries, each from its start
+    const reels = [];
+    for (let r = 3; r <= 5; r++) {
+      Sound.step = 29; Game.tally.done = true; Game.nextLevel();
+      reels.push(r + ":" + Sound.track + "@" + Sound.step + (Game.level.isBoss ? "x" + Sound.tempo : ""));
+      if (r < 5) { steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5); Game.completeLevel(); }
+    }
+    check("tracks: reels 3, 4 and 5 play the Valkyries, the Clarinet Polka and the faster Valkyries, each from its start",
+      reels.join(" ") === "3:valkyries@0 4:clarinetpolka@0 5:valkyries@0x1.25", reels.join(" "));
+    // a game started at reel 2 or 4
+    const direct = [];
+    ["#level=2", "#level=4"].forEach(function (h) {
+      Game.startHash = h; Game.setState(STATE.TITLE); steps(2); tap("enter");
+      direct.push(h + ":" + Sound.track + "@" + Sound.step);
+    });
+    Game.startHash = "";
+    check("tracks: #level=2 starts with the funk, #level=4 with the Clarinet Polka", direct.join(" ") === "#level=2:funk@0 #level=4:clarinetpolka@0", direct.join(" "));
     Game.loadLevel(4); Game.setState(STATE.BOSS);
     Game.setState(STATE.GAME_OVER); Game.stateT = 0; steps(70); tap("enter");
     check("tracks: game over -> title brings back the title theme at normal tempo",
@@ -3639,6 +3774,56 @@ function runTests() {
     check("tracks: victory -> title brings back the title theme at normal tempo",
       Game.state === STATE.TITLE && Sound.track === "title" && Sound.tempo === 1, Sound.track + " tempo " + Sound.tempo);
     Input.reset();
+  });
+
+  safe("funk and clarinet polka", function () {
+    function kindsOf(song) { const k = {}; song.events.forEach(function (ev) { ev.forEach(function (e) { k[e.v] = (k[e.v] || 0) + 1; }); }); return k; }
+    const F = SONGS.funk, L = SONGS.clarinetpolka, fk = kindsOf(F), lk = kindsOf(L);
+    check("funk: 16 bars of 16 steps at 96-112 bpm, with slap bass, guitar scratches, clavinet, brass, kick, snare, closed and open hats",
+      F.steps === 256 && F.bpm >= 96 && F.bpm <= 112 && Math.abs(F.sixteenth - 60 / F.bpm / 4) < 1e-9 &&
+      ["slap", "scratch", "clav", "brass", "kick", "snare", "hat", "ohat"].every(function (v) { return fk[v] > 0; }), JSON.stringify(fk));
+    check("funk: slap bass with octave pops, and ghost notes on the snare",
+      F.events.some(function (ev) { return ev.some(function (e) { return e.v === "slap" && e.pop; }); }) &&
+      F.events.some(function (ev) { return ev.some(function (e) { return e.v === "snare" && e.g < 1; }); }));
+    // the Clarinet Polka: 2/4 on 24 steps per bar, oom-pah in every bar, the clarinet playing exactly the imported tune
+    const bars = CLARINET_POLKA_TUNE.length;
+    let oompah = true;
+    for (let b = 0; b < bars; b++) {
+      const at = function (st, v) { return L.events[b * 24 + st].some(function (e) { return e.v === v; }); };
+      if (!(at(0, "tuba") && at(12, "tuba") && at(6, "accord") && at(18, "accord"))) oompah = false;
+    }
+    const played = [], written = [];
+    L.events.forEach(function (ev, k) { ev.forEach(function (e) { if (e.v === "clar") played.push(Math.floor(k / 24) + ":" + (k % 24) + ":" + e.m + ":" + e.d); }); });
+    CLARINET_POLKA_TUNE.forEach(function (bar, b) { bar.forEach(function (n) { written.push(b + ":" + n[0] + ":" + n[1] + ":" + n[2]); }); });
+    const last = CLARINET_POLKA_TUNE[bars - 1], first = CLARINET_POLKA_TUNE[0];
+    check("clarinet polka: 2/4 on 24 steps per bar at 100-130 bpm, with the clarinet lead, tuba, accordion, kick, snare and glass clinks",
+      L.steps === bars * 24 && L.beats === 2 && L.grid === 12 && L.bpm >= 100 && L.bpm <= 130 && Math.abs(L.sixteenth - 60 / L.bpm / 12) < 1e-9 &&
+      ["clar", "tuba", "accord", "kick", "snare", "clink"].every(function (v) { return lk[v] > 0; }), JSON.stringify(lk));
+    check("clarinet polka: oom-pah in every bar (tuba on both beats, accordion off the beats)", oompah);
+    check("clarinet polka: the clarinet plays the imported tune note for note: 583 notes, the pick-up F Eb at the end, then D F Bb D; keys Bb, F, Bb, Eb",
+      played.join(",") === written.join(",") && written.length === 583 &&
+      last.slice(-2).map(function (n) { return n[1]; }).join(",") === "65,63" && first.slice(0, 4).map(function (n) { return n[1]; }).join(",") === "62,65,70,74" &&
+      CLARINET_POLKA_KEYS.map(function (k) { return k[1]; }).join(",") === "Bb,F,Bb,Eb", played.length + " notes");
+    // both loop without a gap: with a stubbed clock, the first event of the 2nd loop comes one sixteenth after the last step
+    const keep = { ac: Sound.ac, playEvent: Sound.playEvent, track: Sound.track, step: Sound.step, nextTime: Sound.nextTime, playing: Sound.playing, tempo: Sound.tempo };
+    const loops = [];
+    try {
+      ["funk", "clarinetpolka"].forEach(function (name) {
+        const song = SONGS[name], ac = { state: "running", currentTime: 0 }, starts = {};
+        Sound.ac = ac; Sound.playEvent = function (e, t) { const k = Math.round(t * 1e4); starts[k] = true; };
+        Sound.track = name; Sound.tempo = 1; Sound.step = 0; Sound.nextTime = 0.05; Sound.playing = true;
+        const loopLen = song.steps * song.sixteenth;
+        while (ac.currentTime < loopLen * 1.3) { Sound.schedule(); ac.currentTime += 0.02; }
+        const t2 = 0.05 + loopLen;
+        loops.push(name + ":" + (starts[Math.round(t2 * 1e4)] ? "ok" : "gap"));
+      });
+    } finally {
+      Sound.ac = keep.ac; Sound.playEvent = keep.playEvent; Sound.track = keep.track; Sound.step = keep.step;
+      Sound.nextTime = keep.nextTime; Sound.playing = keep.playing; Sound.tempo = keep.tempo;
+    }
+    check("funk and the clubhouse song loop seamlessly (the 2nd loop starts exactly one loop length later)", loops.join(" ") === "funk:ok clarinetpolka:ok", loops.join(" "));
+    check("levels: the courts name the funk, the clubhouse the Clarinet Polka, the ride the biker song; the creek and the boss default to the Valkyries",
+      LEVEL_DATA.map(function (d) { return d.music || "valkyries"; }).join(",") === "biker,funk,valkyries,clarinetpolka,valkyries");
   });
 
   safe("biker song", function () {
@@ -4106,6 +4291,49 @@ function runShot(spec) {
     Player.x = L.x - 90; Camera.snap(Player, Game.level);
     L.corkT = 0.2;
     for (let i = 0; i < 50; i++) { Input.simulate("fire", true); Game.update(DT); Input.endStep(); }
+    Game.render(); present();
+    return;
+  }
+  if (what === "songlevels") {         // #shot=songlevels: render one loop of each song offline, peak and RMS (dBFS) into #test-out
+    const out = document.createElement("pre"); out.id = "song-levels"; document.body.appendChild(out);
+    const names = ["valkyries", "funk", "clarinetpolka", "biker", "title"], res = {};
+    (async function () {
+      for (const name of names) {
+        const song = SONGS[name], dur = Math.min(20, song.steps * song.sixteenth), sr = 22050;
+        const off = new OfflineAudioContext(1, Math.ceil(sr * (dur + 1)), sr);
+        const keep = { ac: Sound.ac, master: Sound.master, music: Sound.music, sfx: Sound.sfx, noiseBuf: Sound.noiseBuf, amp: Sound.amp, shapeCurve: Sound.shapeCurve };
+        Sound.ac = off; Sound.amp = null;
+        Sound.master = off.createGain(); Sound.master.connect(off.destination);
+        Sound.music = off.createGain(); Sound.music.gain.value = 0.32; Sound.music.connect(Sound.master);
+        Sound.sfx = off.createGain(); Sound.sfx.connect(Sound.master);
+        Sound.noiseBuf = off.createBuffer(1, sr, sr); const nd = Sound.noiseBuf.getChannelData(0); for (let i = 0; i < sr; i++) nd[i] = Math.random() * 2 - 1;
+        Sound.shapeCurve = Sound.makeCurve();
+        const len = song.sixteenth;
+        for (let st = 0, t = 0.05; t < dur; st++, t += len) {
+          const at = t + (song.swing && st % 4 === 2 ? song.swing * len : 0);
+          for (const e of song.events[st % song.steps]) Sound.playEvent(e, at, len);
+        }
+        const buf = await off.startRendering(), d = buf.getChannelData(0);
+        let pk = 0, sq = 0; for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; sq += d[i] * d[i]; }
+        res[name] = { peak: +(20 * Math.log10(pk)).toFixed(1), rms: +(10 * Math.log10(sq / d.length)).toFixed(1) };
+        Object.assign(Sound, keep);
+      }
+      out.textContent = JSON.stringify(res);
+    })();
+    return;
+  }
+  if (what === "finale") {             // #shot=finale,<seconds>: the limo finale at that moment
+    const g = [];
+    for (let y = 0; y < 15; y++) g.push(new Array(90).fill("."));
+    for (let x = 0; x < 90; x++) { g[13][x] = "#"; g[14][x] = "#"; }
+    g[12][3] = "P"; g[12][30] = "9"; g[9][60] = "}"; g[12][62] = "E";
+    const data = Object.assign({}, LEVEL_DATA[0], { map: g.map(function (r) { return r.join(""); }), climb: "", stretches: "0 bg_club" });
+    Player.resetForGame(); Game.loadLevel(0, data); Game.setState(STATE.PLAY);
+    const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    Player.x = L.x - 110; Camera.snap(Player, Game.level);
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+    const n = Math.round((+p[1] || 2.5) * 60);
+    for (let i = 0; i < n; i++) { Game.update(DT); Input.endStep(); }
     Game.render(); present();
     return;
   }

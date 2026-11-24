@@ -62,9 +62,11 @@ const Player = {
     if (this.dropT > 0) this.dropT -= dt;
 
     if (level.isRide) {                  // on the mofa (src/ride.js): no climbing, kneeling or dropping
+      Mofa.updateFinale(this, dt);                       // the limo finale (control locked while it plays)
       Mofa.update(this, dt, level);
+      Mofa.updateCigarette(this, dt);
       // the twin gun: Fire held fires a volley forward and backward (no automatic fire)
-      if (Input.down("fire") && this.fireCd <= 0) this.fire();
+      if (!Mofa.finale && Input.down("fire") && this.fireCd <= 0) this.fire();
       if (this.y > level.pxH + 32) { this.hp = 0; this.die(); }
       return;
     }
@@ -230,7 +232,7 @@ const Player = {
 
   // n: damage points. fromWater: no knockback (the water bounce handles movement).
   hurt(n, fromWater) {
-    if (this.dead || Game.godMode || this.invuln > 0) return false;
+    if (this.dead || Game.godMode || this.invuln > 0 || Mofa.finale) return false;   // no damage during the limo finale
     this.hp = Math.max(0, this.hp - n);
     this.invuln = CONFIG.invuln;
     this.hurtT = 0.3;

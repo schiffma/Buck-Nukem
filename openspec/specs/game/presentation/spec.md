@@ -93,23 +93,27 @@ The game SHALL show a title screen styled as a 1970s exploitation-movie poster: 
 - **THEN** the version text embedded by the build (for example "V1.0.2" or "V1.0.2-3-GAB12CD3") is drawn in small print in a corner of the poster, fully inside the screen, readable on the poster tint and not overlapping the other title elements
 
 ### Requirement: Ride of the Valkyries soundtrack
-The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, during play: on level intro cards, in every level except the mofa ride, and in the boss arena. Because browsers block audio until the user interacts, music SHALL start on the first key press, mouse click or touch, or immediately on page load where the browser allows autoplay. The title screen plays the 70s rock title theme, the ride its biker rock song.
+The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, in the creek level and the boss arena, including their intro cards; the other reels and the title have their own tracks. Because browsers block audio until the user interacts, music SHALL start on the first key press, mouse click or touch, or on page load where autoplay is allowed.
 
 #### Scenario: Music starts after first input
-- **WHEN** the player presses any key on the title screen
-- **THEN** the 70s rock title theme starts playing and loops
+- **WHEN** audio is not yet running and the player presses any key on the title screen, Enter included
+- **THEN** the 70s rock title theme starts playing and loops, and the title screen stays
 
 #### Scenario: Music starts after a click or touch
 - **WHEN** the player's first interaction with the page is a mouse click or a touch on the title screen
-- **THEN** the 70s rock title theme starts playing and loops
+- **THEN** the 70s rock title theme starts playing and loops, and the title screen stays
 
 #### Scenario: Valkyries play once the game starts
-- **WHEN** a game reaches its first reel other than the mofa ride (the reel 2 intro after the ride, or the first intro of a game started with `#level=2` or later)
+- **WHEN** a game reaches the reel 3 intro (after the courts, or as the first intro of a game started with `#level=3`) or the boss arena's intro
 - **THEN** the theme playing before stops and the Ride of the Valkyries theme plays from its start and loops
 
 #### Scenario: Boss music intensifies
 - **WHEN** the boss arena starts
 - **THEN** the theme plays at a faster tempo
+
+#### Scenario: Each reel its own track
+- **WHEN** a game plays through the reels in order
+- **THEN** the reel intros start, in turn, the biker rock song (reel 1), the funk track (reel 2), the Valkyries (reel 3), the Clarinet Polka (reel 4) and the faster Valkyries (reel 5), each from its start
 
 ### Requirement: Sound effects
 The game SHALL play synthesized sound effects for shooting, jumping, enemy hits, explosions, pickups, taking damage, doors and the boss's claw slam.
@@ -473,7 +477,7 @@ Where the browser supports WebGL, the film filter's colour-print grade, grain an
 - **THEN** the average CPU time per drawn frame (update, drawing, film filter and scaling to the screen) is under 5 ms
 
 ### Requirement: Mofa look
-Buck's mofa SHALL be outlined, 3-tone pixel art drawn after `assets/img/sachs-mofa.jpg`: a red frame, a chrome tank, a black seat, a luggage rack, spoked wheels and a two-stroke engine, with a machine gun mounted on the handlebars. Buck SHALL be drawn sitting on it in his usual look. The red, chrome and black colours SHALL be sampled from the photo at build time. The wheels SHALL turn with the speed.
+Buck's mofa SHALL be outlined, 3-tone pixel art drawn after `assets/img/sachs-mofa.jpg`: a red frame, a chrome tank, a black seat, a luggage rack, spoked wheels and a two-stroke engine, with heavy guns on the handlebars and the rack. The mofa SHALL be drawn at 75% of the cars' scale while Buck keeps his usual size and look. The red, chrome and black colours SHALL be sampled from the photo at build time. The wheels SHALL turn with the speed.
 
 #### Scenario: Colours from the photo
 - **WHEN** the mofa sprite is built
@@ -483,8 +487,12 @@ Buck's mofa SHALL be outlined, 3-tone pixel art drawn after `assets/img/sachs-mo
 - **WHEN** the mofa moves
 - **THEN** its wheel spokes animate in step with the speed, the gun shows a muzzle flash when firing, and every opaque edge pixel borders a dark outline pixel
 
+#### Scenario: Small mofa, big man, big guns
+- **WHEN** Buck rides the mofa
+- **THEN** the mofa is about 32 pixels long (75% of before), Buck is drawn at the same size as on foot, and each gun is at least 14 pixels long with a perforated barrel jacket and a big muzzle
+
 ### Requirement: Car and driver looks
-The cars SHALL be outlined pixel-art side views drawn after the reference photos in `assets/img/`, at the mofa sprite's scale, recognisable by shape and colour without copied logos or number plates: a BMW X7 (`car-bmw-x7.webp`), a Tesla (`car_tesla.jpg`) and a Ferrari (`car_ferrari.avif`). Each SHALL show a posh driver in the side window. The wheels SHALL turn; a destroyed car SHALL leave a burning wreck that fades.
+The cars SHALL be outlined pixel-art side views drawn after the reference photos in `assets/img/`, at the game's scale of about 25 pixels per metre (Buck's scale; the mofa itself is drawn smaller), recognisable by shape and colour without copied logos or number plates: a BMW X7 (`car-bmw-x7.webp`), a Tesla (`car_tesla.jpg`) and a Ferrari (`car_ferrari.avif`). Each SHALL show a posh driver in the side window. The wheels SHALL turn; a destroyed car SHALL leave a burning wreck that fades.
 
 #### Scenario: Like the photos
 - **WHEN** the three car sprites are drawn
@@ -496,7 +504,7 @@ The cars SHALL be outlined pixel-art side views drawn after the reference photos
 
 #### Scenario: In proportion to Buck
 - **WHEN** a car is drawn next to Buck on the mofa
-- **THEN** at the mofa sprite's scale of about 25 pixels per metre it is 110 to 130 pixels long, the X7 about 45 pixels tall, the Tesla about 36 and the Ferrari about 30, and the driver's head is at least 8 pixels high
+- **THEN** at about 25 pixels per metre it is 110 to 130 pixels long, the X7 about 45 pixels tall, the Tesla about 36 and the Ferrari about 30, and the driver's head is at least 8 pixels high
 
 ### Requirement: Road scenery
 The ride SHALL show the road along Lake Zurich up to TC Wollerau, stretch by stretch (see "Ride stretches"): parallax photo backdrops in the game's graded look, an asphalt road with lane markings, curbs and guard rails, Swiss road signs (a "WOLLERAU" place sign and "TC WOLLERAU" direction signs counting down the distance), and the club gate with a "TC WOLLERAU" sign at the end. Scenery SHALL be decoration only and SHALL NOT block the mofa.
@@ -531,3 +539,110 @@ On the mofa ride, the background fans SHALL be two groups of adult women instead
 #### Scenario: Outlined pixel art
 - **WHEN** any activist or rocker frame is drawn, including the blow-a-kiss frame
 - **THEN** every opaque edge pixel borders a dark outline pixel
+
+### Requirement: 70s rock title theme
+The title screen SHALL play a looping, original hard-rock theme in a 1970s style: a distorted guitar riff with power chords, bass and a rock drum beat. It SHALL be synthesized live in the browser from the game's own note data, using no recordings or samples and no copyrighted melody.
+
+#### Scenario: Rock theme loops on the title
+- **WHEN** music is playing and the title screen stays open longer than one full loop of the theme
+- **THEN** the theme repeats from its start without a gap
+
+#### Scenario: Rock instrumentation
+- **WHEN** one loop of the title theme is played
+- **THEN** it contains guitar riff notes, power chords, bass notes, kick and snare drums
+
+#### Scenario: Back to the title
+- **WHEN** the player returns to the title screen from the game over or victory screen
+- **THEN** the Valkyries theme stops and the title theme plays from its start at normal tempo
+
+#### Scenario: Mute covers the title theme
+- **WHEN** the player presses M on the title screen while the title theme plays
+- **THEN** the title theme becomes silent until M is pressed again
+
+### Requirement: Reliable title music
+The title screen SHALL always play the rock title theme once audio is allowed: the game SHALL try to start audio on page load, SHALL start it on the first key, click or touch otherwise, and SHALL keep the music playing in time after the tab was in the background or the browser suspended audio. While audio is supported but not yet running, the first input on the title SHALL only start the sound, not the game, and the title SHALL say so.
+
+#### Scenario: Sound first, then the game
+- **WHEN** the title screen is shown with audio supported but not yet running
+- **THEN** the title reads "PRESS ANY KEY FOR SOUND" (in touch mode "TAP FOR SOUND"); the first key, click or tap starts the title theme and the title stays, now reading "PRESS ENTER" ("TAP TO START"); the next Enter or tap starts a game
+
+#### Scenario: Enter starts at once when the sound is on
+- **WHEN** audio already runs on the title (autoplay allowed, or after the first input), or the browser has no Web Audio at all
+- **THEN** Enter (or a tap) starts a game right away
+
+#### Scenario: Autoplay where allowed
+- **WHEN** the page is opened in a browser that allows autoplay
+- **THEN** the title theme starts without any input
+
+#### Scenario: Background tab
+- **WHEN** the tab was in the background for 10 seconds while the title theme played and becomes visible again
+- **THEN** the theme continues in time from the current moment, and no notes scheduled for the missed time are played late in a burst
+
+#### Scenario: Suspended audio resumed
+- **WHEN** the browser has suspended the audio context and the player interacts with the page or the tab becomes visible
+- **THEN** audio resumes and the title theme plays again
+
+#### Scenario: Every way back to the title
+- **WHEN** the title screen is reached by the first start, by Enter on the game-over card, by Enter on the victory card, or M is pressed twice on the title
+- **THEN** the title theme is the active track at normal tempo and plays (unless muted)
+
+### Requirement: Funk theme for the clay courts
+The clay courts (reel 2) SHALL have their own looping, original funk track in a 1970s style: a syncopated slap bass line, a muted "chicken-scratch" rhythm guitar on sixteenth notes, clavinet chords, brass stabs and a tight funk beat with sixteenth-note hi-hats. It SHALL differ from the other tracks in key, tempo and groove, and SHALL be synthesized live in the browser from the game's own note data, using no recordings, samples or copyrighted melody.
+
+#### Scenario: Plays on the courts
+- **WHEN** the reel 2 intro card appears (after the ride, or as the first intro of a game started with `#level=2`)
+- **THEN** the theme playing before stops and the funk track plays from its start, and it keeps looping through the level, pauses, respawns and its level tally without restarting
+
+#### Scenario: Funk instrumentation
+- **WHEN** one loop of the funk track is played
+- **THEN** it contains slap bass notes, muted guitar scratches, clavinet chords, brass stabs, kick and snare drums and closed and open hi-hats, at a tempo between 96 and 112 bpm
+
+#### Scenario: Mute
+- **WHEN** the player presses M or taps Mute on the courts
+- **THEN** the funk track becomes silent until sound is turned on again
+
+### Requirement: Clarinet Polka in the clubhouse
+The clubhouse and indoor hall (reel 4) SHALL play the traditional Clarinet Polka in the game's own arrangement: the clarinet plays the tune over an oom-pah polka band (tuba on the beat, accordion chords off the beat, a light snare and kick), with beer-glass clinks at the section ends. It SHALL be synthesized live from note data, with no recordings, samples or copied arrangement.
+
+#### Scenario: Plays in the clubhouse
+- **WHEN** the reel 4 intro card appears (after the creek, or as the first intro of a game started with `#level=4`)
+- **THEN** the theme playing before stops and the Clarinet Polka plays from its start, and it keeps looping through the level, pauses, respawns and its level tally without restarting
+
+#### Scenario: Recognisable tune
+- **WHEN** the clubhouse song is played
+- **THEN** its clarinet melody follows the traditional Clarinet Polka note for note (as in the public melody transcription it is taken from), including its runs and triplets and its sections in B-flat, F and E-flat, in 2/4 time at a tempo between 100 and 130 quarter notes per minute
+
+#### Scenario: Polka band
+- **WHEN** the clubhouse song is played
+- **THEN** every bar has a tuba note on the beat and accordion chords off the beat that fit the melody's harmony, a light snare and kick keep the oom-pah, and glass clinks mark the section ends
+
+#### Scenario: Mute
+- **WHEN** the player presses M or taps Mute in the clubhouse
+- **THEN** the song becomes silent until sound is turned on again
+
+### Requirement: Petrol engine sound
+Each gardener-punk's mower on screen SHALL make a continuous two-stroke engine sound, louder the closer it is to the hero, for at most the 2 nearest mowers at once. Pitch and loudness SHALL follow the engine state: idle putt-putt while patrolling, rising during the rev, full-throttle roar while charging. One-shot petrol sounds SHALL mark engine start, rev, charge start and death.
+
+#### Scenario: Running engine
+- **WHEN** a patrolling punk is on screen and audio is on
+- **THEN** a continuous engine sound plays for his mower with a pulsing two-stroke rhythm
+
+#### Scenario: Distance and voice limit
+- **WHEN** three punks are on screen at different distances from the hero
+- **THEN** only the 2 nearest have an engine sound, and the nearer one is louder
+
+#### Scenario: State-dependent pitch
+- **WHEN** a punk goes from patrolling to revving to charging
+- **THEN** the engine pitch rises at each step and is highest while charging
+
+#### Scenario: Engine start and death sounds
+- **WHEN** a punk first comes on screen, and later when he is killed
+- **THEN** a pull-start sputter plays when his engine starts, and a choke-and-die sputter plays when he dies, after which his engine sound stops
+
+#### Scenario: Engine stops
+- **WHEN** a punk's mower leaves the screen, the game is paused, the level ends or the game leaves play
+- **THEN** its engine sound fades out within a quarter of a second
+
+#### Scenario: Mute
+- **WHEN** the player presses M while engines are running
+- **THEN** the engine sounds are silent until M is pressed again

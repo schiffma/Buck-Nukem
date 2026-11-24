@@ -179,7 +179,196 @@ const CAR_ENGINES = {
   limo:    { rate: 8, freq: 38, cut: 400, gain: 0.08 },     // a parked V8 idling
 };
 
-const SONGS = { title: ROCK, valkyries: SONG, biker: BIKER };
+// Reel 2, the clay courts: an original 70s funk groove (104 bpm, E): slap bass with octave pops,
+// sixteenth chicken-scratch guitar, clavinet off-beats, brass stabs, a tight beat with ghost notes.
+// Bars 1-8 groove on E9, 9-12 A9 / B7#9 with brass stabs, 13-14 a bass-and-drums break, 15-16 a
+// turnaround with a rising brass line. Original note data; no known funk riff is quoted.
+const FUNK = (function buildFunk() {
+  const STEPS = 16, events = [];
+  const E9 = [56, 62, 66], A9 = [61, 67, 71], B79 = [63, 69, 74];          // voicings (G#-D-F#, C#-G-B, D#-A-D)
+  const GROOVE = [[0, 0, 2], [3, 0, 1], [6, 12, 1, 1], [8, 0, 1], [10, 3, 1], [11, 5, 1], [12, 0, 1], [14, 12, 1, 1], [15, 10, 1, 1]];
+  const GROOVE_B = [[0, 0, 2], [3, 0, 1], [6, 12, 1, 1], [8, 7, 1], [9, 5, 1], [10, 3, 1], [12, 0, 2], [14, -2, 1], [15, -1, 1]];
+  const bars = [
+    { root: 40, chord: E9, bass: GROOVE, crash: true }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE_B },
+    { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE_B, stab: [64, 68, 71] },
+    { root: 45, chord: A9, bass: GROOVE, stab: [67, 71, 76] }, { root: 45, chord: A9, bass: GROOVE, stab: [67, 71, 76] },
+    { root: 47, chord: B79, bass: GROOVE, stab: [69, 75, 78] }, { root: 47, chord: B79, bass: GROOVE_B, stab: [69, 75, 78] },
+    { root: 40, brk: [[0, 0, 2], [4, 3, 1], [6, 5, 1], [8, 6, 1], [10, 7, 2], [14, 10, 1]] },
+    { root: 40, brk: [[0, 12, 1, 1], [2, 10, 1], [4, 7, 1], [6, 5, 1], [8, 3, 1], [10, 0, 2], [14, -2, 1]] },
+    { root: 40, chord: E9, bass: GROOVE, line: [[0, [64, 68, 71]], [4, [66, 69, 73]], [8, [68, 71, 74]], [12, [69, 73, 76]]] },
+    { root: 40, chord: E9, bass: GROOVE_B, line: [[0, [68, 71, 76]], [6, [69, 73, 78]], [12, [71, 74, 80]]] },
+  ];
+  for (let i = 0; i < bars.length * STEPS; i++) events.push([]);
+  bars.forEach(function (bar, bi) {
+    const base = bi * STEPS;
+    function at(s, e) { events[base + s].push(e); }
+    (bar.brk || bar.bass).forEach(function (n) { at(n[0], { v: "slap", m: bar.root + n[1], d: n[2], pop: !!n[3] }); });
+    if (bar.chord) {
+      for (let s = 0; s < STEPS; s++) if (s !== 4 && s !== 12) at(s, { v: "scratch", c: bar.chord, acc: s % 4 === 2 });
+      [4, 12].forEach(function (s) { at(s, { v: "scratch", c: bar.chord, acc: true }); });
+      [2, 7, 10, 15].forEach(function (s) { at(s, { v: "clav", c: bar.chord.map(function (m) { return m + 12; }), d: 1 }); });
+    }
+    if (bar.stab) at(14, { v: "brass", c: bar.stab, d: 2 });
+    if (bar.line) bar.line.forEach(function (l) { at(l[0], { v: "brass", c: l[1], d: 3 }); });
+    // the beat: kick on 1, the "a" of 2 and the "and" of 3; snare on 2 and 4 with ghost notes;
+    // closed hats on every sixteenth, an open hat on the "and" of 4
+    [0, 7, 10].forEach(function (s) { at(s, { v: "kick" }); });
+    [4, 12].forEach(function (s) { at(s, { v: "snare" }); });
+    [6, 9, 15].forEach(function (s) { at(s, { v: "snare", g: 0.3 }); });
+    for (let s = 0; s < STEPS; s++) if (s !== 14) at(s, { v: "hat" });
+    at(14, { v: "ohat" });
+    if (bar.crash) at(0, { v: "crash" });
+  });
+  return { events: events, steps: events.length, sixteenth: 60 / 104 / 4, swing: 0.1, bpm: 104 };
+})();
+
+// Reel 4, the clubhouse: the Clarinet Polka ("Dziadunio Polka"; traditional Polish, around 1900,
+// also credited to Karol Namyslowski, copyrighted 1913, died 1925: public domain either way), in
+// the game's own arrangement. The melody is imported note for note with tools/midi_melody.py from
+// the melody-only MIDI transcription on flutetunes.com ("clarinet-polka.mid", 2/4, 112 bpm); the
+// chords, voicing and band are the game's own (no published arrangement is copied). Grid: twelve
+// steps per quarter (sixteenths 3 steps, triplet sixteenths 2), 24 steps per 2/4 bar; the tune's
+// pick-up sits at the end of the last bar so the loop is seamless.
+// 583 notes, 96 bars of 24 steps; first notes F4 Eb4 D4 F4 Bb4 D5
+const CLARINET_POLKA_TUNE = [
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 1
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 2
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 3
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 4
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 5
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 6
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 7
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 8
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 9
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 10
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 11
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 12
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 13
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 14
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 15
+  [[0,70,3],[6,70,6],[12,70,6],[18,65,2],[21,63,2]],   // 16
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 17
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 18
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 19
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 20
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 21
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 22
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 23
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 24
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 25
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 26
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 27
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 28
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 29
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 30
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 31
+  [[0,70,3],[6,70,6],[12,70,6]],   // 32
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 33
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 34
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 35
+  [[0,77,3],[3,81,3],[6,81,2],[9,79,2],[12,77,3],[15,76,3],[18,74,3],[21,72,3]],   // 36
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 37
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 38
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 39
+  [[0,77,3],[6,77,6],[12,77,6]],   // 40
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 41
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 42
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 43
+  [[0,77,3],[3,81,3],[6,81,2],[9,79,2],[12,77,3],[15,76,3],[18,74,3],[21,72,3]],   // 44
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 45
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 46
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 47
+  [[0,77,3],[6,77,6],[12,77,6],[18,65,2],[21,63,2]],   // 48
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 49
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 50
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 51
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 52
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 53
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 54
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 55
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 56
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 57
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 58
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 59
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 60
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 61
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 62
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 63
+  [[0,70,3],[6,70,6],[12,70,6],[18,82,3]],   // 64
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 65
+  [[0,70,18],[18,70,3],[21,68,3]],   // 66
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 67
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 68
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 69
+  [[0,70,18],[18,82,2],[20,84,2],[22,82,2]],   // 70
+  [[0,86,9],[9,80,3],[12,86,9],[21,80,3]],   // 71
+  [[0,84,3],[3,82,3],[6,79,2],[9,75,2],[12,70,3],[18,82,3]],   // 72
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 73
+  [[0,70,18],[18,70,3],[21,68,3]],   // 74
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 75
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 76
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 77
+  [[0,70,18],[18,70,6]],   // 78
+  [[0,70,2],[2,72,2],[4,70,2],[6,69,3],[9,70,3],[12,71,3],[15,72,3],[18,73,3],[21,74,3]],   // 79
+  [[0,75,3],[6,75,6],[12,75,6],[18,82,3]],   // 80
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 81
+  [[0,70,18],[18,70,3],[21,68,3]],   // 82
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 83
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 84
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 85
+  [[0,70,18],[18,82,2],[20,84,2],[22,82,2]],   // 86
+  [[0,86,9],[9,80,3],[12,86,9],[21,80,3]],   // 87
+  [[0,84,3],[3,82,3],[6,79,2],[9,75,2],[12,70,3],[18,82,3]],   // 88
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 89
+  [[0,70,18],[18,70,3],[21,68,3]],   // 90
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 91
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 92
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 93
+  [[0,70,18],[18,70,6]],   // 94
+  [[0,70,2],[2,72,2],[4,70,2],[6,69,3],[9,70,3],[12,71,3],[15,72,3],[18,73,3],[21,74,3]],   // 95
+  [[0,75,3],[6,75,6],[12,75,6],[18,65,2],[21,63,2]],   // 96
+];
+const CLARINET_POLKA_KEYS = [[0, "Bb"], [32, "F"], [48, "Bb"], [64, "Eb"]];   // [first bar (0-based), key]
+// Per-bar chord overrides (0-based bar -> "I" | "IV" | "V7"), set by ear where the automatic choice is off.
+const CLARINET_POLKA_CHORDS = {};
+const CLARINET_POLKA = (function buildClarinetPolka() {
+  const STEPS = 24, events = [];
+  const ROOT = { Bb: 10, F: 5, Eb: 3 };
+  const CHORDS = { I: [0, 4, 7], IV: [5, 9, 0], V7: [7, 11, 2, 5] };
+  function keyAt(b) { let k = CLARINET_POLKA_KEYS[0][1]; CLARINET_POLKA_KEYS.forEach(function (e) { if (b >= e[0]) k = e[1]; }); return k; }
+  // the chord of a bar: the one of I, IV, V7 covering the most melody time (notes on the beats count double)
+  function chordOf(b, prev) {
+    if (CLARINET_POLKA_CHORDS[b]) return CLARINET_POLKA_CHORDS[b];
+    const r = ROOT[keyAt(b)];
+    let best = prev || "I", bestScore = -1;
+    ["I", "V7", "IV"].forEach(function (name) {
+      const pcs = CHORDS[name].map(function (iv) { return (r + iv) % 12; });
+      let sc = 0;
+      CLARINET_POLKA_TUNE[b].forEach(function (n) { if (pcs.indexOf(n[1] % 12) >= 0) sc += n[2] * (n[0] % 12 === 0 ? 2 : 1); });
+      if (sc > bestScore || (sc === bestScore && name === prev)) { best = name; bestScore = sc; }
+    });
+    return best;
+  }
+  function near(pc, lo) { let m = lo + ((pc - lo) % 12 + 12) % 12; return m; }   // the pitch class at or just above lo
+  let prev = null;
+  CLARINET_POLKA_TUNE.forEach(function (tune, b) {
+    for (let i = 0; i < STEPS; i++) events.push([]);
+    const base = b * STEPS, r = ROOT[keyAt(b)], name = chordOf(b, prev), iv = CHORDS[name];
+    prev = name;
+    function at(s, e) { events[base + s].push(e); }
+    const root = near((r + iv[0]) % 12, 34), fifth = near((r + iv[0] + 7) % 12, 34);
+    const chord = iv.slice(0, 3).map(function (x) { return near((r + x) % 12, 58); }).sort(function (a, c) { return a - c; });
+    at(0, { v: "tuba", m: root, d: 9 }); at(12, { v: "tuba", m: fifth, d: 9 });          // oom ...
+    [6, 18].forEach(function (s) { at(s, { v: "accord", c: chord, d: 5 }); });          // ... pah
+    [0, 12].forEach(function (s) { at(s, { v: "kick", g: 0.7 }); });
+    [6, 18].forEach(function (s) { at(s, { v: "snare", g: 0.35 }); });
+    tune.forEach(function (n) { at(n[0], { v: "clar", m: n[1], d: n[2], lead: true }); });
+    if (b === 31 || b === 47 || b === 63 || b === CLARINET_POLKA_TUNE.length - 1) at(12, { v: "clink" });   // section ends
+  });
+  return { events: events, steps: events.length, sixteenth: 60 / 112 / 12, bpm: 112, beats: 2, grid: 12 };
+})();
+
+const SONGS = { title: ROCK, valkyries: SONG, biker: BIKER, funk: FUNK, clarinetpolka: CLARINET_POLKA };
 
 const Sound = {
   ac: null, master: null, music: null, sfx: null, noiseBuf: null,
@@ -283,8 +472,8 @@ const Sound = {
         break;
       case "bass": this.tone("triangle", midiHz(e.m), t, e.d * len * 0.85, 0.5, this.music); break;
       case "arp": this.tone("square", midiHz(e.m), t, len * 0.7, 0.06, this.music); break;
-      case "kick": this.sweep("sine", 140, 40, t, 0.12, 0.6, this.music); break;
-      case "snare": this.noise(t, 0.1, 0.25, 1800, this.music); break;
+      case "kick": this.sweep("sine", 140, 40, t, 0.12, 0.6 * (e.g || 1), this.music); break;
+      case "snare": this.noise(t, 0.1, 0.25 * (e.g || 1), 1800, this.music); break;     // g: ghost notes softer
       case "hat": this.noise(t, 0.03, 0.08, 7000, this.music); break;
       // title theme (rock) voices
       case "gtr": this.guitar([midiHz(e.m)], t, e.pm ? len * 0.8 : e.d * len * 0.95, e.pm ? 0.5 : 0.7, e.pm); break;
@@ -294,6 +483,17 @@ const Sound = {
       case "dyad": this.guitar([midiHz(e.m), midiHz(e.m + e.i)], t, e.d * len * 0.8, 0.45, true); break;
       case "slide": this.guitarSlide(midiHz(e.m), midiHz(e.m2), t, e.d * len, 0.6); break;
       case "crash": this.noise(t, 1.4, 0.3, 12000, this.music); break;
+      // funk (reel 2)
+      case "slap": this.slap(midiHz(e.m), t, e.d * len, e.pop); break;
+      case "clav": this.clav(e.c.map(midiHz), t, Math.max(0.12, e.d * len)); break;
+      case "scratch": this.noise(t, 0.035, e.acc ? 0.22 : 0.16, 3200, this.music); if (e.acc) this.guitar(e.c.map(midiHz), t, 0.06, 0.18, true); break;
+      case "brass": this.brass(e.c.map(midiHz), t, e.d * len); break;
+      case "ohat": this.noise(t, 0.2, 0.09, 9000, this.music); break;
+      // the clubhouse: the Clarinet Polka's band (reel 4)
+      case "tuba": this.tuba(midiHz(e.m), t, e.d * len); break;
+      case "accord": this.accordion(e.c.map(midiHz), t, e.d * len); break;
+      case "clar": this.clarinet(midiHz(e.m), t, e.d * len, e.lead); break;
+      case "clink": this.tone("sine", 2600, t, 0.25, 0.1, this.music); this.tone("sine", 3905, t + 0.03, 0.22, 0.08, this.music); break;
       case "tom": this.sweep("sine", e.f, e.f * 0.5, t, 0.2, 0.55, this.music); break;
     }
   },
@@ -339,6 +539,86 @@ const Sound = {
     });
   },
   // A sliding guitar note (pitch sweeps f0 -> f1): the engine-rev lick of the ride theme.
+  // ---- funk and polka-band voices: oscillators, filters and gains only (the promo renders them offline) ----
+  env(g, t, attack, peak, dur, sus) {      // fast attack, decay to sus x peak at 70% of dur, then silence at t + dur
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * (sus || 0.25)), t + Math.max(attack + 0.01, dur * 0.7));
+    g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.02);
+  },
+  slap(freq, t, dur, pop) {                 // slap bass: triangle body + a short square transient, filter snapping shut
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(pop ? 3200 : 1500, t); f.frequency.exponentialRampToValueAtTime(320, t + 0.12);
+    this.env(g, t, 0.003, pop ? 0.5 : 0.6, Math.max(0.08, dur * 0.9), 0.6);
+    f.connect(g); g.connect(this.music);
+    [["triangle", 1], ["square", 0.35]].forEach(function (w, k) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = w[0]; o.frequency.setValueAtTime(freq, t); og.gain.value = w[1];
+      if (k === 1) { og.gain.setValueAtTime(w[1], t); og.gain.linearRampToValueAtTime(0.0001, t + 0.03); }
+      o.connect(og); og.connect(f); o.start(t); o.stop(t + dur + 0.05);
+    });
+  },
+  clav(freqs, t, dur) {                    // clavinet: detuned squares through a bandpass, quick decay
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "bandpass"; f.frequency.setValueAtTime(1400, t); f.Q.value = 1.5;
+    this.env(g, t, 0.002, 0.15, dur);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.998, 1.002].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.05);
+    }); });
+  },
+  brass(freqs, t, dur) {                   // brass section: detuned saws, the filter swelling open
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(600, t); f.frequency.linearRampToValueAtTime(2600, t + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.04);
+    g.gain.setValueAtTime(0.055, t + Math.max(0.05, dur * 0.7)); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.03);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.995, 1, 1.005].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.06);
+    }); });
+  },
+  tuba(freq, t, dur) {                     // oom: sine with a softer triangle an octave up, soft attack
+    if (!this.ac) return;
+    const ac = this.ac, g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+    g.gain.setValueAtTime(0.42, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    g.connect(this.music);
+    [["sine", 1, 1], ["triangle", 2, 0.3]].forEach(function (w) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = w[0]; o.frequency.setValueAtTime(freq * w[1], t); og.gain.value = w[2];
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + 0.03);
+    });
+  },
+  accordion(freqs, t, dur) {               // pah: per note two squares detuned +-0.6% (the musette beat)
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(2200, t);
+    const v = 0.11 / Math.sqrt(freqs.length);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.01);
+    g.gain.setValueAtTime(v * 0.85, t + dur * 0.8); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.994, 1.006].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.03);
+    }); });
+  },
+  clarinet(freq, t, dur, lead) {           // clarinet: a square with a gentle vibrato, softened; lead: louder, brighter
+    if (!this.ac) return;
+    const ac = this.ac, o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(freq, t);
+    lfo.frequency.value = 5.5; lg.gain.value = freq * 0.004; lfo.connect(lg); lg.connect(o.frequency);
+    const v = lead ? 0.2 : 0.15;
+    f.type = "lowpass"; f.frequency.setValueAtTime(lead ? 2600 : 1800, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + (lead ? 0.008 : 0.015));
+    g.gain.setValueAtTime(v * 0.87, t + Math.max(0.02, dur * 0.8)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(this.music);
+    o.start(t); o.stop(t + dur + 0.03); lfo.start(t); lfo.stop(t + dur + 0.03);
+  },
   guitarSlide(f0, f1, t, dur, vol) {
     if (!this.ac) return;
     const ac = this.ac, g = ac.createGain();
@@ -484,11 +764,13 @@ const Sound = {
     const t = this.ac.currentTime;
     switch (name) {
       case "shot": this.sweep("square", 1100, 280, t, 0.08, 0.25); break;
-      case "mg": {        // the mofa's machine gun: a sharp crack, a low thump and the bolt's click, pitch varied per shot
-        const k = 1 + (Math.random() - 0.5) * 0.16;
-        this.noise(t, 0.04, 0.55, 3200 * k, null, 900);
-        this.sweep("sine", 160 * k, 50, t, 0.07, 0.6);
-        this.sweep("square", 2600 * k, 1900, t, 0.012, 0.1);
+      case "mg": {        // heavy WW2 .50 cal: a deep thump, a crack, a boom body and a short echo; pitch varies per volley
+        const k = 1 + (Math.random() - 0.5) * 0.12;
+        this.sweep("sine", 110 * k, 40, t, 0.12, 0.85);                 // thump
+        this.noise(t, 0.025, 0.5, 4200 * k, null, 1500);                // crack
+        this.noise(t, 0.08, 0.45, 900 * k, null, 250);                  // boom body
+        this.noise(t + 0.11, 0.12, 0.16, 700 * k, null, 200);           // echo
+        this.sweep("sine", 90 * k, 35, t + 0.11, 0.1, 0.25);
         break;
       }
       case "shotUp": this.sweep("sawtooth", 1500, 200, t, 0.1, 0.22); this.noise(t, 0.05, 0.15, 5000); break;

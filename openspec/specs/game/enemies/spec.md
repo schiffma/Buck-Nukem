@@ -154,7 +154,7 @@ The ride SHALL have enemy cars driven by arrogant, posh drivers: a BMW X7 (a big
 - **THEN** they score BMW X7 800, Tesla 700 and Ferrari 1000 points
 
 ### Requirement: BMW X7
-The BMW X7 SHALL be a huge, tall, slow SUV (too tall to hop over) that drives ahead of Buck and blocks the road. Its driver SHALL toss latte cups and golf balls back over the roof in arcs toward Buck, and honk when Buck rides close behind. It SHALL take 12 hits.
+The BMW X7 SHALL be a huge, tall, slow SUV (too tall to hop over) that drives ahead of Buck and blocks the road. Its driver SHALL toss latte cups and golf balls back over the roof in arcs toward Buck, and honk when Buck rides close behind. It SHALL take 10 hits.
 
 #### Scenario: Roadblock
 - **WHEN** Buck catches up with a BMW X7
@@ -169,14 +169,14 @@ The BMW X7 SHALL be a huge, tall, slow SUV (too tall to hop over) that drives ah
 - **THEN** the driver throws a latte cup or a golf ball in an arc toward him every 1.5 to 2.5 seconds, costing 1 health on a hit, and shots aimed up can hit the objects and destroy them
 
 ### Requirement: Tesla
-The Tesla SHALL creep up from behind with no engine roar, only a faint electric whine, with its driver looking at a phone, and ram Buck. It SHALL take 8 hits.
+The Tesla SHALL creep up from behind with no engine roar, only a faint electric whine, with its driver looking at a phone, and ram Buck. It SHALL take 6 hits.
 
 #### Scenario: Silent approach
 - **WHEN** a Tesla approaches from behind
 - **THEN** its sound is clearly quieter than the other cars' engines, and it accelerates to ram Buck when about half a screen behind him
 
 ### Requirement: Ferrari
-The Ferrari SHALL be a low, very fast car that comes from ahead with a loud engine roar. It SHALL be low enough to hop over, and it SHALL take 6 hits. Its approach SHALL be announced by the roar about one second before it appears on screen.
+The Ferrari SHALL be a low, very fast car that comes from ahead with a loud engine roar. It SHALL be low enough to hop over, and it SHALL take 5 hits. Its approach SHALL be announced by the roar about one second before it appears on screen.
 
 #### Scenario: Oncoming
 - **WHEN** a Ferrari is spawned ahead of Buck
@@ -202,7 +202,7 @@ Besides single cars, the ride SHALL have set pieces of several cars at once: an 
 - **THEN** it contains at least one of each wave kind, spread over the stretches
 
 ### Requirement: Club president's limo
-At the club gate, the club president's white super-stretch limousine (about 300 × 56 pixels, taller than the X7, in proportion to Buck on the mofa) SHALL block the way as a mini-boss: it stands before the gate, takes 30 hits, shows its health in a bar with the name "THE PRESIDENT'S LIMO", and the president pops champagne corks at Buck in arcs from the sunroof. The gate SHALL stay closed until the limo is destroyed. Destroying it SHALL score 3000 points.
+At the club gate, the club president's white super-stretch limousine (about 300 × 56 pixels, taller than the X7, in proportion to Buck on the mofa) SHALL block the way as a mini-boss: it stands before the gate, takes 24 hits, shows its health in a bar with the name "THE PRESIDENT'S LIMO", and the president pops champagne corks at Buck in arcs from the sunroof. The gate SHALL stay closed until the limo is destroyed. Destroying it SHALL score 3000 points.
 
 #### Scenario: Gate blocked
 - **WHEN** the mofa reaches the limo while it still has health
@@ -222,8 +222,35 @@ At the club gate, the club president's white super-stretch limousine (about 300 
 
 #### Scenario: Ladies gone
 - **WHEN** the limo is destroyed
-- **THEN** its bubbles disappear and the ladies run off with the president
+- **THEN** its bubbles disappear, the president runs off, and the ladies crawl out of the wreck for the limo finale (see the ride spec) and run off when it ends
 
 #### Scenario: Destroyed
 - **WHEN** the limo's health reaches 0
-- **THEN** it explodes like the other cars (bigger), the president runs off, 3000 points are scored, and the gate opens so the mofa can ride through and end the level
+- **THEN** it explodes like the other cars (bigger), the president runs off, 3000 points are scored, the limo finale plays, and the gate opens so the mofa can ride through and end the level
+
+### Requirement: Petrol lawn mower
+The gardener-punk's mower SHALL be drawn as a petrol lawn mower with an engine block, a fuel tank, a pull-start handle, an exhaust muffler, a deck and wheels. Exhaust smoke SHALL come from the muffler and follow the engine: light puffs while patrolling, thick dark clouds while revving, a dark trail while charging, none after death. Hitbox and behaviour stay unchanged.
+
+#### Scenario: Petrol mower parts
+- **WHEN** a gardener-punk sprite frame is built
+- **THEN** the mower shows an engine block, a fuel tank, an exhaust muffler and wheels, and every opaque edge pixel borders a dark outline pixel
+
+#### Scenario: Idle exhaust
+- **WHEN** a patrolling punk is on screen for one second
+- **THEN** at least three exhaust smoke puffs rise from the muffler position, separate from the blunt smoke
+
+#### Scenario: Revving smoke
+- **WHEN** a punk revs before a charge
+- **THEN** exhaust smoke is emitted at least three times as often as while patrolling, and it is darker
+
+#### Scenario: Charging trail
+- **WHEN** a punk is charging
+- **THEN** dark exhaust smoke is emitted behind the mower throughout the charge
+
+#### Scenario: Engine dies with the punk
+- **WHEN** a punk is killed
+- **THEN** no further exhaust smoke is emitted for him
+
+#### Scenario: Gameplay unchanged
+- **WHEN** a gardener-punk is created
+- **THEN** his hitbox, health, speeds, rev time, charge distance and contact damage are the same as before the redesign
