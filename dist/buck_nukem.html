@@ -48,6 +48,7 @@ const ASSETS = {
 const LEVEL_DATA = [
 {
 "name": "THE ROAD TO WOLLERAU",
+"music": "biker",
 "theme": "road",
 "bg": "bg_lake",
 "stretches": "0 bg_lake, 160 bg_village, 320 bg_climb, 480 bg_club",
@@ -80,6 +81,7 @@ const LEVEL_DATA = [
 },
 {
 "name": "TC WOLLERAU - CLAY COURTS",
+"music": "funk",
 "theme": "court",
 "bg": "bg_court",
 "map": [
@@ -142,6 +144,7 @@ const LEVEL_DATA = [
 },
 {
 "name": "CLUBHOUSE AND INDOOR HALL",
+"music": "clarinetpolka",
 "theme": "hall",
 "bg": "bg_hall",
 "interior": "0-63",
@@ -194,7 +197,7 @@ const LEVEL_DATA = [
 ]
 }
 ];
-const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}, "mofaPalette": {"frame": "#991115", "chrome": "#edf1ee", "seat": "#2e363e", "engine": "#a7a8a2"}, "version": "v1.0.8"};
+const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}, "mofaPalette": {"frame": "#991115", "chrome": "#edf1ee", "seat": "#2e363e", "engine": "#a7a8a2"}, "version": "v1.0.8-1-g9a6936a"};
 </script>
 <script>
 (function () {
@@ -243,19 +246,21 @@ const CONFIG = {
   bossSummons: 3,
   // mofa ride (src/ride.js): px/s and px/s^2
   mofaTop: 150, mofaAccel: 70, mofaBrake: 200, mofaCoast: 30, mofaReverse: 0.25, mofaHopVel: -330,
-  mofaW: 28, mofaH: 30, mofaClimbK: 4,          // uphill: top speed x max(0.4, 1 - k * grade)
+  mofaW: 22, mofaH: 30, mofaClimbK: 4,          // uphill: top speed x max(0.4, 1 - k * grade)
   mofaRampVel: -360, mofaRampGrav: 0.5,         // ramp launch at top speed; gravity factor in that flight
   // posh drivers (src/cars.js)
-  suvHp: 12, teslaHp: 8, ferrariHp: 6,               // suv: the BMW X7
+  suvHp: 10, teslaHp: 6, ferrariHp: 5,                // suv: the BMW X7 (hit counts fit the heavy guns' 8 volleys/s)
   suvPoints: 800, teslaPoints: 700, ferrariPoints: 1000,
   wd40Heal: 2,                                         // WD-40 can (ride health pickup)
-  limoHp: 30, limoPoints: 3000, limoGateGap: 60,       // the president's limo: parks this far before the club gate
+  limoHp: 24, limoPoints: 3000, limoGateGap: 60,       // the president's limo: parks this far before the club gate
   limoTalkEvery: [2, 3],                              // the president or a lady at the window speaks
   corkEvery: [1.0, 1.5],                               // champagne corks from the sunroof, while Buck is within a screen
   suvSpeed: 90, ferrariSpeed: 340, carKnockback: 160, carContact: 2, suvThrowEvery: [1.5, 2.5], wreckLife: 20,
   driverTalkT: 1.5, driverTalkEvery: [2.5, 3.5],    // posh drivers: a line on first sight, then every 2.5-3.5 s
+  finale: { lady1: 0.6, say1: 0.9, lady2: 1.8, say2: 2.1, buck: 3.2, light: 3.8, lit: 4.2, end: 5.0, skipAfter: 0.3, crawl: 12 },   // limo finale (s, px/s)
+  buckTalkCd: 3, buckTalkT: 1.5,                      // Buck's Swiss German line after a car kill (ride)
   rideBubbles: 2,                                    // ride: at most this many car bubbles at once (never overlapping)
-  mofaRate: 10, mofaShotSpeed: 300, mofaAim: 30,   // mounted machine gun: shots/s, px/s, Up angle (degrees)
+  mofaRate: 8, mofaShotSpeed: 300, mofaAim: 30,    // heavy twin guns: volleys/s, px/s, Up angle (degrees)
   rideCamX: 96,                  // ride: the camera keeps Buck's centre about this far from the left edge
   bossCamX: 80,                  // boss arena: the camera keeps Buck's centre about this far from the left edge
   reveal: { pan: 0.8, hold: 1.2, back: 0.8, skipBack: 0.3 },   // boss reveal camera pan at arena start (s)                // summon attacks per boss fight; then it alternates slam and bubbles
@@ -1162,6 +1167,8 @@ const GLYPHS = {
   "=": [0, 0, 31, 0, 31, 0, 0], ">": [8, 4, 2, 1, 2, 4, 8], "<": [2, 4, 8, 16, 8, 4, 2],
   "%": [24, 25, 2, 4, 8, 19, 3], '"': [10, 10, 0, 0, 0, 0, 0], "*": [0, 21, 14, 31, 14, 21, 0],
   "♥": [0, 10, 31, 31, 14, 4, 0],
+  // Swiss German umlauts (Buck's lines): two dots in the top row over a five-row letter
+  "Ä": [10, 0, 14, 17, 31, 17, 17], "Ö": [10, 0, 14, 17, 17, 17, 14], "Ü": [10, 0, 17, 17, 17, 17, 14],
 };
 const FONT_CHARS = Object.keys(GLYPHS).join("");
 const fontAtlases = {};
@@ -2048,7 +2055,196 @@ const CAR_ENGINES = {
   limo:    { rate: 8, freq: 38, cut: 400, gain: 0.08 },     // a parked V8 idling
 };
 
-const SONGS = { title: ROCK, valkyries: SONG, biker: BIKER };
+// Reel 2, the clay courts: an original 70s funk groove (104 bpm, E): slap bass with octave pops,
+// sixteenth chicken-scratch guitar, clavinet off-beats, brass stabs, a tight beat with ghost notes.
+// Bars 1-8 groove on E9, 9-12 A9 / B7#9 with brass stabs, 13-14 a bass-and-drums break, 15-16 a
+// turnaround with a rising brass line. Original note data; no known funk riff is quoted.
+const FUNK = (function buildFunk() {
+  const STEPS = 16, events = [];
+  const E9 = [56, 62, 66], A9 = [61, 67, 71], B79 = [63, 69, 74];          // voicings (G#-D-F#, C#-G-B, D#-A-D)
+  const GROOVE = [[0, 0, 2], [3, 0, 1], [6, 12, 1, 1], [8, 0, 1], [10, 3, 1], [11, 5, 1], [12, 0, 1], [14, 12, 1, 1], [15, 10, 1, 1]];
+  const GROOVE_B = [[0, 0, 2], [3, 0, 1], [6, 12, 1, 1], [8, 7, 1], [9, 5, 1], [10, 3, 1], [12, 0, 2], [14, -2, 1], [15, -1, 1]];
+  const bars = [
+    { root: 40, chord: E9, bass: GROOVE, crash: true }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE_B },
+    { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE }, { root: 40, chord: E9, bass: GROOVE_B, stab: [64, 68, 71] },
+    { root: 45, chord: A9, bass: GROOVE, stab: [67, 71, 76] }, { root: 45, chord: A9, bass: GROOVE, stab: [67, 71, 76] },
+    { root: 47, chord: B79, bass: GROOVE, stab: [69, 75, 78] }, { root: 47, chord: B79, bass: GROOVE_B, stab: [69, 75, 78] },
+    { root: 40, brk: [[0, 0, 2], [4, 3, 1], [6, 5, 1], [8, 6, 1], [10, 7, 2], [14, 10, 1]] },
+    { root: 40, brk: [[0, 12, 1, 1], [2, 10, 1], [4, 7, 1], [6, 5, 1], [8, 3, 1], [10, 0, 2], [14, -2, 1]] },
+    { root: 40, chord: E9, bass: GROOVE, line: [[0, [64, 68, 71]], [4, [66, 69, 73]], [8, [68, 71, 74]], [12, [69, 73, 76]]] },
+    { root: 40, chord: E9, bass: GROOVE_B, line: [[0, [68, 71, 76]], [6, [69, 73, 78]], [12, [71, 74, 80]]] },
+  ];
+  for (let i = 0; i < bars.length * STEPS; i++) events.push([]);
+  bars.forEach(function (bar, bi) {
+    const base = bi * STEPS;
+    function at(s, e) { events[base + s].push(e); }
+    (bar.brk || bar.bass).forEach(function (n) { at(n[0], { v: "slap", m: bar.root + n[1], d: n[2], pop: !!n[3] }); });
+    if (bar.chord) {
+      for (let s = 0; s < STEPS; s++) if (s !== 4 && s !== 12) at(s, { v: "scratch", c: bar.chord, acc: s % 4 === 2 });
+      [4, 12].forEach(function (s) { at(s, { v: "scratch", c: bar.chord, acc: true }); });
+      [2, 7, 10, 15].forEach(function (s) { at(s, { v: "clav", c: bar.chord.map(function (m) { return m + 12; }), d: 1 }); });
+    }
+    if (bar.stab) at(14, { v: "brass", c: bar.stab, d: 2 });
+    if (bar.line) bar.line.forEach(function (l) { at(l[0], { v: "brass", c: l[1], d: 3 }); });
+    // the beat: kick on 1, the "a" of 2 and the "and" of 3; snare on 2 and 4 with ghost notes;
+    // closed hats on every sixteenth, an open hat on the "and" of 4
+    [0, 7, 10].forEach(function (s) { at(s, { v: "kick" }); });
+    [4, 12].forEach(function (s) { at(s, { v: "snare" }); });
+    [6, 9, 15].forEach(function (s) { at(s, { v: "snare", g: 0.3 }); });
+    for (let s = 0; s < STEPS; s++) if (s !== 14) at(s, { v: "hat" });
+    at(14, { v: "ohat" });
+    if (bar.crash) at(0, { v: "crash" });
+  });
+  return { events: events, steps: events.length, sixteenth: 60 / 104 / 4, swing: 0.1, bpm: 104 };
+})();
+
+// Reel 4, the clubhouse: the Clarinet Polka ("Dziadunio Polka"; traditional Polish, around 1900,
+// also credited to Karol Namyslowski, copyrighted 1913, died 1925: public domain either way), in
+// the game's own arrangement. The melody is imported note for note with tools/midi_melody.py from
+// the melody-only MIDI transcription on flutetunes.com ("clarinet-polka.mid", 2/4, 112 bpm); the
+// chords, voicing and band are the game's own (no published arrangement is copied). Grid: twelve
+// steps per quarter (sixteenths 3 steps, triplet sixteenths 2), 24 steps per 2/4 bar; the tune's
+// pick-up sits at the end of the last bar so the loop is seamless.
+// 583 notes, 96 bars of 24 steps; first notes F4 Eb4 D4 F4 Bb4 D5
+const CLARINET_POLKA_TUNE = [
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 1
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 2
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 3
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 4
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 5
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 6
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 7
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 8
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 9
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 10
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 11
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 12
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 13
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 14
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 15
+  [[0,70,3],[6,70,6],[12,70,6],[18,65,2],[21,63,2]],   // 16
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 17
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 18
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 19
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 20
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 21
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 22
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 23
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 24
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 25
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 26
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 27
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 28
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 29
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 30
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 31
+  [[0,70,3],[6,70,6],[12,70,6]],   // 32
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 33
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 34
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 35
+  [[0,77,3],[3,81,3],[6,81,2],[9,79,2],[12,77,3],[15,76,3],[18,74,3],[21,72,3]],   // 36
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 37
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 38
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 39
+  [[0,77,3],[6,77,6],[12,77,6]],   // 40
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 41
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 42
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 43
+  [[0,77,3],[3,81,3],[6,81,2],[9,79,2],[12,77,3],[15,76,3],[18,74,3],[21,72,3]],   // 44
+  [[0,72,2],[2,74,2],[4,72,2],[6,71,3],[9,72,3],[12,74,3],[15,72,3],[18,71,3],[21,72,3]],   // 45
+  [[0,69,3],[3,72,3],[6,77,2],[9,81,2],[12,84,12]],   // 46
+  [[0,81,3],[3,84,3],[6,82,2],[9,81,2],[12,79,3],[15,82,3],[18,81,2],[21,79,2]],   // 47
+  [[0,77,3],[6,77,6],[12,77,6],[18,65,2],[21,63,2]],   // 48
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 49
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 50
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 51
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,3],[18,65,2],[20,67,2],[22,65,2]],   // 52
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 53
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 54
+  [[0,81,6],[6,79,3],[9,75,3],[12,81,6],[18,79,3],[21,75,3]],   // 55
+  [[0,79,3],[3,77,3],[6,74,2],[9,70,2],[12,65,6],[18,65,2],[21,63,2]],   // 56
+  [[0,62,3],[3,65,3],[6,70,2],[9,74,2],[12,65,3],[15,70,3],[18,74,2],[21,77,2]],   // 57
+  [[0,74,6],[6,74,6],[12,74,6],[18,74,3],[21,77,3]],   // 58
+  [[0,74,6],[6,74,3],[9,77,3],[12,74,6],[18,74,3],[21,77,3]],   // 59
+  [[0,77,3],[3,75,3],[6,72,2],[9,69,2],[12,65,6],[18,65,2],[20,67,2],[22,65,2]],   // 60
+  [[0,63,3],[3,65,3],[6,69,2],[9,72,2],[12,65,3],[15,69,3],[18,72,2],[21,75,2]],   // 61
+  [[0,81,6],[6,81,6],[12,81,6],[18,79,3],[21,75,3]],   // 62
+  [[0,77,6],[6,81,3],[9,79,3],[12,77,3],[15,75,3],[18,74,3],[21,72,3]],   // 63
+  [[0,70,3],[6,70,6],[12,70,6],[18,82,3]],   // 64
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 65
+  [[0,70,18],[18,70,3],[21,68,3]],   // 66
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 67
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 68
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 69
+  [[0,70,18],[18,82,2],[20,84,2],[22,82,2]],   // 70
+  [[0,86,9],[9,80,3],[12,86,9],[21,80,3]],   // 71
+  [[0,84,3],[3,82,3],[6,79,2],[9,75,2],[12,70,3],[18,82,3]],   // 72
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 73
+  [[0,70,18],[18,70,3],[21,68,3]],   // 74
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 75
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 76
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 77
+  [[0,70,18],[18,70,6]],   // 78
+  [[0,70,2],[2,72,2],[4,70,2],[6,69,3],[9,70,3],[12,71,3],[15,72,3],[18,73,3],[21,74,3]],   // 79
+  [[0,75,3],[6,75,6],[12,75,6],[18,82,3]],   // 80
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 81
+  [[0,70,18],[18,70,3],[21,68,3]],   // 82
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 83
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 84
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 85
+  [[0,70,18],[18,82,2],[20,84,2],[22,82,2]],   // 86
+  [[0,86,9],[9,80,3],[12,86,9],[21,80,3]],   // 87
+  [[0,84,3],[3,82,3],[6,79,2],[9,75,2],[12,70,3],[18,82,3]],   // 88
+  [[0,82,15],[15,79,3],[18,75,3],[21,72,3]],   // 89
+  [[0,70,18],[18,70,3],[21,68,3]],   // 90
+  [[0,67,3],[3,70,3],[6,75,2],[9,70,2],[12,67,3],[15,70,3],[18,75,2],[21,70,2]],   // 91
+  [[0,68,3],[3,70,3],[6,74,2],[9,70,2],[12,68,3],[18,80,3]],   // 92
+  [[0,80,15],[15,77,3],[18,74,3],[21,72,3]],   // 93
+  [[0,70,18],[18,70,6]],   // 94
+  [[0,70,2],[2,72,2],[4,70,2],[6,69,3],[9,70,3],[12,71,3],[15,72,3],[18,73,3],[21,74,3]],   // 95
+  [[0,75,3],[6,75,6],[12,75,6],[18,65,2],[21,63,2]],   // 96
+];
+const CLARINET_POLKA_KEYS = [[0, "Bb"], [32, "F"], [48, "Bb"], [64, "Eb"]];   // [first bar (0-based), key]
+// Per-bar chord overrides (0-based bar -> "I" | "IV" | "V7"), set by ear where the automatic choice is off.
+const CLARINET_POLKA_CHORDS = {};
+const CLARINET_POLKA = (function buildClarinetPolka() {
+  const STEPS = 24, events = [];
+  const ROOT = { Bb: 10, F: 5, Eb: 3 };
+  const CHORDS = { I: [0, 4, 7], IV: [5, 9, 0], V7: [7, 11, 2, 5] };
+  function keyAt(b) { let k = CLARINET_POLKA_KEYS[0][1]; CLARINET_POLKA_KEYS.forEach(function (e) { if (b >= e[0]) k = e[1]; }); return k; }
+  // the chord of a bar: the one of I, IV, V7 covering the most melody time (notes on the beats count double)
+  function chordOf(b, prev) {
+    if (CLARINET_POLKA_CHORDS[b]) return CLARINET_POLKA_CHORDS[b];
+    const r = ROOT[keyAt(b)];
+    let best = prev || "I", bestScore = -1;
+    ["I", "V7", "IV"].forEach(function (name) {
+      const pcs = CHORDS[name].map(function (iv) { return (r + iv) % 12; });
+      let sc = 0;
+      CLARINET_POLKA_TUNE[b].forEach(function (n) { if (pcs.indexOf(n[1] % 12) >= 0) sc += n[2] * (n[0] % 12 === 0 ? 2 : 1); });
+      if (sc > bestScore || (sc === bestScore && name === prev)) { best = name; bestScore = sc; }
+    });
+    return best;
+  }
+  function near(pc, lo) { let m = lo + ((pc - lo) % 12 + 12) % 12; return m; }   // the pitch class at or just above lo
+  let prev = null;
+  CLARINET_POLKA_TUNE.forEach(function (tune, b) {
+    for (let i = 0; i < STEPS; i++) events.push([]);
+    const base = b * STEPS, r = ROOT[keyAt(b)], name = chordOf(b, prev), iv = CHORDS[name];
+    prev = name;
+    function at(s, e) { events[base + s].push(e); }
+    const root = near((r + iv[0]) % 12, 34), fifth = near((r + iv[0] + 7) % 12, 34);
+    const chord = iv.slice(0, 3).map(function (x) { return near((r + x) % 12, 58); }).sort(function (a, c) { return a - c; });
+    at(0, { v: "tuba", m: root, d: 9 }); at(12, { v: "tuba", m: fifth, d: 9 });          // oom ...
+    [6, 18].forEach(function (s) { at(s, { v: "accord", c: chord, d: 5 }); });          // ... pah
+    [0, 12].forEach(function (s) { at(s, { v: "kick", g: 0.7 }); });
+    [6, 18].forEach(function (s) { at(s, { v: "snare", g: 0.35 }); });
+    tune.forEach(function (n) { at(n[0], { v: "clar", m: n[1], d: n[2], lead: true }); });
+    if (b === 31 || b === 47 || b === 63 || b === CLARINET_POLKA_TUNE.length - 1) at(12, { v: "clink" });   // section ends
+  });
+  return { events: events, steps: events.length, sixteenth: 60 / 112 / 12, bpm: 112, beats: 2, grid: 12 };
+})();
+
+const SONGS = { title: ROCK, valkyries: SONG, biker: BIKER, funk: FUNK, clarinetpolka: CLARINET_POLKA };
 
 const Sound = {
   ac: null, master: null, music: null, sfx: null, noiseBuf: null,
@@ -2152,8 +2348,8 @@ const Sound = {
         break;
       case "bass": this.tone("triangle", midiHz(e.m), t, e.d * len * 0.85, 0.5, this.music); break;
       case "arp": this.tone("square", midiHz(e.m), t, len * 0.7, 0.06, this.music); break;
-      case "kick": this.sweep("sine", 140, 40, t, 0.12, 0.6, this.music); break;
-      case "snare": this.noise(t, 0.1, 0.25, 1800, this.music); break;
+      case "kick": this.sweep("sine", 140, 40, t, 0.12, 0.6 * (e.g || 1), this.music); break;
+      case "snare": this.noise(t, 0.1, 0.25 * (e.g || 1), 1800, this.music); break;     // g: ghost notes softer
       case "hat": this.noise(t, 0.03, 0.08, 7000, this.music); break;
       // title theme (rock) voices
       case "gtr": this.guitar([midiHz(e.m)], t, e.pm ? len * 0.8 : e.d * len * 0.95, e.pm ? 0.5 : 0.7, e.pm); break;
@@ -2163,6 +2359,17 @@ const Sound = {
       case "dyad": this.guitar([midiHz(e.m), midiHz(e.m + e.i)], t, e.d * len * 0.8, 0.45, true); break;
       case "slide": this.guitarSlide(midiHz(e.m), midiHz(e.m2), t, e.d * len, 0.6); break;
       case "crash": this.noise(t, 1.4, 0.3, 12000, this.music); break;
+      // funk (reel 2)
+      case "slap": this.slap(midiHz(e.m), t, e.d * len, e.pop); break;
+      case "clav": this.clav(e.c.map(midiHz), t, Math.max(0.12, e.d * len)); break;
+      case "scratch": this.noise(t, 0.035, e.acc ? 0.22 : 0.16, 3200, this.music); if (e.acc) this.guitar(e.c.map(midiHz), t, 0.06, 0.18, true); break;
+      case "brass": this.brass(e.c.map(midiHz), t, e.d * len); break;
+      case "ohat": this.noise(t, 0.2, 0.09, 9000, this.music); break;
+      // the clubhouse: the Clarinet Polka's band (reel 4)
+      case "tuba": this.tuba(midiHz(e.m), t, e.d * len); break;
+      case "accord": this.accordion(e.c.map(midiHz), t, e.d * len); break;
+      case "clar": this.clarinet(midiHz(e.m), t, e.d * len, e.lead); break;
+      case "clink": this.tone("sine", 2600, t, 0.25, 0.1, this.music); this.tone("sine", 3905, t + 0.03, 0.22, 0.08, this.music); break;
       case "tom": this.sweep("sine", e.f, e.f * 0.5, t, 0.2, 0.55, this.music); break;
     }
   },
@@ -2208,6 +2415,86 @@ const Sound = {
     });
   },
   // A sliding guitar note (pitch sweeps f0 -> f1): the engine-rev lick of the ride theme.
+  // ---- funk and polka-band voices: oscillators, filters and gains only (the promo renders them offline) ----
+  env(g, t, attack, peak, dur, sus) {      // fast attack, decay to sus x peak at 70% of dur, then silence at t + dur
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * (sus || 0.25)), t + Math.max(attack + 0.01, dur * 0.7));
+    g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.02);
+  },
+  slap(freq, t, dur, pop) {                 // slap bass: triangle body + a short square transient, filter snapping shut
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(pop ? 3200 : 1500, t); f.frequency.exponentialRampToValueAtTime(320, t + 0.12);
+    this.env(g, t, 0.003, pop ? 0.5 : 0.6, Math.max(0.08, dur * 0.9), 0.6);
+    f.connect(g); g.connect(this.music);
+    [["triangle", 1], ["square", 0.35]].forEach(function (w, k) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = w[0]; o.frequency.setValueAtTime(freq, t); og.gain.value = w[1];
+      if (k === 1) { og.gain.setValueAtTime(w[1], t); og.gain.linearRampToValueAtTime(0.0001, t + 0.03); }
+      o.connect(og); og.connect(f); o.start(t); o.stop(t + dur + 0.05);
+    });
+  },
+  clav(freqs, t, dur) {                    // clavinet: detuned squares through a bandpass, quick decay
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "bandpass"; f.frequency.setValueAtTime(1400, t); f.Q.value = 1.5;
+    this.env(g, t, 0.002, 0.15, dur);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.998, 1.002].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.05);
+    }); });
+  },
+  brass(freqs, t, dur) {                   // brass section: detuned saws, the filter swelling open
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(600, t); f.frequency.linearRampToValueAtTime(2600, t + 0.05);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.04);
+    g.gain.setValueAtTime(0.055, t + Math.max(0.05, dur * 0.7)); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.03);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.995, 1, 1.005].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.06);
+    }); });
+  },
+  tuba(freq, t, dur) {                     // oom: sine with a softer triangle an octave up, soft attack
+    if (!this.ac) return;
+    const ac = this.ac, g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+    g.gain.setValueAtTime(0.42, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    g.connect(this.music);
+    [["sine", 1, 1], ["triangle", 2, 0.3]].forEach(function (w) {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = w[0]; o.frequency.setValueAtTime(freq * w[1], t); og.gain.value = w[2];
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + 0.03);
+    });
+  },
+  accordion(freqs, t, dur) {               // pah: per note two squares detuned +-0.6% (the musette beat)
+    if (!this.ac) return;
+    const ac = this.ac, f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(2200, t);
+    const v = 0.11 / Math.sqrt(freqs.length);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + 0.01);
+    g.gain.setValueAtTime(v * 0.85, t + dur * 0.8); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    f.connect(g); g.connect(this.music);
+    freqs.forEach(function (fr) { [0.994, 1.006].forEach(function (k) {
+      const o = ac.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(fr * k, t);
+      o.connect(f); o.start(t); o.stop(t + dur + 0.03);
+    }); });
+  },
+  clarinet(freq, t, dur, lead) {           // clarinet: a square with a gentle vibrato, softened; lead: louder, brighter
+    if (!this.ac) return;
+    const ac = this.ac, o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(freq, t);
+    lfo.frequency.value = 5.5; lg.gain.value = freq * 0.004; lfo.connect(lg); lg.connect(o.frequency);
+    const v = lead ? 0.2 : 0.15;
+    f.type = "lowpass"; f.frequency.setValueAtTime(lead ? 2600 : 1800, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v, t + (lead ? 0.008 : 0.015));
+    g.gain.setValueAtTime(v * 0.87, t + Math.max(0.02, dur * 0.8)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(this.music);
+    o.start(t); o.stop(t + dur + 0.03); lfo.start(t); lfo.stop(t + dur + 0.03);
+  },
   guitarSlide(f0, f1, t, dur, vol) {
     if (!this.ac) return;
     const ac = this.ac, g = ac.createGain();
@@ -2353,11 +2640,13 @@ const Sound = {
     const t = this.ac.currentTime;
     switch (name) {
       case "shot": this.sweep("square", 1100, 280, t, 0.08, 0.25); break;
-      case "mg": {        // the mofa's machine gun: a sharp crack, a low thump and the bolt's click, pitch varied per shot
-        const k = 1 + (Math.random() - 0.5) * 0.16;
-        this.noise(t, 0.04, 0.55, 3200 * k, null, 900);
-        this.sweep("sine", 160 * k, 50, t, 0.07, 0.6);
-        this.sweep("square", 2600 * k, 1900, t, 0.012, 0.1);
+      case "mg": {        // heavy WW2 .50 cal: a deep thump, a crack, a boom body and a short echo; pitch varies per volley
+        const k = 1 + (Math.random() - 0.5) * 0.12;
+        this.sweep("sine", 110 * k, 40, t, 0.12, 0.85);                 // thump
+        this.noise(t, 0.025, 0.5, 4200 * k, null, 1500);                // crack
+        this.noise(t, 0.08, 0.45, 900 * k, null, 250);                  // boom body
+        this.noise(t + 0.11, 0.12, 0.16, 700 * k, null, 200);           // echo
+        this.sweep("sine", 90 * k, 35, t + 0.11, 0.1, 0.25);
         break;
       }
       case "shotUp": this.sweep("sawtooth", 1500, 200, t, 0.1, 0.22); this.noise(t, 0.05, 0.15, 5000); break;
@@ -2747,6 +3036,7 @@ class Level {
     this.bgName = data.bg || "bg_court";
     this.isBoss = data.boss === "1";
     this.isRide = data.ride === "1";       // the mofa ride (src/ride.js)
+    this.music = data.music || "valkyries"; // the level's track (header "music:"; SONGS in src/audio.js)
     this.rows = data.map.map(function (r) { return r.split(""); });
     this.h = this.rows.length;
     this.w = this.rows[0].length;
@@ -3344,9 +3634,11 @@ const Player = {
     if (this.dropT > 0) this.dropT -= dt;
 
     if (level.isRide) {                  // on the mofa (src/ride.js): no climbing, kneeling or dropping
+      Mofa.updateFinale(this, dt);                       // the limo finale (control locked while it plays)
       Mofa.update(this, dt, level);
+      Mofa.updateCigarette(this, dt);
       // the twin gun: Fire held fires a volley forward and backward (no automatic fire)
-      if (Input.down("fire") && this.fireCd <= 0) this.fire();
+      if (!Mofa.finale && Input.down("fire") && this.fireCd <= 0) this.fire();
       if (this.y > level.pxH + 32) { this.hp = 0; this.die(); }
       return;
     }
@@ -3512,7 +3804,7 @@ const Player = {
 
   // n: damage points. fromWater: no knockback (the water bounce handles movement).
   hurt(n, fromWater) {
-    if (this.dead || Game.godMode || this.invuln > 0) return false;
+    if (this.dead || Game.godMode || this.invuln > 0 || Mofa.finale) return false;   // no damage during the limo finale
     this.hp = Math.max(0, this.hp - n);
     this.invuln = CONFIG.invuln;
     this.hurtT = 0.3;
@@ -3615,20 +3907,87 @@ const Mofa = {
     const s = this.speed01(P);
     return Input.down("right") && P.onGround && this.grade(P, Game.level) > 0.02 ? 1 : s;
   },
+  // ---------------- the limo finale ----------------
+  // When the limo is destroyed: play pauses (no gas, fire or jump; Buck can't be hurt) while the
+  // mofa rolls to a stop, the two posh ladies crawl out of the wreck one after the other with a
+  // line each, Buck answers "YOU HAVE NO CLUE" and lights a cigarette; Fire or Jump skips it.
+  finale: null,
+  startFinale(limo) {
+    const lines = shuffle(LIMO_FINALE_LINES.slice());
+    const floor = limo.y + limo.h;
+    this.finale = { t: 0, ladies: [limoX(37), limoX(107)].map(function (dx, i) {
+      return { x: limo.x + dx - 6, y: floor - 7, dir: i ? 1 : -1, style: i, out: false, line: lines[i], bubble: null, anim: 0 };
+    }) };
+    Cars.pending = []; Cars.triggers = []; Game.enemyShots = [];
+  },
+  updateFinale(P, dt) {
+    const F = this.finale, T = CONFIG.finale;
+    if (!F) return;
+    const t0 = F.t; F.t += dt;
+    const at = function (k) { return t0 < T[k] && F.t >= T[k]; };
+    const ladies = F.ladies;
+    if (at("lady1")) ladies[0].out = true;
+    if (at("lady2")) ladies[1].out = true;
+    if (at("say1")) ladies[0].bubble = { text: ladies[0].line, t: 1.6 };
+    if (at("say2")) ladies[1].bubble = { text: ladies[1].line, t: 1.6 };
+    if (at("buck")) { P.bubble = { text: "YOU HAVE NO CLUE", t: 1.8 }; P.talkCd = CONFIG.buckTalkCd; }
+    if (at("light")) P.lighterT = T.lit - T.light;
+    if (at("lit")) { P.cigarette = true; P.puffT = 0; }
+    ladies.forEach(function (l) {
+      if (l.out) { l.x += l.dir * T.crawl * dt; l.anim += dt * 4; }
+      if (l.bubble && (l.bubble.t -= dt) <= 0) l.bubble = null;
+    });
+    if (P.lighterT > 0) P.lighterT -= dt;
+    const skip = F.t > T.skipAfter && (Input.pressed("fire") || Input.pressed("jump"));
+    if (F.t >= T.end || skip) this.endFinale(P);
+  },
+  endFinale(P) {
+    const F = this.finale;
+    if (!F) return;
+    F.ladies.forEach(function (l) {                      // they get up and run off in their dresses
+      Cars.runners.push({ x: l.x + 6, y: l.y - 7, vx: l.dir * 95, t: 3, anim: 0, lady: l.style });
+    });
+    if (!P.cigarette) { P.cigarette = true; P.puffT = 0; }
+    P.lighterT = 0;
+    this.finale = null;
+  },
+  // a lit cigarette at Buck's mouth puffs a little smoke about every 1.1 s
+  updateCigarette(P, dt) {
+    if (!P.cigarette) return;
+    if ((P.puffT -= dt) > 0) return;
+    P.puffT = 1.1;
+    const m = this.mouth(P);
+    FX.parts.push({ x: m.x + 4, y: m.y - 1, vx: rnd(-6, 6) + P.vx * 0.3, vy: rnd(-22, -14), life: 1.2, max: 1.2, color: "rgba(200,200,205,0.6)", grav: -6, size: 2, smoke: true, cig: true });
+  },
+  mouth(P) {                                             // world position of Buck's mouth on the mofa
+    const mx = P.x + P.w / 2 - MOFA_SPR_W / 2, my = P.y + P.h - MOFA_SPR_H;
+    return { x: mx + MOFA_RIDER_X + 11, y: my + MOFA_SEAT_Y - MOFA_HIP_ROW + 7 };
+  },
+  drawFinale(camX, camY) {
+    const F = this.finale;
+    if (!F) return;
+    const oy = HUD_H - camY;
+    F.ladies.forEach(function (l) {
+      if (!l.out) return;
+      const S = SPR.ladyCrawl[l.style][Math.floor(l.anim) % 2];
+      ctx.drawImage(l.dir > 0 ? S.r : S.l, Math.round(l.x - camX) - S.pad, Math.round(l.y + oy) - S.pad);
+    });
+  },
   update(P, dt, level) {
     const grade = this.grade(P, level);
-    const climbF = Math.max(0.4, 1 - CONFIG.mofaClimbK * grade), top = CONFIG.mofaTop * climbF, gas = Input.down("right"), brake = Input.down("left");
+    const climbF = Math.max(0.4, 1 - CONFIG.mofaClimbK * grade), top = CONFIG.mofaTop * climbF, locked = !!this.finale, gas = !locked && Input.down("right"), brake = locked || Input.down("left");
     P.face = 1;                                          // rolling back still faces right
     if (P.onGround && P.hurtT <= 0) {
       if (gas && !brake) P.vx = P.vx > top ? Math.max(top, P.vx - 90 * dt) : Math.min(top, P.vx + (P.vx < 0 ? CONFIG.mofaBrake : CONFIG.mofaAccel * climbF) * dt);
       else if (brake && !gas) {
         if (P.vx > 0) P.vx = Math.max(0, P.vx - CONFIG.mofaBrake * dt);
+        else if (locked) P.vx = Math.min(0, P.vx + CONFIG.mofaBrake * dt);   // the finale: stop, don't roll back
         else P.vx = Math.max(-top * CONFIG.mofaReverse, P.vx - CONFIG.mofaAccel * dt);
       } else {                                           // coasting
         const c = (CONFIG.mofaCoast + 600 * grade) * dt;     // rolls out faster uphill
         P.vx = P.vx > 0 ? Math.max(0, P.vx - c) : Math.min(0, P.vx + c);
       }
-      if (Input.pressed("jump")) {                       // a fixed hop (no jump cut on the mofa)
+      if (!locked && Input.pressed("jump")) {            // a fixed hop (no jump cut on the mofa)
         P.vy = CONFIG.mofaHopVel; P.onGround = false;
         Sound.play("jump");
       }
@@ -3775,9 +4134,9 @@ const Mofa = {
     const left = P.x + P.w / 2 - MOFA_SPR_W / 2, top = P.y + P.h - MOFA_SPR_H, hy = Math.floor(img.height / 2);
     Game.stats.shots += 2;
     Sound.play("mg");                                    // a machine-gun report (the blaster keeps "shot")
-    Game.shots.push({ x: left + MOFA_SPR_W, y: top + MOFA_GUN_Y + 1 - hy, w: img.width, h: img.height,
+    Game.shots.push({ x: left + MOFA_GUN_X + MOFA_GUN_W, y: top + MOFA_GUN_Y + MOFA_BARREL_ROW - hy, w: img.width, h: img.height,
       vx: up ? v * Math.cos(a) : v, vy: up ? -v * Math.sin(a) : 0, dmg: 1, img: img, face: 1, mg: true });
-    Game.shots.push({ x: left + MOFA_REAR_X - img.width, y: top + MOFA_REAR_Y + 1 - hy, w: img.width, h: img.height,
+    Game.shots.push({ x: left + MOFA_REAR_X - img.width, y: top + MOFA_REAR_Y + MOFA_BARREL_ROW - hy, w: img.width, h: img.height,
       vx: -v, vy: 0, dmg: 1, img: img, face: -1, mg: true, rear: true });
   },
   // Two-stroke exhaust: blue-grey puffs from the pipe behind the rear wheel; a few at idle, a
@@ -3798,7 +4157,7 @@ const Mofa = {
     P.smokeT = (P.smokeT === undefined ? 0 : P.smokeT) - dt;
     if (P.smokeT > 0) return;
     P.smokeT = S.every;
-    const left = P.x + P.w / 2 - MOFA_SPR_W / 2, y = P.y + P.h - MOFA_SPR_H + 20;
+    const left = P.x + P.w / 2 - MOFA_SPR_W / 2, y = P.y + P.h - MOFA_SPR_H + MOFA_EXHAUST_Y;
     const size = Math.round(rnd(S.size[0], S.size[1]));
     for (let k = 0; k < 2; k++)
       FX.parts.push({ x: left - 1 - k * 2, y: y - k, vx: -rnd(12, 30), vy: -rnd(10, 24), life: 1.2, max: 1.2,
@@ -3818,11 +4177,18 @@ const Mofa = {
     ctx.drawImage(G.l, mx + MOFA_REAR_X - G.pad, my + MOFA_REAR_Y - G.pad);   // rear gun, barrel pointing back
     ctx.drawImage(H.r, mx + MOFA_RIDER_X - H.pad, my + MOFA_SEAT_Y - MOFA_HIP_ROW - H.pad);
     ctx.drawImage(G.r, mx + MOFA_GUN_X - G.pad, my + MOFA_GUN_Y - G.pad);     // front gun on the handlebars
-    if (P.shootT > 0.03) {                               // muzzle flashes at both barrels
+    if (P.cigarette || P.lighterT > 0) {                 // the cigarette (and the lighter while lighting it)
+      const m = this.mouth(P), cx = Math.round(m.x - camX), cy = Math.round(m.y - camY + HUD_H);
+      fillRect(cx, cy, 3, 1, "#f4f0e8");
+      if (P.cigarette) fillRect(cx + 3, cy, 1, 1, Math.floor(Game.time * 6) % 2 ? "#ff7020" : "#ffb040");
+      if (P.lighterT > 0) { fillRect(cx + 3, cy + 1, 2, 3, "#c03020"); fillRect(cx + 3, cy - 2, 1, 2, Math.floor(Game.time * 20) % 2 ? "#ffe060" : "#ff9020"); }
+    }
+    if (P.shootT > 0.03) {                               // big star-shaped muzzle flashes at both barrels
       const up = Input.down("up");
-      [[mx + MOFA_SPR_W, my + MOFA_GUN_Y - 2 - (up ? 2 : 0)], [mx + MOFA_REAR_X - 5, my + MOFA_REAR_Y - 2]].forEach(function (f) {
-        fillRect(f[0], f[1], 5, 5, "rgba(255,150,30,0.6)");
-        fillRect(f[0] + 1, f[1] + 1, 3, 3, "#fff6c0");
+      [[mx + MOFA_GUN_X + MOFA_GUN_W, my + MOFA_GUN_Y + MOFA_BARREL_ROW - 3 - (up ? 2 : 0)], [mx + MOFA_REAR_X - 7, my + MOFA_REAR_Y + MOFA_BARREL_ROW - 3]].forEach(function (f) {
+        fillRect(f[0], f[1] + 2, 7, 3, "rgba(255,150,30,0.7)"); fillRect(f[0] + 2, f[1], 3, 7, "rgba(255,150,30,0.7)");
+        fillRect(f[0] + 1, f[1] + 1, 5, 5, "rgba(255,200,60,0.6)");
+        fillRect(f[0] + 2, f[1] + 2, 3, 3, "#fff6c0");
       });
     }
   },
@@ -3832,16 +4198,23 @@ const Mofa = {
 // Side view facing right (rear at the left), drawn after assets/img/sachs-mofa.jpg: luggage rack,
 // black seat, chrome tank over the red frame, aluminium engine, chrome fork and headlight,
 // spoked wheels; a machine gun clamped on the handlebars. Colours: ASSETS_META.mofaPalette.
-const MOFA_SPR_W = 42, MOFA_SPR_H = 26;
-const MOFA_SEAT_Y = 10, MOFA_RIDER_X = 8, MOFA_HIP_ROW = BODY_Y + 13, MOFA_GUN_Y = 4;
-const MOFA_GUN_X = 28, MOFA_BARREL = 7;                  // gun mount (receiver starts here) and barrel length
-const MOFA_REAR_X = -5, MOFA_REAR_Y = 6;                 // rear gun on the luggage rack: left edge (barrel tip) and top
+// The mofa is drawn on a 42 x 26 grid and scaled to MOFA_K (75%) when the sprites are built, so a
+// full-size Buck sits on a small moped; the positions below are in the scaled sprite.
+const MOFA_BASE_W = 42, MOFA_BASE_H = 26, MOFA_BASE_SEAT_Y = 10, MOFA_K = 0.75;
+const MOFA_SPR_W = Math.round(MOFA_BASE_W * MOFA_K), MOFA_SPR_H = Math.round(MOFA_BASE_H * MOFA_K);   // 32 x 20
+const MOFA_SEAT_Y = Math.round(MOFA_BASE_SEAT_Y * MOFA_K), MOFA_RIDER_X = Math.round(8 * MOFA_K), MOFA_HIP_ROW = BODY_Y + 13;
+// heavy WW2 machine guns (17 x 7, barrel on row 2): the front one on the handlebars, the rear one
+// (mirrored) on the luggage rack; MOFA_GUN_X/Y is the front gun's top-left, MOFA_REAR_X/Y the rear gun's
+const MOFA_GUN_W = 17, MOFA_GUN_H = 7, MOFA_BARREL_ROW = 2;
+const MOFA_GUN_X = Math.round(26 * MOFA_K), MOFA_GUN_Y = Math.round(4 * MOFA_K) - 2;
+const MOFA_REAR_X = Math.round(9 * MOFA_K) - MOFA_GUN_W, MOFA_REAR_Y = Math.round(6 * MOFA_K) - 1;
+const MOFA_EXHAUST_Y = Math.round(20 * MOFA_K);
 function mofaPalette() {
   const m = (typeof ASSETS_META !== "undefined" && ASSETS_META.mofaPalette) || {};
   return { frame: m.frame || "#991115", chrome: m.chrome || "#edf1ee", seat: m.seat || "#2e363e", engine: m.engine || "#a7a8a2" };
 }
 function drawMofa(frame) {
-  const C = mofaPalette(), c = makeCanvas(MOFA_SPR_W, MOFA_SPR_H), g = c.getContext("2d");
+  const C = mofaPalette(), c = makeCanvas(MOFA_BASE_W, MOFA_BASE_H), g = c.getContext("2d");
   function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
   // wheels: black tyre, thin chrome rim, dark inside, two crossed spokes turning 22.5 degrees per frame
   [[8, 19], [34, 19]].forEach(function (w) {
@@ -3858,7 +4231,7 @@ function drawMofa(frame) {
   r(1, 12, 14, 1, C.chrome); r(2, 11, 12, 1, C.chrome);  // rear fender
   r(0, 9, 13, 1, C.chrome); r(1, 9, 1, 3, C.chrome); r(11, 9, 1, 3, C.chrome);   // luggage rack
   r(0, 11, 2, 2, "#e02010");                             // tail light
-  r(8, MOFA_SEAT_Y, 13, 3, C.seat); r(9, MOFA_SEAT_Y - 1, 11, 1, C.seat);        // seat
+  r(8, MOFA_BASE_SEAT_Y, 13, 3, C.seat); r(9, MOFA_BASE_SEAT_Y - 1, 11, 1, C.seat);        // seat
   r(12, 13, 17, 3, C.frame); r(14, 16, 4, 2, C.frame);   // red frame panel under the seat
   r(20, 8, 10, 5, C.frame);                              // tank underside
   r(20, 6, 10, 4, C.chrome); r(21, 5, 8, 1, C.chrome);   // chrome tank
@@ -3869,20 +4242,31 @@ function drawMofa(frame) {
   r(28, 2, 6, 1, "#202020"); r(27, 3, 2, 1, "#202020");   // handlebars
   return c;                                            // the gun is its own sprite (drawMofaGun), so it can swivel
 }
-// Machine gun on its handlebar mount, facing right: receiver, ammo box, barrel.
-function drawMofaGun(barrel) {
-  const c = makeCanvas(7 + barrel, 6), g = c.getContext("2d");
+// Heavy WW2 machine gun, facing right (17 x 7): receiver with a feed box below, a barrel inside a
+// perforated cooling jacket, a wide flash hider at the muzzle.
+function drawMofaGun() {
+  const c = makeCanvas(MOFA_GUN_W, MOFA_GUN_H), g = c.getContext("2d");
   function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-  r(0, 0, 7, 3, "#3a3e38"); r(1, 3, 3, 3, "#5a5a30");
-  r(7, 1, barrel, 1, "#2a2c2a"); r(7, 0, 2, 1, "#3a3e38");
+  r(0, 0, 7, 4, "#3a3e38"); r(0, 0, 7, 1, "#5a605a"); r(5, 1, 1, 1, "#20221f");        // receiver, top cover, sight
+  r(1, 4, 4, 3, "#5a5a30"); r(1, 4, 4, 1, "#6e6e3a");                                  // feed box
+  r(7, 1, 8, 3, "#2a2c2a");                                                            // cooling jacket
+  for (let x = 8; x < 15; x += 2) r(x, 2, 1, 1, "#7a807a");                            // its holes
+  r(15, 0, 2, 5, "#20221f"); r(16, 1, 1, 3, "#3a3e38");                                // flash hider
   return c;
+}
+// Scale a canvas by k with nearest-neighbour sampling (the outline is added afterwards by makeSet).
+function scaleCanvas(c, k) {
+  const o = makeCanvas(Math.round(c.width * k), Math.round(c.height * k)), g = o.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(c, 0, 0, o.width, o.height);
+  return o;
 }
 // Buck seated: usual head and torso, arms forward to the handlebars, legs bent onto the footpegs.
 const HERO_TORSO_RIDE = HERO_TORSO.slice(0, 9).concat(["...JJjJwwwwWJJJJs", "...JJjJwwwWJJ", "...sJJJwwWJJ", "....JJJJJJJJ"]);
 const LEGS_RIDE = ["....PPPPPPPPPPPP", "....PPPPPPPPPPPPP", "...........PPPp", "............PPP", "............FFFf", "...........dDDDD"];
 function buildMofaSprites() {
-  SPR.mofa = { frames: [0, 1, 2, 3].map(function (f) { return makeSet(drawMofa(f)); }),
-    rider: buildHeroFrame(HERO_TORSO_RIDE, LEGS_RIDE), gun: makeSet(drawMofaGun(MOFA_BARREL)) };
+  SPR.mofa = { frames: [0, 1, 2, 3].map(function (f) { return makeSet(scaleCanvas(drawMofa(f), MOFA_K)); }),
+    rider: buildHeroFrame(HERO_TORSO_RIDE, LEGS_RIDE), gun: makeSet(drawMofaGun()) };
 }
 
 // ---- enemies.js ----
@@ -3929,13 +4313,13 @@ const Talk = {
   // only where it overlaps no other car bubble and no fan bubble.
   say(e, pool, secs, dx) {
     const others = Game.enemies.filter(function (o) { return o !== e && o.bubble && !o.dead; });
-    const ride = Game.level && Game.level.isRide && e.T && e.T.car;
+    const ride = Game.level && Game.level.isRide && e.T && e.T.car, buck = ride && Player.bubble ? 1 : 0;
     if (!ride && others.length) return false;
-    if (ride && others.length >= CONFIG.rideBubbles) return false;
+    if (ride && others.length + buck >= CONFIG.rideBubbles) return false;   // Buck's line counts as one of the ride's bubbles
     const bubble = { text: this.line(pool), t: secs, dx: dx };
     if (ride) {
       const r = this.rect(e, bubble, Camera.x, Camera.y);
-      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], this.buckRects(Camera.x, Camera.y));
       if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
     }
     e.bubble = bubble;
@@ -3947,9 +4331,30 @@ const Talk = {
     const cx = Math.round(e.x + (bubble.dx !== undefined ? bubble.dx : e.w / 2) - camX), top = Math.round(e.y - camY + HUD_H) - h - 3;
     return { x: clamp(cx - Math.floor(w / 2), 2, W - w - 2), y: Math.max(HUD_H + 2, top), w: w, h: h, tx: cx };
   },
-  // the car bubbles currently up (screen boxes), for the fans to keep clear of
+  // the car bubbles (and Buck's) currently up (screen boxes), for the fans to keep clear of
   rects(camX, camY) {
-    return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); });
+    return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); })
+      .concat(this.buckRects(camX, camY));
+  },
+  // Buck on the mofa: his bubble sits above his head (the rider is drawn a little above the player box)
+  buckSpeaker() { return { x: Player.x, y: Player.y - 6, w: Player.w }; },
+  buckRects(camX, camY) { return Player.bubble && !Player.dead ? [this.rect(this.buckSpeaker(), Player.bubble, camX, camY)] : []; },
+  // Buck's dry Swiss German line after he finishes off a car (ride only), at most every buckTalkCd s;
+  // like a car bubble it must not overlap another bubble, else he stays quiet.
+  buckKill() {
+    if (!Game.level || !Game.level.isRide || Player.dead || (Player.talkCd || 0) > 0 || Player.bubble) return false;
+    const others = Game.enemies.filter(function (o) { return o.bubble && !o.dead; });
+    if (others.length >= CONFIG.rideBubbles) return false;
+    const bubble = { text: this.line(BUCK_LINES), t: CONFIG.buckTalkT };
+    const r = this.rect(this.buckSpeaker(), bubble, Camera.x, Camera.y);
+    const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+    if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
+    Player.bubble = bubble; Player.talkCd = CONFIG.buckTalkCd;
+    return true;
+  },
+  update(dt) {
+    if (Player.talkCd > 0) Player.talkCd -= dt;
+    if (Player.bubble && (Player.bubble.t -= dt) <= 0) Player.bubble = null;
   },
   // a lawyer's throw may come with a line: once per lawyerTalkCd per lawyer
   maybe(e) {
@@ -3962,6 +4367,12 @@ const Talk = {
       const r = this.rect(e, e.bubble, camX, camY);
       drawSpeechBubble(e.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     }
+    this.buckRects(camX, camY).forEach(function (r) { drawSpeechBubble(Player.bubble.text, r.x, r.y, r.w, r.h, r.tx); });
+    if (Mofa.finale) Mofa.finale.ladies.forEach(function (l, i) {           // the limo finale's ladies, staggered
+      if (!l.bubble) return;
+      const r = Talk.rect({ x: l.x, y: l.y - 4 - i * 14, w: 12 }, l.bubble, camX, camY);
+      drawSpeechBubble(l.bubble.text, r.x, r.y, r.w, r.h, r.tx);
+    });
   },
 };
 
@@ -4340,6 +4751,12 @@ const LIMO_LADY_LINES = ["IS THAT A MOFA? EW.", "RUN HIM OVER, DEAR", "HOW VERY 
 // Who speaks from the limo: px from its left edge (bubble anchor) and the lines.
 // (positions in the limo's 160-wide layout grid, scaled to its real width by limoX)
 const LIMO_SPEAKERS = [{ bx: 61, lines: PRESIDENT_LINES }, { bx: 37, lines: LIMO_LADY_LINES }, { bx: 107, lines: LIMO_LADY_LINES }];
+// The posh ladies crawling out of the limo's wreck (the finale), at most 20 characters each.
+const LIMO_FINALE_LINES = ["MY DRESS! IT'S DIOR!", "CALL MY HUSBAND!", "MY NAILS! MY NAILS!", "THIS IS AN OUTRAGE!", "WHO IS YOUR LAWYER?", "I'LL HAVE YOU FIRED!"];
+// Buck's dry Swiss German lines when he finishes off a car on the ride (at most 20 characters).
+const BUCK_LINES = ["SO, FERTIG.", "UFGRUMT!", "GÄLL, DAS HET GSESSE", "CHASCH VERGÄSSE.", "TSCHÜSS ZÄMME!", "FERTIG LUSCHTIG.",
+  "DAS ISCH ERLEDIGT.", "ZACK, UND WÄG.", "HOPP, WIITER!", "NÜT FÜR UNGUET.", "SO GAHTS HALT.", "GHÖRT ALLES ZUM JOB",
+  "BIS GLII, GELL.", "SCHO WIEDER EINE."];
 const POSH_LINES = ["DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!", "GET OFF MY ROAD!", "I PAY YOUR SALARY!",
   "DADDY'S CAR!", "MY LAWYER WILL CALL", "ZERO EMISSIONS, LOL", "0 TO 100 IN 2.9!", "PARKING IS FOR POOR",
   "TRUST FUND, BABY!", "ROSE O'CLOCK!", "MOVE IT, PEASANT!"];
@@ -4478,12 +4895,11 @@ function carType(kind) {
         for (let i = 0; i < 4; i++) FX.explode(e.x + e.w * (i + 0.5) / 4, y - 4 + rnd(-6, 6), false);
         FX.shake(8, 0.6);
         Cars.runners.push({ x: e.x + limoX(LIMO_SUNROOF_BX), y: e.y + e.h - 12, vx: 110, t: 3, anim: 0 });   // the president, in tails
-        [limoX(37), limoX(107)].forEach(function (dx, i) {                                                        // and the ladies, in their dresses
-          Cars.runners.push({ x: e.x + dx, y: e.y + e.h - 14, vx: i ? 95 : -95, t: 3, anim: 0, lady: i });
-        });
+        Mofa.startFinale(e);                                                                       // the ladies crawl out: the finale
       }
       Cars.wreck(e);
       Cars.bailOut(e);
+      if (k !== "limo") Talk.buckKill();                   // Buck comments dryly (the limo has its own finale)
     },
   };
 });
@@ -4544,6 +4960,7 @@ const Cars = {
       ctx.drawImage(S.r, Math.round(w.x - camX) - S.pad, Math.round(w.y + w.h - S.h + oy) - S.pad);
       ctx.globalAlpha = 1;
     }
+    Mofa.drawFinale(camX, camY);
     for (const r of this.runners) {
       const S = (r.lady !== undefined ? SPR.ladyRun[r.lady] : SPR.driverRun)[Math.floor(r.anim) % 2];
       ctx.drawImage(r.vx > 0 ? S.r : S.l, Math.round(r.x - camX) - S.pad, Math.round(r.y + oy) - S.pad);
@@ -4690,6 +5107,18 @@ function buildCarSprites() {
       frames: [makeSet(drawCar(k, 0)), makeSet(drawCar(k, 1))],
       wreck: makeSet(drawCar(k, 0, true)),
     };
+  });
+  // the limo's ladies crawling out of the wreck on hands and knees (12 x 7, hat askew), 2 frames each
+  SPR.ladyCrawl = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {
+    return [0, 1].map(function (f) {
+      const c = makeCanvas(12, 7), g = c.getContext("2d");
+      function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
+      r(8, 0, 4, 1, C[0]); r(9, 1, 2, 1, C[0]);                       // the hat, askew
+      r(8, 2, 3, 2, "#e8b898"); r(9, 2, 2, 1, "#101010");            // face, sunglasses
+      r(2, 2, 7, 3, C[1]); r(7, 2, 2, 1, "#f8f8f0");                 // dress, pearls
+      r(f ? 8 : 9, 4, 1, 3, "#e8b898"); r(f ? 3 : 2, 5, 1, 2, "#e8b898"); r(0, 4, 2, 1, "#e8b898");   // arms, knees, feet
+      return makeSet(c);
+    });
   });
   // the limo's ladies running off (big hat, dress, heels), 2 frames each: pink and white
   SPR.ladyRun = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {
@@ -5805,9 +6234,10 @@ const Game = {
 
   setState(s) {
     this.prevState = this.state; this.state = s; this.stateT = 0;
-    // title: the rock theme; the mofa ride: its biker rock song; everything else: the Valkyries
+    // title: the rock theme; every other state: the level's own track (its "music:" header:
+    // the ride's biker song, the courts' funk, the clubhouse polka; the Valkyries by default)
     if (s === STATE.TITLE) { Sound.setTrack("title"); Sound.setTempo(1); }
-    else Sound.setTrack(this.level && this.level.isRide ? "biker" : "valkyries");
+    else Sound.setTrack(this.level ? this.level.music : "valkyries");
   },
 
   startHash: null,           // tests: stands in for location.hash when set
@@ -5879,6 +6309,7 @@ const Game = {
     if (L.isRide) Mofa.mount(Player);
     Player.hp = CONFIG.maxHp;
     Player.invuln = 0;
+    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null;
     Camera.snap(Player, L);
     Sound.setTempo(L.isBoss ? 1.25 : 1);
     if (L.isBoss) Player.weapon = "cutter";             // the finale is fought with the disc cutter
@@ -6042,6 +6473,7 @@ const Game = {
         if (this.stateT > 2 && Input.pressed("enter")) { FX.clear(); this.setState(STATE.TITLE); }
         break;
     }
+    Talk.update(dt);
     this.updateEngines();
     this.soundWasReady = Sound.ready();
   },
@@ -7441,7 +7873,7 @@ function runTests() {
     const want = { suv: [12, 800], tesla: [8, 700], ferrari: [6, 1000] };
     loadRide([], 300);
     const got = Object.keys(want).map(function (k) { const e = makeEnemy(k, 100, 160, Game.level, 1); return k + ":" + e.hp + "/" + e.T.points + (e.T.car ? "" : " not a car"); });
-    check("cars: BMW X7 12 hits/800, Tesla 8/700, Ferrari 6/1000; no BMW sedan", got.join(",") === "suv:12/800,tesla:8/700,ferrari:6/1000" && !ENEMY_TYPES.bmw, got.join(","));
+    check("cars: BMW X7 10 hits/800, Tesla 6/700, Ferrari 5/1000 (the heavy guns); no BMW sedan", got.join(",") === "suv:10/800,tesla:6/700,ferrari:5/1000" && !ENEMY_TYPES.bmw, got.join(","));
     check("cars: Ferrari at most 32 px high, SUV the tallest", ENEMY_TYPES.ferrari.h <= 32 && ["tesla", "ferrari"].every(function (k) { return ENEMY_TYPES.suv.h > ENEMY_TYPES[k].h; }));
     // contact: 2 health and a hard knockback
     loadRide([], 300);
@@ -7488,8 +7920,10 @@ function runTests() {
       gaps.map(function (g) { return g.toFixed(2); }).join(","));
     // a throw shot down with Up
     loadRide([], 300);
-    Game.enemyShots = [{ kind: "latte", x: Player.x + Player.w + 40, y: Player.y - 20, w: 6, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
-    press("up"); press("fire"); steps(30); release("fire"); release("up");
+    press("up"); press("fire"); steps(1);
+    const up0 = Game.shots.filter(function (q) { return q.vx > 0; })[0];   // put the cup on the angled shot's path
+    Game.enemyShots = [{ kind: "latte", x: up0.x + up0.vx * 0.2, y: up0.y + up0.vy * 0.2 - 2, w: 6, h: 8, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+    steps(30); release("fire"); release("up");
     check("cars: a thrown latte cup can be shot down with Up held", Game.enemyShots.length === 0 && Player.hp === CONFIG.maxHp);
     // BMW X7: honks at a mofa riding close behind, at most once a second
     loadRide([[16, 9, "1"]], 300);
@@ -7663,7 +8097,7 @@ function runTests() {
     Film.enabled = false;
     Player.shootT = 0.07; Game.render();
     const mx = Math.round(Player.x + Player.w / 2 - MOFA_SPR_W / 2 - Camera.x), my = Math.round(Player.y + Player.h - MOFA_SPR_H - Camera.y + HUD_H);
-    const fp = ctx.getImageData(mx + MOFA_SPR_W + 2, my + MOFA_GUN_Y, 1, 1).data;
+    const fp = ctx.getImageData(mx + MOFA_GUN_X + MOFA_GUN_W + 3, my + MOFA_GUN_Y + MOFA_BARREL_ROW, 1, 1).data;
     Film.enabled = true;
     check("ride art: a muzzle flash shows at the end of the gun barrel when firing", fp[0] === 255 && fp[1] === 246 && fp[2] === 192, Array.from(fp).join(","));
     // colours sampled from the photo
@@ -7747,8 +8181,8 @@ function runTests() {
       return Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
     }
     let L = loadGate();
-    check("limo: parked 60 px before the club gate, 300 x 56 (taller than the X7), 30 hits",
-      L && Math.abs(60 * TILE - (L.x + L.w) - 60) <= 1 && L.w === 300 && L.h === 56 && L.h > CAR_INFO.suv.h && L.hp === 30, L ? Math.round(60 * TILE - (L.x + L.w)) + " px" : "no limo");
+    check("limo: parked 60 px before the club gate, 300 x 56 (taller than the X7), 24 hits",
+      L && Math.abs(60 * TILE - (L.x + L.w) - 60) <= 1 && L.w === 300 && L.h === 56 && L.h > CAR_INFO.suv.h && L.hp === 24, L ? Math.round(60 * TILE - (L.x + L.w)) + " px" : "no limo");
     // blocking: full throttle at it for 6 s, hop included; Buck never gets past, gets hurt, the level doesn't end
     Player.x = L.x - 200; Camera.snap(Player, Game.level); L.corkT = 1e9;     // contact only, no corks
     let maxRight = -1e9, hurt = false, deaths = 0;
@@ -7799,11 +8233,11 @@ function runTests() {
     check("limo: the bar THE PRESIDENT'S LIMO shows while the limo is on screen", !off && Game.limoOnScreen() === L && bar.indexOf("THE PRESIDENT'S LIMO") >= 0);
     // destroyed: 3000 points, the gate opens, riding on ends the level
     const sc = Game.score;
-    for (let i = 0; i < 30; i++) damageEnemy(L, 1, 1);
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
     steps(2);
-    check("limo: destroyed by 30 hits -> 3000 points, the gate opens", L.dead && Game.score - sc === 3000 && !Game.gateLocked(), "score +" + (Game.score - sc));
+    check("limo: destroyed by 24 hits -> 3000 points, the gate opens", L.dead && Game.score - sc === 3000 && !Game.gateLocked(), "score +" + (Game.score - sc));
     Game.godMode = true; press("right");
-    for (let i = 0; i < 600 && Game.state === STATE.PLAY; i++) steps(1);
+    for (let i = 0; i < 1000 && Game.state === STATE.PLAY; i++) steps(1);    // the limo finale (about 5 s) plays first
     release("right"); Game.godMode = false;
     check("limo: after it, the mofa rides through the gate and the level completes", Game.state === STATE.LEVEL_COMPLETE, "state " + Game.state);
     Input.reset();
@@ -7915,13 +8349,128 @@ function runTests() {
     // destroyed: no bubble, the president and both ladies run off
     for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
     steps(2);
-    const ladies = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    const ladies = Mofa.finale ? Mofa.finale.ladies.length : 0;
     TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
     const shown = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
-    check("limo ladies: once the limo is destroyed its bubbles are gone and the ladies run off with the president",
-      L.dead && ladies === 2 && Cars.runners.length >= 4 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
+    Mofa.finale = null;
+    check("limo ladies: once the limo is destroyed its window bubbles are gone, the president runs off and the ladies are in the finale",
+      L.dead && ladies === 2 && Cars.runners.length >= 2 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
       ladies + " ladies, " + Cars.runners.length + " runners");
     Game.godMode = false; Input.reset();
+  });
+
+  safe("small mofa, heavy guns", function () {
+    loadRide([], 120);
+    const M = SPR.mofa.frames[0], R = SPR.mofa.rider, G = SPR.mofa.gun;
+    check("small mofa: the mofa is drawn at 75% (about 32 x 20 px) while Buck keeps his size; the player box is 22 x 30",
+      Math.abs(M.w - 32) <= 1 && Math.abs(M.h - 20) <= 1 && R.h === SPR.hero.idle.h && Player.w === 22 && Player.h === 30,
+      M.w + "x" + M.h + ", rider h " + R.h + " vs " + SPR.hero.idle.h + ", box " + Player.w + "x" + Player.h);
+    check("heavy guns: each gun is an oversized WW2 machine gun, at least 14 px long", G.w >= 14 && G.h >= 6, G.w + "x" + G.h);
+    // the old light guns killed in hp / 10 s with 12 / 8 / 6 hits; the heavy ones at 8 volleys/s within a volley of that
+    const old = { suv: 12, tesla: 8, ferrari: 6 }, cur = { suv: CONFIG.suvHp, tesla: CONFIG.teslaHp, ferrari: CONFIG.ferrariHp };
+    const same = Object.keys(old).every(function (k) { return Math.abs(cur[k] / CONFIG.mofaRate - old[k] / 10) <= 1 / CONFIG.mofaRate + 1e-9; });
+    check("heavy guns: 8 volleys per second; X7 10, Tesla 6, Ferrari 5, limo 24 hits, so the cars die about as fast as before",
+      CONFIG.mofaRate === 8 && cur.suv === 10 && cur.tesla === 6 && cur.ferrari === 5 && CONFIG.limoHp === 24 && same);
+    // the .50 cal report: a low thump and an echo within 0.3 s (recorded calls, no real audio)
+    const keep = { ac: Sound.ac, sweep: Sound.sweep, noise: Sound.noise, muted: Sound.muted }, calls = [];
+    try {
+      Sound.ac = { currentTime: 10, state: "running" }; Sound.muted = false;
+      Sound.sweep = function (type, f0, f1, t, dur) { calls.push({ k: "sweep", f0: f0, t: t - 10, end: t - 10 + dur }); };
+      Sound.noise = function (t, dur) { calls.push({ k: "noise", t: t - 10, end: t - 10 + dur }); };
+      Sound.play("mg");
+    } finally { Sound.ac = keep.ac; Sound.sweep = keep.sweep; Sound.noise = keep.noise; Sound.muted = keep.muted; }
+    const thump = calls.filter(function (c) { return c.k === "sweep" && c.t < 0.02; })[0];
+    const echo = calls.filter(function (c) { return c.t >= 0.05; });
+    const tail = Math.max.apply(null, calls.map(function (c) { return c.end; }));
+    check("heavy guns: the report has a low thump (<= 120 Hz) and an echo, ending within 0.3 s",
+      thump && thump.f0 <= 120 && echo.length > 0 && tail <= 0.3, JSON.stringify(calls.map(function (c) { return c.k + "@" + c.t.toFixed(2); })) + " tail " + tail.toFixed(2));
+  });
+
+  safe("buck's lines", function () {
+    const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN|SCHEISS|ARSCH)\b/;
+    const long = BUCK_LINES.filter(function (l) { return l.length > 20; });
+    const glyph = BUCK_LINES.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    check("buck's lines: at least 12 Swiss German lines, at most 20 characters, drawable (with umlauts), not explicit",
+      BUCK_LINES.length >= 12 && !long.length && !glyph.length && !BUCK_LINES.some(function (l) { return bad.test(l); }) &&
+      BUCK_LINES.some(function (l) { return /[ÄÖÜ]/.test(l); }), BUCK_LINES.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+    // the umlauts: two dots in the top row, a gap, then the letter (same 5 x 7 cell)
+    const um = ["Ä", "Ö", "Ü"].every(function (c) { const g = GLYPHS[c]; return g && g.length === 7 && g[0] === 10 && g[1] === 0 && g.slice(2).every(function (r) { return r > 0 && r < 32; }); });
+    check("buck's lines: the font has Ä, Ö and Ü with their dots", um);
+    // a kill on the ride: Buck speaks; a second kill within 3 s: no new line
+    loadRide([], 300); Game.godMode = true; Game.enemies = []; Fans.list = [];
+    const kill = function () {
+      const e = makeEnemy("tesla", Player.x + 140, Player.y + Player.h, Game.level, 1); e.awake = true; Game.enemies.push(e);
+      for (let i = 0; i < 20 && !e.dead; i++) damageEnemy(e, 1, 1);
+      return e;
+    };
+    kill(); steps(1);
+    const first = Player.bubble ? Player.bubble.text : null;
+    steps(60);                                             // 1 s later, still within 3 s
+    Player.bubble = null; kill(); steps(1);
+    const second = Player.bubble;
+    steps(60 * 3); kill(); steps(1);
+    const third = Player.bubble ? Player.bubble.text : null;
+    Game.godMode = false;
+    check("buck's lines: a car kill makes Buck say a Swiss German line; another kill within 3 s does not; after 3 s he speaks again",
+      first && BUCK_LINES.indexOf(first) >= 0 && !second && third && BUCK_LINES.indexOf(third) >= 0, [first, !!second, third].join(" / "));
+    // his bubble is above him and drawn; car bubbles keep clear of it
+    TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+    const drawn = TEXT_LOG.items.indexOf(third) >= 0; TEXT_LOG.items = [];
+    const br = Talk.buckRects(Camera.x, Camera.y)[0], head = Player.y - Camera.y + HUD_H;
+    check("buck's lines: Buck's bubble is drawn above his head", drawn && br && br.y + br.h <= head, br ? br.y + br.h + " vs " + head : "none");
+    const car = makeEnemy("suv", 0, Player.y + Player.h, Game.level, 1); car.awake = true; car.x = Player.x - 20; Game.enemies.push(car);
+    const said = Talk.say(car, POSH_LINES, 1.5);
+    check("buck's lines: a driver's bubble never overlaps Buck's", !said || !rectsTouch(Talk.rect(car, car.bubble, Camera.x, Camera.y), br, 0));
+    Game.enemies = []; Player.bubble = null; Input.reset();
+  });
+
+  safe("limo finale", function () {
+    const T = CONFIG.finale;
+    function setup() {
+      loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90);
+      const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+      Player.x = L.x - 140; Player.vx = CONFIG.mofaTop; Camera.snap(Player, Game.level); L.corkT = 99;
+      for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+      return L;
+    }
+    const L = setup();
+    const started = !!Mofa.finale;
+    // play it with Right and Fire held: no movement forward after the stop, no shots, no damage
+    press("right"); press("fire");
+    let t = 0, shots = 0, crawl = 0, order = [], lit = -1, back = -1, hp0 = Player.hp, hpBack = -1, x0 = null, ladiesOutBy2 = false;
+    const seen = {};
+    while (t < 7 && back < 0) {
+      steps(1); t += DT;
+      if (Mofa.finale && Game.shots.some(function (q) { return q.mg && !q._n && (q._n = 1); })) shots++;
+      if (Mofa.finale) {
+        Mofa.finale.ladies.forEach(function (l, i) { if (l.bubble && !seen["l" + i]) { seen["l" + i] = 1; order.push("lady" + i); } });
+        if (t >= 2.0 && !ladiesOutBy2) ladiesOutBy2 = Mofa.finale.ladies.every(function (l) { return l.out; });
+        if (t > 1.5 && x0 === null) x0 = Player.x;
+        if (t >= T.end - 0.3) Game.enemyShots = [];       // the test's corks go before the scene ends
+        else if (t > 3) Game.enemyShots = [{ kind: "cork", x: Player.x + 4, y: Player.y + 8, w: 5, h: 4, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
+      }
+      if (Player.bubble && Player.bubble.text === "YOU HAVE NO CLUE" && !seen.buck) { seen.buck = 1; order.push("buck"); }
+      if (Player.cigarette && lit < 0) lit = t;
+      if (!Mofa.finale && back < 0 && t > 0.1) { back = t; hpBack = Player.hp; }
+    }
+    release("right"); release("fire");
+    const ladiesRun = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    check("limo finale: destroying the limo starts the scene; Buck is locked (no gas, no fire) and can't be hurt",
+      started && shots === 0 && x0 !== null && Math.abs(Player.x - x0) < 40 && hpBack === hp0, "shots " + shots + ", moved " + (x0 === null ? "?" : (Player.x - x0).toFixed(1)) + ", hp " + hpBack);
+    check("limo finale: both ladies crawl out by 2 s and speak, then Buck says YOU HAVE NO CLUE",
+      ladiesOutBy2 && order.join(",") === "lady0,lady1,buck", order.join(","));
+    check("limo finale: the cigarette is lit by 4.5 s and control returns by 5.2 s; the ladies run off, the gate is open",
+      lit > 0 && lit <= 4.5 && back > 0 && back <= 5.2 && ladiesRun === 2 && !Game.gateLocked() && Player.cigarette, "lit " + lit.toFixed(2) + ", back " + back.toFixed(2) + ", runners " + ladiesRun);
+    // the cigarette puffs on the way to the gate
+    FX.clear(); steps(150);
+    check("limo finale: Buck keeps the cigarette and it puffs smoke", Player.cigarette && FX.parts.some(function (q) { return q.cig; }));
+    // skip: Fire pressed after 0.3 s ends the scene at once
+    setup(); steps(25); tap("fire"); steps(2);
+    check("limo finale: Fire skips the scene (control back, cigarette lit, ladies running)", !Mofa.finale && Player.cigarette &&
+      Cars.runners.filter(function (r) { return r.lady !== undefined; }).length === 2);
+    check("limo finale: the ladies' lines are posh, at most 20 characters and drawable",
+      LIMO_FINALE_LINES.length >= 4 && LIMO_FINALE_LINES.every(function (l) { return l.length <= 20 && l.split("").every(function (c) { return FONT_CHARS.indexOf(c) >= 0; }); }));
+    Input.reset(); Mofa.finale = null;
   });
 
   safe("mofa smoke", function () {
@@ -8019,7 +8568,7 @@ function runTests() {
       starts.slice(1).forEach(function (x, k) { gaps.push(x - starts[k]); });
     });
     check("posh lines: every car's driver speaks within 0.5 s of showing up",
-      firsts.every(function (f) { return f >= 0 && f <= 0.52; }), firsts.map(function (f) { return f.toFixed(2); }).join(","));
+      firsts.every(function (f) { return f >= -0.05 && f <= 0.52; }), firsts.map(function (f) { return f.toFixed(2); }).join(","));
     check("posh lines: then again every 2.5-3.5 s while on screen, each bubble about 1.5 s",
       gaps.length >= 6 && gaps.every(function (g) { return g >= 2.45 && g <= 3.55; }) && CONFIG.driverTalkT === 1.5, gaps.map(function (g) { return g.toFixed(2); }).join(","));
     // many cars on screen: at most two car bubbles, never overlapping each other or a fan bubble
@@ -9903,14 +10452,32 @@ function runTests() {
     Game.completeLevel();
     check("tracks: the ride's tally keeps the biker song", Game.state === STATE.LEVEL_COMPLETE && Sound.track === "biker" && Sound.step === 33);
     Game.tally.done = true; Game.nextLevel();
-    check("tracks: the REEL 2 card switches to the Valkyries from their start",
-      Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 0, Sound.track + " step " + Sound.step);
+    check("tracks: the REEL 2 card (the courts) switches to the funk from its start",
+      Game.state === STATE.LEVEL_INTRO && Game.levelIndex === 1 && Sound.track === "funk" && Sound.step === 0, Sound.track + " step " + Sound.step);
     steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5);
     Sound.step = 41; tap("pause"); tap("pause");
-    check("tracks: pause and resume keep the Valkyries running", Game.state === STATE.PLAY && Sound.track === "valkyries" && Sound.step === 41, Sound.step);
-    Game.completeLevel(); Game.tally.done = true; Game.nextLevel();
-    check("tracks: level complete -> next level keeps the Valkyries running",
-      Game.state === STATE.LEVEL_INTRO && Sound.track === "valkyries" && Sound.step === 41, Sound.step);
+    check("tracks: pause and resume keep the funk running", Game.state === STATE.PLAY && Sound.track === "funk" && Sound.step === 41, Sound.step);
+    Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(2); steps(100);
+    check("tracks: a lost life on the courts keeps the funk running", !Player.dead && Sound.track === "funk" && Sound.step === 41, Sound.track + " step " + Sound.step);
+    Game.completeLevel();
+    check("tracks: the courts' tally keeps the funk", Game.state === STATE.LEVEL_COMPLETE && Sound.track === "funk" && Sound.step === 41);
+    // reel by reel: 3 the Valkyries, 4 the Clarinet Polka, 5 the faster Valkyries, each from its start
+    const reels = [];
+    for (let r = 3; r <= 5; r++) {
+      Sound.step = 29; Game.tally.done = true; Game.nextLevel();
+      reels.push(r + ":" + Sound.track + "@" + Sound.step + (Game.level.isBoss ? "x" + Sound.tempo : ""));
+      if (r < 5) { steps(Math.round(introTotal(Game.level.isBoss) * 60) + 5); Game.completeLevel(); }
+    }
+    check("tracks: reels 3, 4 and 5 play the Valkyries, the Clarinet Polka and the faster Valkyries, each from its start",
+      reels.join(" ") === "3:valkyries@0 4:clarinetpolka@0 5:valkyries@0x1.25", reels.join(" "));
+    // a game started at reel 2 or 4
+    const direct = [];
+    ["#level=2", "#level=4"].forEach(function (h) {
+      Game.startHash = h; Game.setState(STATE.TITLE); steps(2); tap("enter");
+      direct.push(h + ":" + Sound.track + "@" + Sound.step);
+    });
+    Game.startHash = "";
+    check("tracks: #level=2 starts with the funk, #level=4 with the Clarinet Polka", direct.join(" ") === "#level=2:funk@0 #level=4:clarinetpolka@0", direct.join(" "));
     Game.loadLevel(4); Game.setState(STATE.BOSS);
     Game.setState(STATE.GAME_OVER); Game.stateT = 0; steps(70); tap("enter");
     check("tracks: game over -> title brings back the title theme at normal tempo",
@@ -9919,6 +10486,56 @@ function runTests() {
     check("tracks: victory -> title brings back the title theme at normal tempo",
       Game.state === STATE.TITLE && Sound.track === "title" && Sound.tempo === 1, Sound.track + " tempo " + Sound.tempo);
     Input.reset();
+  });
+
+  safe("funk and clarinet polka", function () {
+    function kindsOf(song) { const k = {}; song.events.forEach(function (ev) { ev.forEach(function (e) { k[e.v] = (k[e.v] || 0) + 1; }); }); return k; }
+    const F = SONGS.funk, L = SONGS.clarinetpolka, fk = kindsOf(F), lk = kindsOf(L);
+    check("funk: 16 bars of 16 steps at 96-112 bpm, with slap bass, guitar scratches, clavinet, brass, kick, snare, closed and open hats",
+      F.steps === 256 && F.bpm >= 96 && F.bpm <= 112 && Math.abs(F.sixteenth - 60 / F.bpm / 4) < 1e-9 &&
+      ["slap", "scratch", "clav", "brass", "kick", "snare", "hat", "ohat"].every(function (v) { return fk[v] > 0; }), JSON.stringify(fk));
+    check("funk: slap bass with octave pops, and ghost notes on the snare",
+      F.events.some(function (ev) { return ev.some(function (e) { return e.v === "slap" && e.pop; }); }) &&
+      F.events.some(function (ev) { return ev.some(function (e) { return e.v === "snare" && e.g < 1; }); }));
+    // the Clarinet Polka: 2/4 on 24 steps per bar, oom-pah in every bar, the clarinet playing exactly the imported tune
+    const bars = CLARINET_POLKA_TUNE.length;
+    let oompah = true;
+    for (let b = 0; b < bars; b++) {
+      const at = function (st, v) { return L.events[b * 24 + st].some(function (e) { return e.v === v; }); };
+      if (!(at(0, "tuba") && at(12, "tuba") && at(6, "accord") && at(18, "accord"))) oompah = false;
+    }
+    const played = [], written = [];
+    L.events.forEach(function (ev, k) { ev.forEach(function (e) { if (e.v === "clar") played.push(Math.floor(k / 24) + ":" + (k % 24) + ":" + e.m + ":" + e.d); }); });
+    CLARINET_POLKA_TUNE.forEach(function (bar, b) { bar.forEach(function (n) { written.push(b + ":" + n[0] + ":" + n[1] + ":" + n[2]); }); });
+    const last = CLARINET_POLKA_TUNE[bars - 1], first = CLARINET_POLKA_TUNE[0];
+    check("clarinet polka: 2/4 on 24 steps per bar at 100-130 bpm, with the clarinet lead, tuba, accordion, kick, snare and glass clinks",
+      L.steps === bars * 24 && L.beats === 2 && L.grid === 12 && L.bpm >= 100 && L.bpm <= 130 && Math.abs(L.sixteenth - 60 / L.bpm / 12) < 1e-9 &&
+      ["clar", "tuba", "accord", "kick", "snare", "clink"].every(function (v) { return lk[v] > 0; }), JSON.stringify(lk));
+    check("clarinet polka: oom-pah in every bar (tuba on both beats, accordion off the beats)", oompah);
+    check("clarinet polka: the clarinet plays the imported tune note for note: 583 notes, the pick-up F Eb at the end, then D F Bb D; keys Bb, F, Bb, Eb",
+      played.join(",") === written.join(",") && written.length === 583 &&
+      last.slice(-2).map(function (n) { return n[1]; }).join(",") === "65,63" && first.slice(0, 4).map(function (n) { return n[1]; }).join(",") === "62,65,70,74" &&
+      CLARINET_POLKA_KEYS.map(function (k) { return k[1]; }).join(",") === "Bb,F,Bb,Eb", played.length + " notes");
+    // both loop without a gap: with a stubbed clock, the first event of the 2nd loop comes one sixteenth after the last step
+    const keep = { ac: Sound.ac, playEvent: Sound.playEvent, track: Sound.track, step: Sound.step, nextTime: Sound.nextTime, playing: Sound.playing, tempo: Sound.tempo };
+    const loops = [];
+    try {
+      ["funk", "clarinetpolka"].forEach(function (name) {
+        const song = SONGS[name], ac = { state: "running", currentTime: 0 }, starts = {};
+        Sound.ac = ac; Sound.playEvent = function (e, t) { const k = Math.round(t * 1e4); starts[k] = true; };
+        Sound.track = name; Sound.tempo = 1; Sound.step = 0; Sound.nextTime = 0.05; Sound.playing = true;
+        const loopLen = song.steps * song.sixteenth;
+        while (ac.currentTime < loopLen * 1.3) { Sound.schedule(); ac.currentTime += 0.02; }
+        const t2 = 0.05 + loopLen;
+        loops.push(name + ":" + (starts[Math.round(t2 * 1e4)] ? "ok" : "gap"));
+      });
+    } finally {
+      Sound.ac = keep.ac; Sound.playEvent = keep.playEvent; Sound.track = keep.track; Sound.step = keep.step;
+      Sound.nextTime = keep.nextTime; Sound.playing = keep.playing; Sound.tempo = keep.tempo;
+    }
+    check("funk and the clubhouse song loop seamlessly (the 2nd loop starts exactly one loop length later)", loops.join(" ") === "funk:ok clarinetpolka:ok", loops.join(" "));
+    check("levels: the courts name the funk, the clubhouse the Clarinet Polka, the ride the biker song; the creek and the boss default to the Valkyries",
+      LEVEL_DATA.map(function (d) { return d.music || "valkyries"; }).join(",") === "biker,funk,valkyries,clarinetpolka,valkyries");
   });
 
   safe("biker song", function () {
@@ -10386,6 +11003,49 @@ function runShot(spec) {
     Player.x = L.x - 90; Camera.snap(Player, Game.level);
     L.corkT = 0.2;
     for (let i = 0; i < 50; i++) { Input.simulate("fire", true); Game.update(DT); Input.endStep(); }
+    Game.render(); present();
+    return;
+  }
+  if (what === "songlevels") {         // #shot=songlevels: render one loop of each song offline, peak and RMS (dBFS) into #test-out
+    const out = document.createElement("pre"); out.id = "song-levels"; document.body.appendChild(out);
+    const names = ["valkyries", "funk", "clarinetpolka", "biker", "title"], res = {};
+    (async function () {
+      for (const name of names) {
+        const song = SONGS[name], dur = Math.min(20, song.steps * song.sixteenth), sr = 22050;
+        const off = new OfflineAudioContext(1, Math.ceil(sr * (dur + 1)), sr);
+        const keep = { ac: Sound.ac, master: Sound.master, music: Sound.music, sfx: Sound.sfx, noiseBuf: Sound.noiseBuf, amp: Sound.amp, shapeCurve: Sound.shapeCurve };
+        Sound.ac = off; Sound.amp = null;
+        Sound.master = off.createGain(); Sound.master.connect(off.destination);
+        Sound.music = off.createGain(); Sound.music.gain.value = 0.32; Sound.music.connect(Sound.master);
+        Sound.sfx = off.createGain(); Sound.sfx.connect(Sound.master);
+        Sound.noiseBuf = off.createBuffer(1, sr, sr); const nd = Sound.noiseBuf.getChannelData(0); for (let i = 0; i < sr; i++) nd[i] = Math.random() * 2 - 1;
+        Sound.shapeCurve = Sound.makeCurve();
+        const len = song.sixteenth;
+        for (let st = 0, t = 0.05; t < dur; st++, t += len) {
+          const at = t + (song.swing && st % 4 === 2 ? song.swing * len : 0);
+          for (const e of song.events[st % song.steps]) Sound.playEvent(e, at, len);
+        }
+        const buf = await off.startRendering(), d = buf.getChannelData(0);
+        let pk = 0, sq = 0; for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; sq += d[i] * d[i]; }
+        res[name] = { peak: +(20 * Math.log10(pk)).toFixed(1), rms: +(10 * Math.log10(sq / d.length)).toFixed(1) };
+        Object.assign(Sound, keep);
+      }
+      out.textContent = JSON.stringify(res);
+    })();
+    return;
+  }
+  if (what === "finale") {             // #shot=finale,<seconds>: the limo finale at that moment
+    const g = [];
+    for (let y = 0; y < 15; y++) g.push(new Array(90).fill("."));
+    for (let x = 0; x < 90; x++) { g[13][x] = "#"; g[14][x] = "#"; }
+    g[12][3] = "P"; g[12][30] = "9"; g[9][60] = "}"; g[12][62] = "E";
+    const data = Object.assign({}, LEVEL_DATA[0], { map: g.map(function (r) { return r.join(""); }), climb: "", stretches: "0 bg_club" });
+    Player.resetForGame(); Game.loadLevel(0, data); Game.setState(STATE.PLAY);
+    const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    Player.x = L.x - 110; Camera.snap(Player, Game.level);
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+    const n = Math.round((+p[1] || 2.5) * 60);
+    for (let i = 0; i < n; i++) { Game.update(DT); Input.endStep(); }
     Game.render(); present();
     return;
   }
