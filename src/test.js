@@ -375,6 +375,125 @@ function runTests() {
     });
   });
 
+  safe("title music start", function () {
+    const keep = { ready: Sound.ready, startMusic: Sound.startMusic, unlock: Sound.unlock, ac: Sound.ac, playing: Sound.playing,
+      playEvent: Sound.playEvent, step: Sound.step, nextTime: Sound.nextTime, track: Sound.track, timer: Sound.timer };
+    const restore = function () {
+      Sound.ready = keep.ready; Sound.startMusic = keep.startMusic; Sound.unlock = keep.unlock; Sound.playEvent = keep.playEvent;
+    };
+    try {
+      // 5.5 sound first (keyboard): sound not on -> the first Enter keeps the title; the next Enter starts the game
+      Input.reset(); Game.startHash = ""; Game.setState(STATE.TITLE);
+      let ready = false;
+      Sound.ready = function () { return ready; };
+      steps(3);
+      let hint = "";
+      for (let i = 0; i < 90 && hint.indexOf(promptText("sound")) < 0; i++) {   // the prompt blinks: render until it shows
+        TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
+        hint = TEXT_LOG.items.join("|"); TEXT_LOG.items = []; steps(1);
+      }
+      const want = Touch.on ? ["TAP FOR SOUND"] : ["PRESS ANY KEY", "FOR SOUND"];
+      ready = true;                                          // this key turns the sound on
+      tap("enter"); steps(1);
+      const stayed = Game.state === STATE.TITLE;
+      tap("enter"); steps(1);
+      check("title sound first: before the sound is on the title says PRESS ANY KEY FOR SOUND; the first Enter only starts the sound, the next starts the game",
+        want.every(function (w) { return hint.indexOf(w) >= 0; }) && hint.indexOf(promptText("start")) < 0 && stayed && Game.state === STATE.LEVEL_INTRO,
+        "hint " + hint.slice(-80) + ", stayed " + stayed + ", state " + Game.state);
+      // sound already running (autoplay) or no Web Audio at all: Enter starts at once
+      Game.setState(STATE.TITLE); ready = true; steps(3); tap("enter"); steps(1);
+      const runningStarts = Game.state === STATE.LEVEL_INTRO;
+      Sound.ready = keep.ready;
+      const realSupported = Sound.supported;
+      Sound.supported = function () { return false; };
+      Game.setState(STATE.TITLE); steps(3); tap("enter"); steps(1);
+      const noAudioStarts = Game.state === STATE.LEVEL_INTRO;
+      Sound.supported = realSupported;
+      check("title sound first: with the sound running, or no Web Audio, Enter starts the game at once", runningStarts && noAudioStarts);
+      // the same with taps in touch mode
+      withTouch(true, function () {
+        const P = Touch.layout.pic, c = [P.x + P.w / 2, P.y + P.h / 2];
+        const tapPic = function () { ptr("pointerdown", 51, c[0], c[1]); ptr("pointerup", 51, c[0], c[1]); steps(1); };
+        Input.reset(); Game.setState(STATE.TITLE);
+        ready = false; Sound.ready = function () { return ready; };
+        steps(3);
+        ready = true; tapPic();
+        const tStayed = Game.state === STATE.TITLE;
+        tapPic();
+        check("title sound first (touch): the first tap only starts the sound, the next tap starts the game", tStayed && Game.state === STATE.LEVEL_INTRO, "stayed " + tStayed + ", state " + Game.state);
+        Sound.ready = keep.ready; Input.reset();
+      });
+      // 5.1 a mouse click on the title unlocks the audio and starts the title theme
+      Game.setState(STATE.TITLE); steps(2);
+      let unlocked = 0, started = 0;
+      Sound.unlock = function () { unlocked++; };
+      Sound.startMusic = function () { started++; };
+      Sound.playing = false;
+      window.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }));
+      check("title music: a mouse click unlocks the audio and starts the music on the title track", unlocked >= 1 && started >= 1 && Sound.track === "title", unlocked + "/" + started);
+      // 5.2 autoplay where allowed: a running context starts the music without input; a suspended one waits
+      Sound.unlock = keep.unlock;
+      let resumes = 0;
+      const fake = function (state) { return { state: state, currentTime: 0, resume: function () { resumes++; return { then: function () {} }; } }; };
+      started = 0; Sound.ac = fake("running"); Sound.playing = false; Sound.tryAutoplay();
+      const autoOk = started === 1;
+      started = 0; Sound.ac = fake("suspended"); Sound.playing = false; Sound.tryAutoplay();
+      const waitOk = started === 0;
+      // suspended -> resumed on an interaction and when the tab shows again
+      resumes = 0;
+      window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyQ" }));
+      const onKey = resumes;
+      document.dispatchEvent(new Event("visibilitychange"));
+      check("title music: autoplay allowed -> the music starts without input; suspended -> it waits, and is resumed on a key and when the tab shows",
+        autoOk && waitOk && onKey >= 1 && resumes >= onKey + (document.hidden ? 0 : 1), [autoOk, waitOk, onKey, resumes].join(","));
+      // 5.3 resync after a stall: a clock jumped 10 s ahead -> nothing scheduled in the past, the song in time
+      const ac = { state: "running", currentTime: 1 }, times = [];
+      Sound.ac = ac; Sound.playEvent = function (e, t) { times.push({ t: t, now: ac.currentTime }); };
+      Sound.track = "title"; Sound.tempo = 1; Sound.step = 0; Sound.nextTime = 1.05; Sound.playing = true;
+      const t0 = 1.05, len = SONGS.title.sixteenth;
+      Sound.schedule();
+      times.length = 0;
+      ac.currentTime = 11.05;
+      Sound.schedule();
+      const past = times.filter(function (x) { return x.t < x.now - 0.001; }).length;
+      const k = (Sound.nextTime - t0) / len;
+      check("title music: after a 10 s stall nothing is scheduled in the past and the song position matches the elapsed time",
+        past === 0 && times.length > 0 && Math.abs(k - Math.round(k)) < 1e-6 && Sound.step === Math.round(k) % SONGS.title.steps,
+        "past " + past + ", events " + times.length + ", step " + Sound.step + " vs " + (Math.round(k) % SONGS.title.steps));
+    } finally {
+      restore();
+      Sound.playing = false;
+      Sound.ac = keep.ac; Sound.step = keep.step; Sound.nextTime = keep.nextTime; Sound.track = keep.track; Sound.timer = keep.timer;
+      Sound.playing = keep.playing;
+      Input.reset(); Game.startHash = null; Game.setState(STATE.TITLE); steps(2);
+    }
+  });
+
+  safe("title music routes", function () {
+    // every way back to the title leaves the title theme active, at tempo 1, playing
+    const wasPlaying = Sound.playing, keepStart = Sound.startMusic;
+    let starts = 0;
+    Sound.startMusic = function () { starts++; Sound.playing = true; };   // no real voices needed here
+    Sound.playing = true;
+    const ok = [];
+    const at = function (name) { ok.push(name + ":" + (Sound.track === "title" && Sound.tempo === 1 && Sound.playing ? "ok" : Sound.track + "/" + Sound.tempo + "/" + Sound.playing)); };
+    try {
+      Input.reset(); Game.startHash = ""; Game.setState(STATE.TITLE); steps(2); at("first start");
+      Game.newGame(); steps(5); Game.setState(STATE.GAME_OVER); steps(80); tap("enter"); steps(2); at("game over");
+      Game.newGame(); Game.loadLevel(4); Game.setState(STATE.BOSS); Sound.setTempo(1.25); Game.setState(STATE.VICTORY); steps(150); tap("enter"); steps(2); at("victory");
+      tap("mute"); steps(1); tap("mute"); steps(1); at("M twice");
+    } finally { Sound.startMusic = keepStart; Sound.playing = wasPlaying; if (Sound.muted) Sound.toggleMute(); Input.reset(); Game.startHash = null; }
+    // M on the title silences the master gain, M again restores it (needs a live context)
+    if (Sound.master) {
+      Game.setState(STATE.TITLE); steps(1);
+      tap("mute"); steps(1); const off = Sound.master.gain.value;
+      tap("mute"); steps(1); const on = Sound.master.gain.value;
+      check("title music: M on the title silences the master gain and M again restores it", off === 0 && on === 1 && !Sound.muted, off + " -> " + on);
+    }
+    check("title music routes: first start, game over -> title, victory -> title and M twice all keep the title theme active at tempo 1 and playing",
+      ok.every(function (x) { return /:ok$/.test(x); }) && !Sound.muted, ok.join(", "));
+  });
+
   safe("touch menus", function () {
     withTouch(true, function () {
       const P = Touch.layout.pic, c = [P.x + P.w / 2, P.y + P.h / 2];
@@ -2518,9 +2637,12 @@ function runTests() {
     const vw = textWidth(BUILD_VERSION, 1), vx = TITLE_VERSION_POS.x - vw, vy = TITLE_VERSION_POS.y;
     const vbox = { x: vx - 1, y: vy - 1, w: vw + 2, h: 9 };
     const boxes = { badge: { x: 250, y: 186, w: 58, h: 30 }, pressEnter: { x: 130 - textWidth("PRESS ENTER", 2) / 2, y: 186, w: textWidth("PRESS ENTER", 2), h: 14 },
-      sound: { x: 130 - textWidth("(ANY KEY STARTS THE MUSIC)", 1) / 2, y: 218, w: textWidth("(ANY KEY STARTS THE MUSIC)", 1), h: 8 },
+      sound: { x: 130 - textWidth("SOUND ON (M)", 1) / 2, y: 218, w: textWidth("SOUND ON (M)", 1), h: 8 },
+      soundFirst: { x: 130 - textWidth("PRESS ANY KEY", 2) / 2, y: 186, w: textWidth("PRESS ANY KEY", 2), h: 14 },
       filmed: { x: 130 - textWidth("FILMED ON LOCATION IN WOLLERAU", 1) / 2, y: 206, w: textWidth("FILMED ON LOCATION IN WOLLERAU", 1), h: 8 } };
     const hitBox = Object.keys(boxes).filter(function (k) { return overlap(vbox, boxes[k]); });
+    check("title: the sound-first prompt PRESS ANY KEY fits the screen, clear of the badge",
+      boxes.soundFirst.x >= 0 && boxes.soundFirst.x + boxes.soundFirst.w <= W && !overlap(boxes.soundFirst, boxes.badge));
     const undrawable = BUILD_VERSION.split("").filter(function (c) { return FONT_CHARS.indexOf(c) < 0; });
     check("title: build version shown in small print, bottom right",
       /^V\d/.test(BUILD_VERSION) && t.indexOf(BUILD_VERSION) >= 0 && undrawable.length === 0, BUILD_VERSION + (undrawable.length ? " missing glyphs " + undrawable.join("") : ""));
@@ -2559,12 +2681,14 @@ function runTests() {
       check("touch texts: desktop title keeps PRESS ENTER and the key list", t.indexOf("PRESS ENTER") >= 0 && t.indexOf("TAP") < 0 && titleControls() === TITLE_CONTROLS);
     });
     withTouch(true, function () {
-      const realAc = Sound.ac;
-      Sound.ac = null;                                       // before the first tap
-      const items = textsOf(STATE.TITLE), t = items.join("|");
-      Sound.ac = realAc;
+      const items = textsOf(STATE.TITLE), t = items.join("|");   // the sound on
+      Game.soundWasReady = false;                            // before the first tap
+      const items0 = textsOf(STATE.TITLE), t0 = items0.join("|");
+      items.push.apply(items, items0);                      // no keyboard keys before or after the first tap
+      Game.soundWasReady = true;
       const ctl = titleControls(), txt = ctl.map(function (l) { return l.join(" "); }).join("|");
-      check("touch texts: title says TAP TO START and (TAP STARTS THE MUSIC)", t.indexOf("TAP TO START") >= 0 && t.indexOf("(TAP STARTS THE MUSIC)") >= 0, t);
+      check("touch texts: title says TAP FOR SOUND before the first tap, then TAP TO START", t0.indexOf("TAP FOR SOUND") >= 0 && t0.indexOf("TAP TO START") < 0 &&
+        t.indexOf("TAP TO START") >= 0 && t.indexOf("TAP FOR SOUND") < 0, t0 + " // " + t);
       check("touch texts: controls list names pad, Jump, Fire, Down+Jump, Pause, Mute, Film",
         txt.indexOf("PAD MOVE/CLIMB/KNEEL") >= 0 && txt.indexOf("JUMP JUMP") >= 0 && txt.indexOf("FIRE FIRE") >= 0 && txt.indexOf("DOWN+JUMP DROP THROUGH") >= 0 &&
         txt.indexOf("PAUSE") >= 0 && txt.indexOf("MUTE") >= 0 && txt.indexOf("FILM FILTER") >= 0, txt);
@@ -2586,13 +2710,15 @@ function runTests() {
         [lc, go, vi].every(function (x) { return x.indexOf("TAP TO CONTINUE") >= 0 && x.indexOf("PRESS") < 0; }), [lc, go, vi].join(" / "));
       // placement: the tap prompts fit the screen and stay clear of the other title elements
       const sw = textWidth("TAP TO START", 2), start = { x: 130 - sw / 2, y: 186, w: sw, h: 14 };
-      const mw = textWidth("(TAP STARTS THE MUSIC)", 1), music = { x: 130 - mw / 2, y: 218, w: mw, h: 8 };
+      const mw = textWidth("SOUND ON", 1), music = { x: 130 - mw / 2, y: 218, w: mw, h: 8 };
+      const tw = textWidth("TAP FOR SOUND", 2), tapSound = { x: 130 - tw / 2, y: 186, w: tw, h: 14 };
       const vw = textWidth(BUILD_VERSION, 1), vbox = { x: TITLE_VERSION_POS.x - vw - 1, y: TITLE_VERSION_POS.y - 1, w: vw + 2, h: 9 };
       const nw = textWidth("STARTS AT FINAL REEL", 1), nbox = { x: TITLE_START_POS.x - 1, y: TITLE_START_POS.y - 1, w: nw + 2, h: 9 };
       const badge = { x: 250, y: 186, w: 58, h: 30 }, filmed = { x: 130 - textWidth("FILMED ON LOCATION IN WOLLERAU", 1) / 2, y: 206, w: textWidth("FILMED ON LOCATION IN WOLLERAU", 1), h: 8 };
       const portrait = { x: 14, y: 80, w: 100, h: 104 };
-      const inScreen = [start, music].every(function (b) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H; });
-      const clashes = [[start, badge], [start, vbox], [start, nbox], [start, filmed], [start, portrait], [music, vbox], [music, nbox], [music, badge], [music, filmed]]
+      const inScreen = [start, music, tapSound].every(function (b) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H; });
+      const clashes = [[start, badge], [start, vbox], [start, nbox], [start, filmed], [start, portrait], [music, vbox], [music, nbox], [music, badge], [music, filmed],
+        [tapSound, badge], [tapSound, vbox], [tapSound, nbox], [tapSound, filmed], [tapSound, portrait]]
         .filter(function (pr) { return overlap(pr[0], pr[1]); }).length;
       check("touch texts: title tap prompts inside the screen and clear of the other title elements", inScreen && clashes === 0, clashes + " overlaps");
       ["TAP TO CONTINUE", "TAP II TO CONTINUE"].forEach(function (s) {

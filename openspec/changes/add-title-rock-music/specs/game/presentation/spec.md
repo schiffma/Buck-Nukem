@@ -3,19 +3,19 @@
 ## MODIFIED Requirements
 
 ### Requirement: Ride of the Valkyries soundtrack
-The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, during play: on level intro cards, in every level and in the boss arena. Because browsers block audio until the user interacts, music SHALL start on the first key press, mouse click or touch, or immediately on page load where the browser allows autoplay. The title screen plays the 70s rock title theme instead.
+The game SHALL play a looping chiptune arrangement of Wagner's "Ride of the Valkyries", synthesized in the browser, during play: on level intro cards, in every level except the mofa ride, and in the boss arena. Because browsers block audio until the user interacts, music SHALL start on the first key press, mouse click or touch, or immediately on page load where the browser allows autoplay. The title screen plays the 70s rock title theme, the ride its biker rock song.
 
 #### Scenario: Music starts after first input
-- **WHEN** the player presses any key on the title screen
-- **THEN** the 70s rock title theme starts playing and loops
+- **WHEN** audio is not yet running and the player presses any key on the title screen, Enter included
+- **THEN** the 70s rock title theme starts playing and loops, and the title screen stays
 
 #### Scenario: Music starts after a click or touch
 - **WHEN** the player's first interaction with the page is a mouse click or a touch on the title screen
-- **THEN** the 70s rock title theme starts playing and loops
+- **THEN** the 70s rock title theme starts playing and loops, and the title screen stays
 
 #### Scenario: Valkyries play once the game starts
-- **WHEN** the player presses Enter on the title screen and the first level intro appears
-- **THEN** the title theme stops and the Ride of the Valkyries theme plays from its start and loops
+- **WHEN** a game reaches its first reel other than the mofa ride (the reel 2 intro after the ride, or the first intro of a game started with `#level=2` or later)
+- **THEN** the theme playing before stops and the Ride of the Valkyries theme plays from its start and loops
 
 #### Scenario: Boss music intensifies
 - **WHEN** the boss arena starts
@@ -43,7 +43,15 @@ The title screen SHALL play a looping, original hard-rock theme in a 1970s style
 - **THEN** the title theme becomes silent until M is pressed again
 
 ### Requirement: Reliable title music
-The title screen SHALL always play the rock title theme once audio is allowed: the game SHALL try to start audio on page load, SHALL start it on the first key, click or touch otherwise, and SHALL keep the music playing in time after the tab was in the background or the browser suspended audio.
+The title screen SHALL always play the rock title theme once audio is allowed: the game SHALL try to start audio on page load, SHALL start it on the first key, click or touch otherwise, and SHALL keep the music playing in time after the tab was in the background or the browser suspended audio. While audio is supported but not yet running, the first input on the title SHALL only start the sound, not the game, and the title SHALL say so.
+
+#### Scenario: Sound first, then the game
+- **WHEN** the title screen is shown with audio supported but not yet running
+- **THEN** the title reads "PRESS ANY KEY FOR SOUND" (in touch mode "TAP FOR SOUND"); the first key, click or tap starts the title theme and the title stays, now reading "PRESS ENTER" ("TAP TO START"); the next Enter or tap starts a game
+
+#### Scenario: Enter starts at once when the sound is on
+- **WHEN** audio already runs on the title (autoplay allowed, or after the first input), or the browser has no Web Audio at all
+- **THEN** Enter (or a tap) starts a game right away
 
 #### Scenario: Autoplay where allowed
 - **WHEN** the page is opened in a browser that allows autoplay

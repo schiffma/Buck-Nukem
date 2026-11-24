@@ -11,6 +11,7 @@ The game is styled as a 1970s grindhouse movie, but the title screen plays the s
 - Starting a game switches to the existing Ride of the Valkyries loop for level intros, levels and the boss arena (unchanged, including the faster boss tempo).
 - Returning to the title screen after game over or victory switches back to the rock theme.
 - Mute (M) silences both tracks as before.
+- The first input on the title only turns the sound on ("PRESS ANY KEY FOR SOUND"), so the title theme is heard before Enter starts the game; where autoplay works, Enter starts the game at once.
 - The title music starts reliably: on the first key press, mouse click or touch, and right away on page load where the browser allows autoplay. It keeps playing correctly after the tab was in the background (no burst of missed notes, audio resumed if the browser suspended it), and every way back to the title (first start, game over, victory, mute and unmute) plays the rock theme.
 - The promo video recorder renders the rock theme for the title-screen part of the video and the Valkyries afterwards.
 - README credits describe the new track as original to the project.

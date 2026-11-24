@@ -28,6 +28,7 @@ const Game = {
   },
 
   startHash: null,           // tests: stands in for location.hash when set
+  soundWasReady: true,       // Sound.ready() at the end of the previous update (the title's sound-first gate)
   reveal: null,              // boss reveal pan at arena start: { t, x0, xb, back }
 
   newGame() {
@@ -222,7 +223,9 @@ const Game = {
     if (Fullscreen.noteT > 0) Fullscreen.noteT = Math.max(0, Fullscreen.noteT - dt);
     switch (this.state) {
       case STATE.TITLE:
-        if (Input.pressed("enter")) { Sound.play("select"); this.newGame(); }
+        // sound first: an Enter (or tap) that is turning the sound on only starts the title theme;
+        // once the sound was on before this input, Enter starts the game
+        if (Input.pressed("enter") && this.soundWasReady) { Sound.play("select"); this.newGame(); }
         break;
       case STATE.LEVEL_INTRO:
         if (this.stateT > introTotal(this.level.isBoss) || (this.stateT > 0.3 && (Input.pressed("enter") || Input.pressed("jump")))) {
@@ -257,6 +260,7 @@ const Game = {
         break;
     }
     this.updateEngines();
+    this.soundWasReady = Sound.ready();
   },
 
   // Boss reveal (arena entry only, not on respawn): the camera pans to the boss, holds while it
@@ -477,6 +481,7 @@ function startLevelFromHash(hash) {
 
 function boot() {
   Touch.init();             // touch mode on phones / #touch (src/touch.js)
+  Sound.tryAutoplay();      // the title music right away where the browser allows it
   loadAssets(function () {
     buildSprites();
     booted = true;

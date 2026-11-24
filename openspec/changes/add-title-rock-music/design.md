@@ -64,6 +64,14 @@ Keep "(ANY KEY STARTS THE MUSIC)"; it stays accurate.
 - **Resume:** on `visibilitychange` (visible) and on every interaction, call `ac.resume()` if the context is `"suspended"`.
 - **Tests:** a click unlocks and starts the title theme; the autoplay path starts music when the context reports `"running"` (stubbed); a fake clock jumped 10 s ahead produces no events scheduled in the past and continues at the right step; game over → title, victory → title and M twice on the title all leave the title track active and playing.
 
+### 8. Sound first on the title
+Play-test feedback: the title theme is never heard. Browsers allow no sound before a user gesture, and the first gesture on the title is usually Enter, which also starts the game (the mofa ride and its biker song), so the title track is skipped.
+- **Gate:** on the title, `Sound.ready()` = no Web Audio in this browser, or the context exists and is `"running"`. While not ready, Enter, Space, a click or a tap only unlocks and starts the title theme (it is consumed: no game start in the same input). Once ready, Enter or a tap starts the game as before. M toggles mute either way (and also unlocks).
+- **Hint text:** `TITLE_TEXT.start` shows "PRESS ANY KEY FOR SOUND" / "TAP FOR SOUND" while not ready, then "PRESS ENTER" / "TAP TO START"; the old music hint line "(ANY KEY STARTS THE MUSIC)" goes.
+- **Autoplay:** where the boot-time `resume()` (§7) leaves the context running, the gate is open from the start, so Enter starts at once.
+- **Tests and tools:** `run_tests.py` runs Chrome and Edge with `--autoplay-policy=no-user-gesture-required`, so audio runs at boot and the existing title → game tests stay valid; new tests stub the context state (`"suspended"` → the first Enter stays on the title and starts the theme; `"running"` → Enter starts the game; no `AudioContext` → Enter starts the game). The promo recorder's browser gets the same autoplay flag (or the bridge unlocks the sound before its first Enter), so its run is unchanged. `screenshot.py` already uses headless Chrome without sound.
+- **Spec alignment:** this change's soundtrack requirement now carries the ride's text from the archived `mofa-ride-level` (no Valkyries on the ride, the biker song), so archiving this change won't undo it.
+
 ## Risks / Trade-offs
 
 - [Distortion via WaveShaper sounds harsh or clips the master] → keep the rock music gain balanced against the Valkyries by ear, lowpass after the shaper, and verify that peak levels stay comparable in a quick offline render.

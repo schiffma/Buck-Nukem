@@ -205,6 +205,22 @@ const Sound = {
     if (this.ac.state === "suspended") this.ac.resume();
   },
 
+  // Sound is "ready" when it can play: the context runs, or there is no live audio at all
+  // (no Web Audio in this browser, or headless: the promo recorder renders audio offline).
+  supported() { return !!(window.AudioContext || window.webkitAudioContext); },
+  ready() { return !this.supported() || Game.headless || !!(this.ac && this.ac.state === "running"); },
+  // Page load: try to start right away (works where the browser allows autoplay); otherwise the
+  // context stays suspended until the first key, click or tap. No error either way.
+  tryAutoplay() {
+    if (!this.supported()) return;
+    try { this.unlock(); } catch (e) { return; }
+    const self = this, go = function () { if (self.ac && self.ac.state === "running" && !self.playing && self.wantMusic !== false) self.startMusic(); };
+    go();
+    try { const p = this.ac.resume(); if (p && p.then) p.then(go, function () {}); } catch (e) { /* stays suspended */ }
+  },
+  // a suspended context (background tab, browser policy) is resumed on every interaction and when the tab shows again
+  resume() { if (this.ac && this.ac.state === "suspended") { try { this.ac.resume(); } catch (e) { /* ignore */ } } },
+
   toggleMute() {
     this.muted = !this.muted;
     if (this.master) this.master.gain.value = this.muted ? 0 : 1;
@@ -237,6 +253,15 @@ const Sound = {
 
   schedule() {
     if (!this.playing) return;
+    // after a stall (background tab: timers throttled) skip the missed sixteenths, so the song
+    // stays in time and nothing is played late in a burst
+    const now = this.ac.currentTime;
+    if (this.nextTime < now - 0.1) {
+      const len = this.song().sixteenth / this.tempo, missed = Math.ceil((now - this.nextTime) / len);
+      this.step = (this.step + missed) % this.song().steps;
+      this.nextTime += missed * len;
+      if (this.nextTime < now) this.nextTime = now + 0.05;
+    }
     const horizon = this.ac.currentTime + 0.12;
     while (this.nextTime < horizon) {
       const song = this.song();
@@ -535,3 +560,4 @@ Input.anyKeyListeners.push(function () {
   Sound.unlock();
   if (!Sound.playing && Sound.wantMusic !== false) Sound.startMusic();
 });
+document.addEventListener("visibilitychange", function () { if (!document.hidden) Sound.resume(); });

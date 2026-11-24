@@ -16,9 +16,10 @@ function titleControls() {
 // Prompt texts for the input in use: keys on the desktop, taps in touch mode.
 const PROMPTS = {
   start: ["PRESS ENTER", "TAP TO START"],
+  sound: ["PRESS ANY KEY", "TAP FOR SOUND"],          // the title before the sound is on ("PRESS ANY KEY" / "FOR SOUND")
+  soundSub: ["FOR SOUND", ""],
   continue: ["PRESS ENTER", "TAP TO CONTINUE"],
   paused: ["PRESS P TO CONTINUE", "TAP II TO CONTINUE"],
-  music: ["(ANY KEY STARTS THE MUSIC)", "(TAP STARTS THE MUSIC)"],
   soundOn: ["SOUND ON (M)", "SOUND ON"],
   soundOff: ["SOUND OFF (M)", "SOUND OFF"],
 };
@@ -162,10 +163,12 @@ const Screens = {
       drawText(l[1], x + 72, 94 + i * 11, "#f0e8d0");
     });
     drawBadge(250, 186);
-    if (blink(2)) drawText(promptText("start"), 130, 186, "#ff3a2a", { scale: 2, align: "center", shadow: "#000" });
-    drawText("FILMED ON LOCATION IN WOLLERAU", 130, 206, "#c8b890", { align: "center", shadow: "#000" });
-    if (!Sound.ac) drawText(promptText("music"), 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
-    else drawText(promptText(Sound.muted ? "soundOff" : "soundOn"), 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
+    // sound first: until the sound is on, the first key, click or tap only turns it on
+    if (!Game.soundWasReady) { if (blink(2)) drawText(promptText("sound"), 130, 186, "#ffd040", { scale: 2, align: "center", shadow: "#000" }); }
+    else if (blink(2)) drawText(promptText("start"), 130, 186, "#ff3a2a", { scale: 2, align: "center", shadow: "#000" });
+    if (Game.soundWasReady || !promptText("soundSub")) drawText("FILMED ON LOCATION IN WOLLERAU", 130, 206, "#c8b890", { align: "center", shadow: "#000" });
+    else drawText(promptText("soundSub"), 130, 206, "#ffd040", { scale: 1, align: "center", shadow: "#000" });   // "PRESS ANY KEY" / "FOR SOUND"
+    if (Game.soundWasReady) drawText(promptText(Sound.muted ? "soundOff" : "soundOn"), 130, 218, "#9a8a70", { align: "center", shadow: "#000" });
     const note = titleStartNote();
     if (note) drawText(note, TITLE_START_POS.x, TITLE_START_POS.y, "#c8b890", { shadow: "#000" });
     drawText(BUILD_VERSION, TITLE_VERSION_POS.x, TITLE_VERSION_POS.y, "#c8b890", { align: "right", shadow: "#000" });

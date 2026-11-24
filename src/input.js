@@ -101,3 +101,7 @@ window.addEventListener("keyup", function (e) {
   Input.set(a, "kb", false);
 });
 window.addEventListener("blur", function () { Input.releaseSource("kb"); });
+// a mouse click or a touch also counts as the first interaction (it unlocks and starts the music)
+["pointerdown", "touchstart"].forEach(function (type) {
+  window.addEventListener(type, function (e) { Input.anyKeyListeners.forEach(function (f) { f(e); }); }, { capture: true, passive: true });
+});
