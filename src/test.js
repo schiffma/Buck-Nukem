@@ -1010,7 +1010,7 @@ function runTests() {
   });
 
   // ---------------- mofa ride (src/ride.js) ----------------
-  function loadRide(items, w) { load(grid(w || 240, 12, [[3, 9, "P"]].concat(items || [])), { ride: "1", name: "TEST RIDE" }); }
+  function loadRide(items, w) { load(grid(w || 240, 12, [[3, 9, "P"]].concat(items || [])), { ride: "1", name: "TEST RIDE", quotes: "ride" }); }
   function holdFor(a, sec, each) { press(a); steps(Math.round(sec * 60), each); release(a); }
 
   // a ride test map with a climb: flat at row 19 up to column 39, eased up to row 11 by column 99, flat after
@@ -1674,13 +1674,63 @@ function runTests() {
       thump && thump.f0 <= 120 && echo.length > 0 && tail <= 0.3, JSON.stringify(calls.map(function (c) { return c.k + "@" + c.t.toFixed(2); })) + " tail " + tail.toFixed(2));
   });
 
+  safe("quote packs", function () {
+    const keep = Object.assign({}, QUOTE_PACKS);
+    try {
+      // a per-type section wins over [kill]; the level names the pack in its header
+      QUOTE_PACKS.t1 = { kill: ["GENERIC."], "kill:tesla": ["TESLA DOWN."], start: ["HOPP, IS GLIS."] };
+      loadRide([], 300); Game.level.quotes = "t1"; Game.godMode = true; Game.enemies = []; Fans.list = [];
+      const killOne = function (type, x) {
+        const e = makeEnemy(type, x, Player.y + Player.h, Game.level, 1); e.awake = true; Game.enemies.push(e);
+        for (let i = 0; i < 40 && !e.dead; i++) damageEnemy(e, 1, 1);
+      };
+      Player.bubble = null; Player.talkCd = 0; killOne("tesla", Player.x + 140); steps(1);
+      const perType = Player.bubble && Player.bubble.text;
+      Player.bubble = null; Player.talkCd = 0; killOne("suv", Player.x + 160); steps(1);
+      const generic = Player.bubble && Player.bubble.text;
+      check("quote packs: a [kill:<type>] section wins over [kill]", perType === "TESLA DOWN." && generic === "GENERIC.", perType + " / " + generic);
+      // no pack: silent
+      Game.level.quotes = null; Player.bubble = null; Player.talkCd = 0; killOne("tesla", Player.x + 140); steps(1);
+      check("quote packs: a level without a pack keeps Buck silent", !Player.bubble);
+      // start: shortly after the intro, once; not after a respawn
+      Game.godMode = false;
+      LEVEL_DATA[1].quotes = "t1";
+      Player.resetForGame(); Game.loadLevel(1); Input.reset();
+      steps(Math.round(introTotal(false) * 60) + 2);
+      let said = null, at = 0;
+      for (let i = 0; i < 90 && !said; i++) { steps(1); at++; if (Player.bubble) said = Player.bubble.text; }
+      const startOk = said === "HOPP, IS GLIS." && at >= 30 && at <= 50;
+      Player.bubble = null; Player.talkCd = 0;
+      Player.lives = 3; Player.hp = 1; Player.invuln = 0; Player.hurt(5);
+      let again = false;
+      for (let i = 0; i < 240; i++) { steps(1); if (Player.bubble && Player.bubble.text === "HOPP, IS GLIS.") again = true; }
+      check("quote packs: the [start] line comes about 0.6 s after the intro, and not again after a respawn", startOk && !again, said + " after " + at + " steps, again " + again);
+      // on foot: a lawyer kill shows a bubble above Buck's head, clear of the other bubbles
+      QUOTE_PACKS.t2 = { "kill:lawyer": ["OBJECTION DENIED."] };
+      load(grid(40, 12, [[3, 9, "P"], [12, 9, "L"]])); Game.level.quotes = "t2"; Fans.list = [];
+      const law = Game.enemies[0]; law.bubble = null;
+      Player.bubble = null; Player.talkCd = 0;
+      for (let i = 0; i < 10 && !law.dead; i++) damageEnemy(law, 1, 1);
+      Game.render();
+      const br = Talk.buckRects(Camera.x, Camera.y)[0], head = Player.y - Camera.y + HUD_H;
+      check("quote packs: on foot a lawyer kill shows Buck's line above his head, clear of other bubbles",
+        Player.bubble && Player.bubble.text === "OBJECTION DENIED." && br && br.y + br.h <= head &&
+        (Fans.shown || []).every(function (f) { return !rectsTouch(f, br, 0); }), Player.bubble ? Player.bubble.text : "none");
+    } finally {
+      Object.keys(QUOTE_PACKS).forEach(function (k) { if (!(k in keep)) delete QUOTE_PACKS[k]; });
+      delete LEVEL_DATA[1].quotes; Game.godMode = false; Player.bubble = null; Input.reset();
+    }
+    check("quote packs: the ride names its pack, and the pack has at least 12 kill lines",
+      LEVEL_DATA[0].quotes === "ride" && QUOTE_PACKS.ride && QUOTE_PACKS.ride.kill.length >= 12);
+  });
+
   safe("buck's lines", function () {
     const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN|SCHEISS|ARSCH)\b/;
-    const long = BUCK_LINES.filter(function (l) { return l.length > 20; });
-    const glyph = BUCK_LINES.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
+    const long = QUOTE_PACKS.ride.kill.filter(function (l) { return l.length > 20; });
+    const glyph = QUOTE_PACKS.ride.kill.filter(function (l) { return l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }); });
     check("buck's lines: at least 12 Swiss German lines, at most 20 characters, drawable (with umlauts), not explicit",
-      BUCK_LINES.length >= 12 && !long.length && !glyph.length && !BUCK_LINES.some(function (l) { return bad.test(l); }) &&
-      BUCK_LINES.some(function (l) { return /[ÄÖÜ]/.test(l); }), BUCK_LINES.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
+      QUOTE_PACKS.ride.kill.length >= 12 && !long.length && !glyph.length && !QUOTE_PACKS.ride.kill.some(function (l) { return bad.test(l); }) &&
+      QUOTE_PACKS.ride.kill.some(function (l) { return /[ÄÖÜ]/.test(l); }), QUOTE_PACKS.ride.kill.length + " lines" + (long.length ? ", long: " + long.join("|") : "") + (glyph.length ? ", glyphs: " + glyph.join("|") : ""));
     // the umlauts: two dots in the top row, a gap, then the letter (same 5 x 7 cell)
     const um = ["Ä", "Ö", "Ü"].every(function (c) { const g = GLYPHS[c]; return g && g.length === 7 && g[0] === 10 && g[1] === 0 && g.slice(2).every(function (r) { return r > 0 && r < 32; }); });
     check("buck's lines: the font has Ä, Ö and Ü with their dots", um);
@@ -1700,7 +1750,7 @@ function runTests() {
     const third = Player.bubble ? Player.bubble.text : null;
     Game.godMode = false;
     check("buck's lines: a car kill makes Buck say a Swiss German line; another kill within 3 s does not; after 3 s he speaks again",
-      first && BUCK_LINES.indexOf(first) >= 0 && !second && third && BUCK_LINES.indexOf(third) >= 0, [first, !!second, third].join(" / "));
+      first && QUOTE_PACKS.ride.kill.indexOf(first) >= 0 && !second && third && QUOTE_PACKS.ride.kill.indexOf(third) >= 0, [first, !!second, third].join(" / "));
     // his bubble is above him and drawn; car bubbles keep clear of it
     TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
     const drawn = TEXT_LOG.items.indexOf(third) >= 0; TEXT_LOG.items = [];

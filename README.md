@@ -44,7 +44,7 @@ The same `dist/buck_nukem.html` (also online on GitHub Pages) plays on a smartph
   - **The climb:** in the last third the road rises smoothly up the hill to the club, 7 tiles in all. Uphill the mofa is up to 30% slower and its engine strains at full throttle.
   - **Controls on the mofa:** Right accelerates to the top speed (about 1.5× Buck's running speed); Left brakes and then rolls back slowly; with neither held the mofa coasts. Jump hops (high enough for a Ferrari). Fire shoots the **twin heavy machine guns**, oversized WW2-style guns with a deep .50 cal "dug-dug-dug" (8 volleys per second): one gun on the handlebars fires forward, the other on the luggage rack fires backward at the same time, at cars ahead and behind. Up angles the front gun 30° upward, for example at things thrown over the BMW X7's roof; the rear gun fires level. The mofa trails blue-grey two-stroke smoke, a thick cloud when the throttle is open. The HUD shows "MOFA MG". The touch controls work the same way.
   - **The road** has no obstacles of its own, only wooden ramps (a long jump at speed, up to trophies and an extra life): the danger is the traffic. **WD-40 spray cans** (+2 health) are the ride's health pickups.
-  - **Buck's lines:** when he finishes off a car, Buck comments dryly in Swiss German ("SO, FERTIG.", "UFGRUMT!", "GÄLL, DAS HET GSESSE"), at most every 3 seconds.
+  - **Buck's lines** (from the quote pack `src/quotes/ride.txt`, see [Quote packs](#quote-packs)): when he finishes off a car, Buck comments dryly in Swiss German ("SO, FERTIG.", "UFGRUMT!", "GÄLL, DAS HET GSESSE"), at most every 3 seconds.
   - **Posh drivers** in their cars, drawn after the photos in `assets/img/`, call out arrogant one-liners ("DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!") as soon as their car shows up and every few seconds after; up to two bubbles at a time, never on top of each other or the fans' bubbles. Cars hurt Buck on contact (2 health and a hard knockback), explode when destroyed, and the driver runs off:
     - the huge dark-grey **BMW X7** blocks the road ahead; its driver tosses latte cups and golf balls over the roof and honks at a mofa close behind (10 hits, 800 points)
     - the red **Tesla Model 3** creeps up almost silently from behind with its driver on the phone, and rams (6 hits, 700)
@@ -157,7 +157,7 @@ tools/promo/             promo-video recorder: Playwright bridge + Python agent 
 
 ## Level format
 
-Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `theme` = court|creek|hall|road, `bg`, `boss: 1`, `ride: 1` for the mofa ride; `music` = biker|funk|clarinetpolka|valkyries, the level's track, default valkyries (the build rejects other names); a ride map may contain no weapon pickups `w`; on a ride, `stretches: 0 bg_lake, 160 bg_village, ...` changes the backdrop and the roadside props from that column on, cross-faded over one screen, and `climb: x0-x1 r0-r1` makes the road rise smoothly from row r0 to row r1 between columns x0 and x1, while the map's floor steps up underneath), followed by map segments separated by `---` lines. Segments are joined side by side and must all have the same number of rows. Lines starting with `;` are comments.
+Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `theme` = court|creek|hall|road, `bg`, `boss: 1`, `ride: 1` for the mofa ride; `quotes` = Buck's quote pack (see [Quote packs](#quote-packs)); `music` = biker|funk|clarinetpolka|valkyries, the level's track, default valkyries (the build rejects other names); a ride map may contain no weapon pickups `w`; on a ride, `stretches: 0 bg_lake, 160 bg_village, ...` changes the backdrop and the roadside props from that column on, cross-faded over one screen, and `climb: x0-x1 r0-r1` makes the road rise smoothly from row r0 to row r1 between columns x0 and x1, while the map's floor steps up underneath), followed by map segments separated by `---` lines. Segments are joined side by side and must all have the same number of rows. Lines starting with `;` are comments.
 
 | Char | Meaning | Char | Meaning |
 |---|---|---|---|
@@ -190,6 +190,27 @@ Each `src/levels/*.txt` file starts with `key: value` header lines (`name`, `the
 Multi-tile props are placed by their top-left cell; the rest of their footprint must be `.` (the build warns otherwise). The header line `interior: x0-x1` draws columns x0–x1 as the clubhouse interior (wallpaper and wood panelling instead of the photo; windows still show the photo).
 
 A crayfish (`K`) placed next to water hides in the creek.
+
+## Quote packs
+
+Buck's one-liners come from plain text files in `src/quotes/`, one file per pack (for example `src/quotes/ride.txt`). A level uses a pack by naming it in its header: `quotes: ride`. A level without a `quotes:` line keeps Buck silent.
+
+```
+; comment lines start with a semicolon
+[start]            ; once, about 0.6 s after the level's intro card (not after a respawn)
+HOPP, IS GLIS.
+[kill]             ; after Buck finishes off any enemy, at most every 3 seconds
+SO, FERTIG.
+UFGRUMT!
+[kill:suv]         ; instead of [kill] for one enemy type
+DE ISCH GSI.
+```
+
+- One quote per line, at most 20 characters; lower case is shown in capitals. Allowed characters are those of the game font: A–Z, 0–9, `. , ! ? : - ' / ( ) + = > < % " *`, `♥` and `Ä Ö Ü`.
+- Enemy types for `[kill:<type>]`: `lawyer`, `cray`, `punk`, `suv` (the BMW X7), `tesla`, `ferrari`, `limo` (the limo has its own finale line, so it gets no pack quote).
+- Every section is optional. Quotes are picked at random without repeats until a section is used up, and shown in a speech bubble above Buck (on foot or on the mofa) that never covers another bubble; if there is no room, Buck stays quiet.
+- `python tools/build.py` checks the packs and stops with `file:line: reason` for a quote outside a section, an unknown section or enemy type, a quote that is too long, a character the font cannot draw, a duplicate, or a `quotes:` header naming a missing pack.
+- Today only the mofa ride has a pack (`ride.txt`, Swiss German, `[kill]`); add `src/quotes/<name>.txt` and `quotes: <name>` to give any other level its own.
 
 ## Credits
 

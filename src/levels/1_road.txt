@@ -1,5 +1,6 @@
 name: THE ROAD TO WOLLERAU
 music: biker
+quotes: ride
 theme: road
 bg: bg_lake
 stretches: 0 bg_lake, 160 bg_village, 320 bg_climb, 480 bg_club

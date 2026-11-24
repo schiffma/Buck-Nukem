@@ -43,6 +43,10 @@ const Talk = {
     const others = Game.enemies.filter(function (o) { return o !== e && o.bubble && !o.dead; });
     const ride = Game.level && Game.level.isRide && e.T && e.T.car, buck = ride && Player.bubble ? 1 : 0;
     if (!ride && others.length) return false;
+    if (!ride && Player.bubble) {
+      const rb = this.buckRects(Camera.x, Camera.y)[0], r0 = this.rect(e, { text: "", t: 0, dx: dx }, Camera.x, Camera.y);
+      if (rb && Math.abs(r0.tx - (rb.x + rb.w / 2)) < rb.w / 2 + 70 && Math.abs(r0.y - rb.y) < 20) return false;
+    }
     if (ride && others.length + buck >= CONFIG.rideBubbles) return false;   // Buck's line counts as one of the ride's bubbles
     const bubble = { text: this.line(pool), t: secs, dx: dx };
     if (ride) {
@@ -64,25 +68,25 @@ const Talk = {
     return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); })
       .concat(this.buckRects(camX, camY));
   },
-  // Buck on the mofa: his bubble sits above his head (the rider is drawn a little above the player box)
-  buckSpeaker() { return { x: Player.x, y: Player.y - 6, w: Player.w }; },
+  // Buck's bubble sits above his head: on the mofa the rider is drawn a little above the player box
+  buckSpeaker() { return { x: Player.x, y: Player.y - (Game.level && Game.level.isRide ? 6 : 2), w: Player.w }; },
   buckRects(camX, camY) { return Player.bubble && !Player.dead ? [this.rect(this.buckSpeaker(), Player.bubble, camX, camY)] : []; },
-  // Buck's dry Swiss German line after he finishes off a car (ride only), at most every buckTalkCd s;
-  // like a car bubble it must not overlap another bubble, else he stays quiet.
-  buckKill() {
-    if (!Game.level || !Game.level.isRide || Player.dead || (Player.talkCd || 0) > 0 || Player.bubble) return false;
+  // Show a line over Buck unless it would overlap another bubble (enemies, fans) or the ride's two are up.
+  buckSay(text, secs) {
+    if (Player.dead || Player.bubble) return false;
     const others = Game.enemies.filter(function (o) { return o.bubble && !o.dead; });
-    if (others.length >= CONFIG.rideBubbles) return false;
-    const bubble = { text: this.line(BUCK_LINES), t: CONFIG.buckTalkT };
+    if (Game.level && Game.level.isRide && others.length >= CONFIG.rideBubbles) return false;
+    const bubble = { text: text, t: secs };
     const r = this.rect(this.buckSpeaker(), bubble, Camera.x, Camera.y);
     const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
     if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
-    Player.bubble = bubble; Player.talkCd = CONFIG.buckTalkCd;
+    Player.bubble = bubble;
     return true;
   },
   update(dt) {
     if (Player.talkCd > 0) Player.talkCd -= dt;
     if (Player.bubble && (Player.bubble.t -= dt) <= 0) Player.bubble = null;
+    Quotes.update(dt);
   },
   // a lawyer's throw may come with a line: once per lawyerTalkCd per lawyer
   maybe(e) {
@@ -101,6 +105,33 @@ const Talk = {
       const r = Talk.rect({ x: l.x, y: l.y - 4 - i * 14, w: 12 }, l.bubble, camX, camY);
       drawSpeechBubble(l.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     });
+  },
+};
+
+// Buck's quote packs (src/quotes/<pack>.txt, embedded by the build as QUOTE_PACKS): a level names its
+// pack in its header ("quotes: ride"). Sections: start (once after the level's intro), kill (after
+// any kill) and kill:<enemy type> (instead of kill for that type). Without a pack Buck stays quiet.
+const Quotes = {
+  startT: -1,
+  pack() { const L = Game.level; return L && L.quotes && typeof QUOTE_PACKS !== "undefined" ? QUOTE_PACKS[L.quotes] || null : null; },
+  lines(section) { const p = this.pack(); return p && p[section] && p[section].length ? p[section] : null; },
+  // after Buck finishes off an enemy (the limo has its own finale line)
+  onKill(type) {
+    if (type === "limo" || (Player.talkCd || 0) > 0) return false;
+    const pool = this.lines("kill:" + type) || this.lines("kill");
+    if (!pool) return false;
+    if (!Talk.buckSay(Talk.line(pool), CONFIG.buckTalkT)) return false;
+    Player.talkCd = CONFIG.buckTalkCd;
+    return true;
+  },
+  // when a level's intro hands over to play (not on respawn): a start line 0.6 s later
+  onStart() { this.startT = this.lines("start") ? 0.6 : -1; },
+  update(dt) {
+    if (this.startT < 0) return;
+    if (Player.dead || (Game.state !== STATE.PLAY && Game.state !== STATE.BOSS)) { this.startT = -1; return; }
+    if ((this.startT -= dt) > 0) return;
+    this.startT = -1;
+    if (Talk.buckSay(Talk.line(this.lines("start")), CONFIG.buckTalkT)) Player.talkCd = CONFIG.buckTalkCd;
   },
 };
 
@@ -318,6 +349,7 @@ function damageEnemy(e, dmg, dir) {
     Game.addScore(e.T.points);
     Game.stats.kills++;
     Fans.react(e.x + e.w / 2, e.y + e.h / 2, "kill");
+    Quotes.onKill(e.type);                               // Buck's quote pack (src/quotes)
     Sound.play("explode");
   } else { gore.hit(e, cx - dir * e.w / 2, cy, dir); Sound.play("hit"); }
 }

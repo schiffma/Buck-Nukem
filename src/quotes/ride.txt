@@ -1,0 +1,19 @@
+; Buck's quotes on the mofa ride (reel 1): Swiss German, dry.
+; One quote per line, at most 20 characters, in capitals; Ä Ö Ü are fine.
+; Sections: [start] once after the intro, [kill] after any kill, [kill:<type>] for one enemy type
+; (lawyer, cray, punk, suv, tesla, ferrari, limo). Every section is optional; see README "Quote packs".
+[kill]
+SO, FERTIG.
+UFGRUMT!
+GÄLL, DAS HET GSESSE
+CHASCH VERGÄSSE.
+TSCHÜSS ZÄMME!
+FERTIG LUSCHTIG.
+DAS ISCH ERLEDIGT.
+ZACK, UND WÄG.
+HOPP, WIITER!
+NÜT FÜR UNGUET.
+SO GAHTS HALT.
+GHÖRT ALLES ZUM JOB
+BIS GLII, GELL.
+SCHO WIEDER EINE.

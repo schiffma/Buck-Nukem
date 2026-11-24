@@ -14,6 +14,7 @@ import base64
 import hashlib
 import io
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -338,6 +339,74 @@ def music_errors(meta, name="level"):
     return []
 
 
+# Buck's quote packs (src/quotes/<pack>.txt): [start], [kill], [kill:<enemy type>] sections,
+# one quote per line, at most QUOTE_MAX characters, drawable with the game font.
+ENEMY_TYPES = {"lawyer", "cray", "punk", "suv", "tesla", "ferrari", "limo"}   # ENEMY_TYPES in src/enemies.js and src/cars.js
+QUOTE_MAX = 20
+
+
+def font_chars():
+    """The characters the game font can draw (the keys of GLYPHS in src/font.js)."""
+    src = (SRC / "font.js").read_text(encoding="utf-8")
+    body = src[src.index("const GLYPHS = {"):src.index("};", src.index("const GLYPHS = {"))]
+    keys = set(re.findall(r'"(.)"\s*:', body)) | set(re.findall(r"(?<![\w\"])([A-Z0-9])\s*:", body))
+    return keys
+
+
+def parse_quote_pack(path, chars):
+    """-> ({section: [lines]}, [errors as "file:line: reason"])"""
+    pack, errors, section = {}, [], None
+    for n, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith(";"):
+            continue
+        where = f"{path.name}:{n}"
+        m = re.fullmatch(r"\[(\w+)(?::(\w+))?\]", line)
+        if m:
+            kind, enemy = m.group(1), m.group(2)
+            if kind == "start" and enemy is None:
+                section = "start"
+            elif kind == "kill" and (enemy is None or enemy in ENEMY_TYPES):
+                section = "kill" if enemy is None else "kill:" + enemy
+            else:
+                errors.append(f"{where}: unknown section {line} (known: [start], [kill], [kill:<{'|'.join(sorted(ENEMY_TYPES))}>])")
+                section = None
+                continue
+            pack.setdefault(section, [])
+            continue
+        if section is None:
+            errors.append(f"{where}: quote outside a section: {line!r}")
+            continue
+        q = line.upper()
+        if len(q) > QUOTE_MAX:
+            errors.append(f"{where}: quote longer than {QUOTE_MAX} characters: {line!r}")
+        bad = sorted({c for c in q if c not in chars})
+        if bad:
+            errors.append(f"{where}: the game font cannot draw {''.join(bad)!r} in {line!r}")
+        if q in pack[section]:
+            errors.append(f"{where}: duplicate quote in [{section}]: {line!r}")
+        pack[section].append(q)
+    return pack, errors
+
+
+def load_quote_packs():
+    chars, packs, errors = font_chars(), {}, []
+    for f in sorted((SRC / "quotes").glob("*.txt")):
+        pack, errs = parse_quote_pack(f, chars)
+        packs[f.stem] = pack
+        errors += errs
+    if errors:
+        fail("quote packs: " + "; ".join(errors))
+    return packs
+
+
+def quote_header_errors(meta, packs, name="level"):
+    q = meta.get("quotes")
+    if q is not None and q not in packs:
+        return [f"{name}: unknown quote pack {q!r} (src/quotes/{q}.txt is missing)"]
+    return []
+
+
 def ride_map_errors(meta, name="level"):
     """Errors for a ride map: no weapon pickups (the mofa has its gun) and no Rivella/Cervelat
     (its health pickup is the WD-40 can '{')."""
@@ -352,14 +421,14 @@ def ride_map_errors(meta, name="level"):
     return errors
 
 
-def load_levels():
+def load_levels(packs=None):
     files = sorted((SRC / "levels").glob("*.txt"))
     if not files:
         fail("no level files in src/levels")
     levels = []
     for f in files:
         meta = parse_level(f)
-        errors = ride_map_errors(meta, f.name) + music_errors(meta, f.name)
+        errors = ride_map_errors(meta, f.name) + music_errors(meta, f.name) + quote_header_errors(meta, packs or {}, f.name)
         if errors:
             fail("; ".join(errors))
         for w in prop_overlaps(meta, f.name):
@@ -426,7 +495,9 @@ def main():
     mofa_pal = sample_mofa(load("sachs-mofa.jpg"))
     print("Mofa palette: " + ", ".join(f"{k}={v}" for k, v in mofa_pal.items()))
 
-    levels = load_levels()
+    packs = load_quote_packs()
+    levels = load_levels(packs)
+    print(f"Quote packs: {', '.join(f'{k} ({sum(len(v) for v in p.values())})' for k, p in packs.items()) or '-'}")
     version = build_version()
     print(f"Version: {version}")
     script = "\n".join(f"// ---- {n} ----\n" + (SRC / n).read_text(encoding="utf-8") for n in JS_ORDER)
@@ -434,6 +505,7 @@ def main():
     html = (template
             .replace("{{ASSETS}}", json.dumps(assets, indent=0))
             .replace("{{LEVELS}}", json.dumps(levels, indent=0))
+            .replace("{{QUOTES}}", json.dumps(packs, indent=0))
             .replace("{{META}}", json.dumps({"heroPalette": hero_pal, "heroHeadRows": HEAD_ROWS, "heroFixed": FIXED_COLOURS,
                                              "mofaPalette": mofa_pal, "version": version}))
             .replace("{{SCRIPT}}", script))

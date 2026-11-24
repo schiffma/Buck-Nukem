@@ -314,6 +314,7 @@ class Level {
     this.isBoss = data.boss === "1";
     this.isRide = data.ride === "1";       // the mofa ride (src/ride.js)
     this.music = data.music || "valkyries"; // the level's track (header "music:"; SONGS in src/audio.js)
+    this.quotes = data.quotes || null;     // Buck's quote pack (header "quotes:"; src/quotes/<pack>.txt)
     this.rows = data.map.map(function (r) { return r.split(""); });
     this.h = this.rows.length;
     this.w = this.rows[0].length;

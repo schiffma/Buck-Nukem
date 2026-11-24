@@ -97,7 +97,7 @@ const Game = {
     if (L.isRide) Mofa.mount(Player);
     Player.hp = CONFIG.maxHp;
     Player.invuln = 0;
-    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null;
+    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null; Quotes.startT = -1;
     Camera.snap(Player, L);
     Sound.setTempo(L.isBoss ? 1.25 : 1);
     if (L.isBoss) Player.weapon = "cutter";             // the finale is fought with the disc cutter
@@ -233,6 +233,7 @@ const Game = {
         if (this.stateT > introTotal(this.level.isBoss) || (this.stateT > 0.3 && (Input.pressed("enter") || Input.pressed("jump")))) {
           this.setState(this.level.isBoss ? STATE.BOSS : STATE.PLAY);
           if (this.level.isBoss) this.startReveal();
+          Quotes.onStart();                              // Buck's start line, if the level's quote pack has one
         }
         break;
       case STATE.PLAY:

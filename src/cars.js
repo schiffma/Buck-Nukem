@@ -17,10 +17,6 @@ const LIMO_LADY_LINES = ["IS THAT A MOFA? EW.", "RUN HIM OVER, DEAR", "HOW VERY 
 const LIMO_SPEAKERS = [{ bx: 61, lines: PRESIDENT_LINES }, { bx: 37, lines: LIMO_LADY_LINES }, { bx: 107, lines: LIMO_LADY_LINES }];
 // The posh ladies crawling out of the limo's wreck (the finale), at most 20 characters each.
 const LIMO_FINALE_LINES = ["MY DRESS! IT'S DIOR!", "CALL MY HUSBAND!", "MY NAILS! MY NAILS!", "THIS IS AN OUTRAGE!", "WHO IS YOUR LAWYER?", "I'LL HAVE YOU FIRED!"];
-// Buck's dry Swiss German lines when he finishes off a car on the ride (at most 20 characters).
-const BUCK_LINES = ["SO, FERTIG.", "UFGRUMT!", "GÄLL, DAS HET GSESSE", "CHASCH VERGÄSSE.", "TSCHÜSS ZÄMME!", "FERTIG LUSCHTIG.",
-  "DAS ISCH ERLEDIGT.", "ZACK, UND WÄG.", "HOPP, WIITER!", "NÜT FÜR UNGUET.", "SO GAHTS HALT.", "GHÖRT ALLES ZUM JOB",
-  "BIS GLII, GELL.", "SCHO WIEDER EINE."];
 const POSH_LINES = ["DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!", "GET OFF MY ROAD!", "I PAY YOUR SALARY!",
   "DADDY'S CAR!", "MY LAWYER WILL CALL", "ZERO EMISSIONS, LOL", "0 TO 100 IN 2.9!", "PARKING IS FOR POOR",
   "TRUST FUND, BABY!", "ROSE O'CLOCK!", "MOVE IT, PEASANT!"];
@@ -163,7 +159,6 @@ function carType(kind) {
       }
       Cars.wreck(e);
       Cars.bailOut(e);
-      if (k !== "limo") Talk.buckKill();                   // Buck comments dryly (the limo has its own finale)
     },
   };
 });
