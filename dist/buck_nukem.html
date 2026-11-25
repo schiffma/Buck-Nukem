@@ -241,6 +241,22 @@ const QUOTE_PACKS = {
 "TUET MER N\u00d6D LEID.",
 "CHASCH D\u00c4NK, GELL?",
 "ISCH HALT SO."
+],
+"complete": [
+"GWUNNE, WIE IMMER.",
+"SO GOHT GWINNE!",
+"DE SIEG GH\u00d6RT MIR.",
+"SCHO WIEDER GWUNNE.",
+"ZIIT F\u00dcR EN MOST.",
+"K\u00d6NIG BLIBT K\u00d6NIG.",
+"LOCKER GWUNNE, HOI.",
+"EIFACH GUET, G\u00c4LL?",
+"MOSTINDIE ISCH STOLZ",
+"S N\u00d6CHSTE BITTE!",
+"APPLAUS, SCH\u00c4TZELI!",
+"DAS ISCH KLASSE GSII",
+"SIEGER RAUCHED, G\u00c4LL",
+"GOPF, WAS EN SIEG."
 ]
 },
 "thurgau": {
@@ -302,10 +318,26 @@ const QUOTE_PACKS = {
 "STIL H\u00c4ND MIR, G\u00c4LL.",
 "SCH\u00c4TZELI, LUEG MOL!",
 "GOHT DOCH, G\u00c4LL!"
+],
+"complete": [
+"GWUNNE, WIE IMMER.",
+"SO GOHT GWINNE!",
+"DE SIEG GH\u00d6RT MIR.",
+"SCHO WIEDER GWUNNE.",
+"ZIIT F\u00dcR EN MOST.",
+"K\u00d6NIG BLIBT K\u00d6NIG.",
+"LOCKER GWUNNE, HOI.",
+"EIFACH GUET, G\u00c4LL?",
+"MOSTINDIE ISCH STOLZ",
+"S N\u00d6CHSTE BITTE!",
+"APPLAUS, SCH\u00c4TZELI!",
+"DAS ISCH KLASSE GSII",
+"SIEGER RAUCHED, G\u00c4LL",
+"GOPF, WAS EN SIEG."
 ]
 }
 };
-const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}, "mofaPalette": {"frame": "#991115", "chrome": "#edf1ee", "seat": "#2e363e", "engine": "#a7a8a2"}, "version": "v1.0.9"};
+const ASSETS_META = {"heroPalette": {"hair_light": [172, 151, 157], "hair_dark": [124, 108, 107], "skin_light": [214, 146, 132], "skin_shadow": [154, 103, 99], "lens": [82, 77, 93], "moustache": [206, 187, 186], "jacket": [45, 54, 74], "shirt": [192, 200, 217], "stubble": [139, 105, 103]}, "heroHeadRows": 9, "heroFixed": {"g": [176, 158, 112], "L": [200, 216, 255], "k": [64, 24, 24], "c": [122, 74, 36], "C": [90, 50, 26], "o": [255, 96, 24]}, "mofaPalette": {"frame": "#991115", "chrome": "#edf1ee", "seat": "#2e363e", "engine": "#a7a8a2"}, "version": "v1.0.10"};
 </script>
 <script>
 (function () {
@@ -4551,6 +4583,8 @@ const Quotes = {
   },
   // Buck's reply in a closing scene (the ride's limo finale): a [finale] line, or nothing
   finaleLine() { const pool = this.lines("finale"); return pool ? Talk.line(pool) : null; },
+  // Buck's winning line on the level-complete screen: a [complete] line, or nothing
+  completeLine() { const pool = this.lines("complete"); return pool ? Talk.line(pool) : null; },
   // when a level's intro hands over to play (not on respawn): a start line 0.6 s later
   onStart() { this.startT = this.lines("start") ? 0.6 : -1; },
   update(dt) {
@@ -6153,6 +6187,28 @@ function drawFramedPortrait(x, y) {
   ctx.drawImage(IMG.portrait, x, y);
 }
 
+// Level-complete screen layout: the bonus table in a right-hand column, Buck's framed portrait at the
+// lower left with a cigarette between his lips (portrait pixels), his winning line above it.
+const LC_LAYOUT = {
+  titleY: 30, nameY: 56,
+  labelX: 140, valueX: 306, rowY: 80, rowH: 16, colX: 224, scoreY: 176, promptY: 210,
+  px: 14, py: 120, mouth: { x: 38, y: 47 },     // the filter end: on the line between the lips, right under the moustache
+  bubbleX: 8, bubbleY: 98, headX: 47,
+};
+const LC_CIG = { len: 10, drop: 4 };               // 10 px long, almost level (1 px down per 4 px), across the left moustache droop
+function lcCigTip(mx, my) { return { x: mx - LC_CIG.len, y: my + Math.floor((LC_CIG.len - 1) / LC_CIG.drop) }; }
+const LC_EMBER_DRAG = "#ffd060";
+// how a smoke particle looks: the wisp is thin, cool blue-grey and faint; exhaled smoke is whiter and spreads
+function lcSmokeStyle(s) {
+  const k = Math.max(0, s.life / s.max), age = 1 - k;
+  if (s.kind === "wisp") return { size: age < 0.33 ? 1 : 2, alpha: 0.45 * k, color: "#c8ccd8" };
+  return { size: 1 + Math.round(age * 4), alpha: 0.7 * k, color: "#e4e2de" };
+}
+function lcBubbleRect(text) {
+  const L = LC_LAYOUT, w = textWidth(text) + 6;
+  return { x: L.bubbleX, y: L.bubbleY, w: w, h: 11, tx: L.headX };
+}
+
 function blink(rate) { return Math.floor(Game.time * (rate || 2)) % 2 === 0; }
 
 // Big distressed, outlined poster lettering; cached per text/scale/colour.
@@ -6324,19 +6380,91 @@ const Screens = {
   levelComplete() {
     ctx.drawImage(IMG.bg_complete, 0, 0);
     fillRect(0, 0, W, H, "rgba(20,4,0,0.35)");
-    const t = Game.tally;
-    drawText("LEVEL COMPLETE!", W / 2, 30, "#ffe860", { scale: 2, align: "center", shadow: "#000" });
-    drawText(Game.level.name, W / 2, 56, "#ffffff", { align: "center" });
+    const t = Game.tally, L = LC_LAYOUT;
+    drawText("LEVEL COMPLETE!", W / 2, L.titleY, "#ffe860", { scale: 2, align: "center", shadow: "#000" });
+    drawText(Game.level.name, W / 2, L.nameY, "#ffffff", { align: "center" });
     const rows = [
       ["LEVEL BONUS", t.level], ["HEALTH BONUS", t.health], ["TIME BONUS", t.time],
       ["ENEMIES", Game.stats.kills], ["TOTAL BONUS", t.shown],
     ];
     rows.forEach(function (r, i) {
-      drawText(r[0], 60, 86 + i * 16, i === 4 ? "#ffe860" : "#c0c8d8");
-      drawText(String(r[1]), 260, 86 + i * 16, i === 4 ? "#ffe860" : "#ffffff", { align: "right" });
+      drawText(r[0], L.labelX, L.rowY + i * L.rowH, i === 4 ? "#ffe860" : "#c0c8d8", { shadow: "#000" });
+      drawText(String(r[1]), L.valueX, L.rowY + i * L.rowH, i === 4 ? "#ffe860" : "#ffffff", { align: "right", shadow: "#000" });
     });
-    drawText("SCORE " + Game.score, W / 2, 180, "#ffffff", { align: "center" });
-    if (t.done && blink(2)) drawText(promptText("continue"), W / 2, 210, "#ffffff", { align: "center" });
+    drawText("SCORE " + Game.score, L.colX, L.scoreY, "#ffffff", { align: "center", shadow: "#000" });
+    if (t.done && blink(2)) drawText(promptText("continue"), L.colX, L.promptY, "#ffffff", { align: "center", shadow: "#000" });
+    // Buck, smoking, and his winning line once the count is done
+    drawFramedPortrait(L.px, L.py);
+    this.drawCigarette(L.px + L.mouth.x, L.py + L.mouth.y);
+    this.smoke.forEach(function (s) {
+      const st = lcSmokeStyle(s), size = st.size;
+      ctx.globalAlpha = st.alpha;
+      const x = Math.round(s.x - size / 2), y = Math.round(s.y - size / 2);
+      if (size < 3) fillRect(x, y, size, size, st.color);
+      else { fillRect(x + 1, y, size - 2, size, st.color); fillRect(x, y + 1, 1, size - 2, st.color); fillRect(x + size - 1, y + 1, 1, size - 2, st.color); }   // a round-ish puff
+    });
+    ctx.globalAlpha = 1;
+    if (t.done && t.quote) {
+      const b = lcBubbleRect(t.quote);
+      drawSpeechBubble(t.quote, b.x, b.y, b.w, b.h, b.tx);
+    }
+  },
+
+  // the cigarette in Buck's mouth (portrait pixels): slanting down to the left, ember at the tip
+  drawCigarette(mx, my) {
+    for (let i = 0; i < LC_CIG.len; i++) {
+      const x = mx - i, y = my + Math.floor(i / LC_CIG.drop);
+      const filter = i < 2;
+      fillRect(x, y, 1, 1, filter ? "#d89850" : "#f6f2e6");
+      fillRect(x, y + 1, 1, 1, filter ? "#a86c30" : "#c8c2b2");
+    }
+    const tip = lcCigTip(mx, my);
+    fillRect(tip.x, tip.y, 1, 2, "#605850");                                   // ash
+    if (this.drag > 0) {                                                        // a drag: the ember flares
+      ctx.globalAlpha = 0.5; fillRect(tip.x - 2, tip.y - 1, 3, 4, "#ffa040"); ctx.globalAlpha = 1;
+      fillRect(tip.x - 1, tip.y, 1, 2, LC_EMBER_DRAG);
+    } else fillRect(tip.x - 1, tip.y, 1, 2, Math.floor(Game.time * 6) % 2 ? "#ff7020" : "#ffb040");   // ember
+  },
+
+  // Cigarette smoke (screen coordinates; the tally screen only), modelled on a real cigarette:
+  // a thin side-stream wisp that sways more the higher it climbs, and every 4.5-6 s a drag (the ember
+  // flares) followed by an exhaled cloud from the mouth that drifts away from his face, rises and spreads.
+  smoke: [], clock: 0, wispT: 0, nextDrag: 0, drag: 0, exhaleT: -1,
+  resetSmoke() { this.smoke = []; this.clock = 0; this.wispT = 0; this.nextDrag = 1.5; this.drag = 0; this.exhaleT = -1; },
+  updateSmoke(dt) {
+    const L = LC_LAYOUT, tip = lcCigTip(L.px + L.mouth.x, L.py + L.mouth.y);
+    this.clock += dt;
+    if (this.drag > 0) {                                 // drawing on the cigarette: no side-stream, then exhale
+      if ((this.drag -= dt) <= 0) { this.drag = 0; this.exhaleT = 0.4; }
+    } else {
+      this.wispT -= dt;
+      while (this.wispT <= 0) {
+        this.wispT += 0.06;
+        this.smoke.push({ kind: "wisp", x0: tip.x - 1, y0: tip.y - 1, x: tip.x - 1, y: tip.y - 1, rise: 0, vy: rnd(7, 10),
+          phase: this.clock * 2.4, life: 2.2, max: 2.2 });
+      }
+      if ((this.nextDrag -= dt) <= 0) { this.drag = 0.5; this.nextDrag = rnd(4.5, 6); }
+    }
+    if (this.exhaleT >= 0 && (this.exhaleT -= dt) < 0) {   // the exhale leaves the left half of the mouth line
+      const n = 14 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < n; i++) {
+        const life = rnd(1.6, 2.2);
+        this.smoke.push({ kind: "exhale", x: L.px + rnd(31, 36), y: L.py + 48 + rnd(0, 1), vx: rnd(-16, -10), vy: rnd(0, 4), life: life, max: life });
+      }
+    }
+    this.smoke.forEach(function (s) {
+      s.life -= dt;
+      if (s.kind === "wisp") {                           // one wavy ribbon: the sway grows with the height
+        s.rise += s.vy * dt;
+        s.y = s.y0 - s.rise;
+        s.x = s.x0 - s.rise * 0.12 + Math.sin(s.phase - s.rise * 0.28) * Math.min(3, s.rise * 0.15);
+      } else {                                           // exhaled smoke slows down and rises as it cools
+        s.vx *= Math.max(0, 1 - 1.2 * dt); s.vy -= 7 * dt;
+        s.x += s.vx * dt; s.y += s.vy * dt;
+      }
+    });
+    const x0 = L.px + 2, x1 = L.px + 93, y0 = L.py + 2, y1 = L.py + 93;   // inside the portrait only
+    this.smoke = this.smoke.filter(function (s) { return s.life > 0 && s.x > x0 && s.x < x1 && s.y > y0 && s.y < y1; });
   },
 
   pause() {
@@ -6557,7 +6685,9 @@ const Game = {
     const time = Math.max(0, 300 - Math.floor(this.levelTime)) * 10;
     const t = { level: CONFIG.levelBonus, health: Player.hp * 100, time: time };
     t.total = t.level + t.health + t.time; t.shown = 0; t.done = false;
+    t.quote = Quotes.completeLine();                     // Buck's winning line ([complete] in the level's quote pack)
     this.tally = t;
+    Screens.resetSmoke();
     Sound.play("oneup");
     this.setState(STATE.LEVEL_COMPLETE);
   },
@@ -6628,6 +6758,7 @@ const Game = {
         break;
       case STATE.LEVEL_COMPLETE: {
         const t = this.tally;
+        Screens.updateSmoke(dt);                         // Buck's cigarette on the tally screen
         if (!t.done) {
           t.shown = Math.min(t.total, t.shown + Math.ceil(t.total * dt / 1.5));
           if (Input.pressed("enter")) t.shown = t.total;
@@ -8639,6 +8770,83 @@ function runTests() {
     const said = Player.bubble ? Player.bubble.text : null;
     Player.bubble = null;
     check("thurgau quotes: a lawyer kill on foot says a line from the lawyer set", said && (T["kill:lawyer"] || []).indexOf(said) >= 0, String(said));
+  });
+
+  safe("level complete: buck smokes", function () {
+    const L = LC_LAYOUT, C = QUOTE_PACKS.thurgau.complete || [];
+    const texts = function () { TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false; return TEXT_LOG.items; };
+    const px = function (x, y) { const d = ctx.getImageData(x, y, 1, 1).data; return [d[0], d[1], d[2]]; };
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
+    Game.completeLevel();
+    const t = Game.tally;
+    check("level complete: the winning line comes from the pack's [complete] lines", C.length >= 12 && C.indexOf(t.quote) >= 0, String(t.quote));
+    // during the count: the portrait smokes, no bubble
+    for (let i = 0; i < 30; i++) Game.update(DT);
+    const during = texts();
+    const frame = px(L.px - 2, L.py + 40), mouth = { x: L.px + L.mouth.x, y: L.py + L.mouth.y }, tip = lcCigTip(mouth.x, mouth.y);
+    let ember = false;
+    for (let k = 0; k < 2; k++) { Game.time = k / 6 + 0.01; Game.render(); const e = px(tip.x - 1, tip.y); if (e[0] > 230 && e[1] > 90 && e[1] < 200 && e[2] < 90) ember = true; }
+    check("level complete: Buck's framed portrait with a cigarette and a glowing ember", !t.done && frame.join() === "232,216,168" && ember,
+      "frame " + frame + ", ember " + px(tip.x - 1, tip.y) + ", paper " + px(mouth.x - 4, mouth.y + 1));
+    check("level complete: no bubble while the bonus counts", during.indexOf(t.quote) < 0);
+    // the cigarette sits in the mouth: filter on the lips under the moustache, the tip left of the moustache's left droop
+    Game.render();
+    const filt = px(mouth.x, mouth.y), lips = L.mouth.x >= 31 && L.mouth.x <= 44 && L.mouth.y >= 46 && L.mouth.y <= 48;
+    check("level complete: the cigarette's filter is on the lip line and its tip left of the moustache",
+      lips && filt.join() === "216,152,80" && tip.x - L.px < 30, "filter at " + L.mouth.x + "/" + L.mouth.y + " " + filt + ", tip x " + (tip.x - L.px));
+    // smoke rises from the ember over about 2 s
+    let puffs = 0, above = 0;
+    for (let i = 0; i < 120; i++) { Game.update(DT); puffs = Math.max(puffs, Screens.smoke.length); Screens.smoke.forEach(function (s) { if (s.y < tip.y - 8) above++; }); }
+    const area = function () { Game.render(); return Array.from(ctx.getImageData(tip.x - 12, tip.y - 30, 30, 30).data).join(); };
+    const withSmoke = area(), keepSmoke = Screens.smoke; Screens.smoke = [];
+    const noSmoke = area(); Screens.smoke = keepSmoke;
+    check("level complete: smoke puffs rise from the cigarette and are drawn above it", puffs >= 3 && above > 0 && withSmoke !== noSmoke,
+      puffs + " puffs, " + above + " above, drawn " + (withSmoke !== noSmoke) + ", now " + Screens.smoke.length + " at " + Screens.smoke.slice(0, 3).map(function (s) { return Math.round(s.x) + "/" + Math.round(s.y); }).join(" "));
+    // a real cigarette: a faint continuous wisp, drags with a flaring ember, exhales from the mouth; all inside the portrait
+    Screens.resetSmoke();
+    let wispFrames = 0, faint = true, dragSeen = false, flare = false, exhale = null, outside = 0;
+    for (let i = 0; i < 7 * 60; i++) {
+      Game.update(DT);
+      const S = Screens.smoke;
+      if (i > 10 && i < 180 && S.some(function (s) { return s.kind === "wisp"; })) wispFrames++;
+      S.forEach(function (s) {
+        if (lcSmokeStyle(s).alpha >= 1) faint = false;
+        if (s.x < L.px || s.x > L.px + 96 || s.y < L.py || s.y > L.py + 96) outside++;
+        if (s.kind === "exhale" && !exhale && dragSeen) exhale = { y: s.y - L.py, vx: s.vx };
+      });
+      if (Screens.drag > 0 && !dragSeen) { dragSeen = true; Game.render(); flare = px(tip.x - 1, tip.y).join() === "255,208,96"; }
+    }
+    check("level complete: a faint wisp rises from the ember all the time", wispFrames === 169 && faint, wispFrames + " of 169 frames, faint " + faint);
+    check("level complete: Buck takes a drag (the ember flares) and exhales smoke from his mouth line, drifting left",
+      dragSeen && flare && exhale && exhale.y >= 47 && exhale.y <= 50 && exhale.vx < 0, "drag " + dragSeen + ", flare " + flare + ", exhale " + JSON.stringify(exhale));
+    check("level complete: no smoke outside the portrait", outside === 0, outside + " particles outside");
+    // after the count: the bubble with the line, above the portrait
+    const after = texts();
+    check("level complete: after the count Buck says his line", t.done && after.indexOf(t.quote) >= 0, after.join("|"));
+    // another level: another line (no repeats until the deck is used up)
+    const first = t.quote;
+    Game.setState(STATE.PLAY); Game.completeLevel();
+    check("level complete: the next screen picks another line", Game.tally.quote && Game.tally.quote !== first, first + " / " + Game.tally.quote);
+    // no [complete] lines: the portrait, no bubble
+    Game.setState(STATE.PLAY); Game.level.quotes = null; Game.completeLevel();
+    Game.tally.shown = Game.tally.total; Game.tally.done = true;
+    const none = texts();
+    check("level complete: no lines in the pack, no bubble", Game.tally.quote === null && none.every(function (s) { return C.indexOf(s) < 0; }));
+    Game.level.quotes = "thurgau";
+    // layout: everything inside the screen, nothing overlapping (keyboard and touch prompts, longest line)
+    const longest = C.reduce(function (a, b) { return textWidth(b) > textWidth(a) ? b : a; }, "");
+    const box = function (s, x, y, align, scale) { const w = textWidth(s, scale || 1); return { x: align === "center" ? x - w / 2 : align === "right" ? x - w : x, y: y, w: w, h: 7 * (scale || 1) }; };
+    const b = lcBubbleRect(longest);
+    const rects = [["title", box("LEVEL COMPLETE!", W / 2, L.titleY, "center", 2)], ["name", box("KREBSBACH - CREEK AND SPORTS FIELDS", W / 2, L.nameY, "center")],
+      ["score", box("SCORE 9999999", L.colX, L.scoreY, "center")], ["prompt", box(PROMPTS.continue[0], L.colX, L.promptY, "center")],
+      ["touch prompt", box(PROMPTS.continue[1], L.colX, L.promptY, "center")],
+      ["portrait", { x: L.px - 3, y: L.py - 3, w: 102, h: 102 }], ["bubble", { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 4 }]];
+    for (let i = 0; i < 5; i++) rects.push(["row " + i, { x: L.labelX, y: L.rowY + i * L.rowH, w: L.valueX - L.labelX, h: 7 }]);
+    const out = rects.filter(function (r) { return r[1].x < 0 || r[1].y < 0 || r[1].x + r[1].w > W || r[1].y + r[1].h > H; }).map(function (r) { return r[0]; });
+    const clash = [];
+    rects.forEach(function (a, i) { rects.slice(i + 1).forEach(function (c) { if (a[0] !== "touch prompt" && c[0] !== "touch prompt" || a[0].indexOf("prompt") < 0 || c[0].indexOf("prompt") < 0) { if (rectsTouch(a[1], c[1], 0) && !(a[0].indexOf("prompt") >= 0 && c[0].indexOf("prompt") >= 0)) clash.push(a[0] + "/" + c[0]); } }); });
+    check("level complete: title, name, table, score, prompt, portrait and bubble fit and don't overlap", !out.length && !clash.length, "out " + out + " clash " + clash);
+    Game.setState(STATE.TITLE);
   });
 
   safe("buck's lines", function () {
@@ -11429,7 +11637,7 @@ function runShot(spec) {
       if ((what === "fire" || what === "kneelfire") && i % 10 === 0) Player.fire();
       Game.update(DT); Input.endStep();
     }
-    if (what === "complete") { Game.completeLevel(); for (let i = 0; i < 200; i++) Game.update(DT); }
+    if (what === "complete") { Game.completeLevel(); for (let i = 0; i < (+p[5] || 200); i++) Game.update(DT); }
     if (what === "pause") Game.setState(STATE.PAUSE);
   }
   Game.render();
