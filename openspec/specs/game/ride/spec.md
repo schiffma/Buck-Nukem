@@ -210,7 +210,7 @@ On the ride, the health items SHALL be WD-40 spray cans instead of Rivella and C
 - **THEN** the ride map holds WD-40 cans but no Rivella or Cervelat, and the build fails if a ride map contains them
 
 ### Requirement: Buck's one-liners on the ride
-When a car is destroyed on the ride, Buck SHALL say a short, down-to-earth Swiss German line in a speech bubble above him, at most one every 3 seconds. The lines SHALL be at most 20 characters, drawable with the game font (which includes Ä, Ö and Ü), at least 12 different, and dry rather than explicit.
+When a car is destroyed on the ride, Buck SHALL say a short, down-to-earth Swiss German line in a speech bubble above him, at most one every 3 seconds. The lines SHALL come from the ride's quote pack (its `kill` section), be at most 20 characters, drawable with the game font (which includes Ä, Ö and Ü), at least 12 different, and dry rather than explicit.
 
 #### Scenario: After a kill
 - **WHEN** Buck destroys a car and has not spoken in the last 3 seconds
@@ -223,6 +223,10 @@ When a car is destroyed on the ride, Buck SHALL say a short, down-to-earth Swiss
 #### Scenario: Umlauts
 - **WHEN** a line with Ä, Ö or Ü is shown
 - **THEN** the letters are drawn with their dots, in the game's pixel font
+
+#### Scenario: From the ride's pack
+- **WHEN** the ride's quote pack is edited (a line added to its `kill` section) and the game is rebuilt
+- **THEN** the new line can appear after a car kill, without any code change
 
 ### Requirement: Limo finale
 When the president's limo is destroyed, play SHALL pause for a short scene of about 5 seconds: the mofa rolls to a stop, the president runs off, the two posh ladies crawl out of the wreck one after the other and each calls out an arrogant line, then Buck answers "YOU HAVE NO CLUE" and lights a cigarette. Fire or Jump SHALL skip the scene. Afterwards control SHALL return with the gate open, and Buck SHALL keep the cigarette, puffing smoke, until the ride ends.

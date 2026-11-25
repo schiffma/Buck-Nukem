@@ -97,7 +97,7 @@ const Game = {
     if (L.isRide) Mofa.mount(Player);
     Player.hp = CONFIG.maxHp;
     Player.invuln = 0;
-    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null; Quotes.startT = -1;
+    Player.bubble = null; Player.talkCd = 0; Player.cigarette = false; Player.lighterT = 0; Mofa.finale = null; Mofa.ladies = []; Quotes.startT = -1;
     Camera.snap(Player, L);
     Sound.setTempo(L.isBoss ? 1.25 : 1);
     if (L.isBoss) Player.weapon = "cutter";             // the finale is fought with the disc cutter

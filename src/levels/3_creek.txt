@@ -1,4 +1,5 @@
 name: KREBSBACH - CREEK AND SPORTS FIELDS
+quotes: thurgau
 theme: creek
 bg: bg_creek
 ---

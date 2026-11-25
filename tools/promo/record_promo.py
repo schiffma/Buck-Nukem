@@ -5,6 +5,8 @@
     python tools/promo/record_promo.py --dry all       # no video: just play and print the run report
     python tools/promo/record_promo.py --dry 1         # dry run of one level (0-based index, diagnostics)
     python tools/promo/record_promo.py --seed 7        # another (reproducible) run
+    python tools/promo/record_promo.py --ride          # the mofa ride only -> recordings/buck_nukem_ride_promo_<date>.mp4
+    python tools/promo/record_promo.py --dry ride      # the ride without video: run report and limits
 
 How it works: Playwright runs the unmodified built game (dist/buck_nukem.html) in Chrome or
 Edge with a thin bridge (tools/promo/bridge.js). The Python agent (tools/promo/agent/) reads a
@@ -29,10 +31,12 @@ ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 
 from agent.metrics import LIMITS, failures, format_table, run_metrics   # noqa: E402
+from agent.ride import RideAgent, dry_run_ride                           # noqa: E402
 from agent.runner import Agent, dry_run                                  # noqa: E402
-from agent.session import Session                                        # noqa: E402
+from agent.session import PROMO_FIRST_REEL, RIDE_REEL, Session           # noqa: E402
 
 LEVEL_LIMIT_S, TOTAL_LIMIT_S, STUCK_LIMIT = 150, 450, 2
+RIDE_LIMIT_S, RIDE_DEATHS = 180, 1
 
 
 def fail(msg):
@@ -61,6 +65,9 @@ def print_report(rep, metrics, names):
             lv["time"], "COMPLETED" if lv["completed"] else "not completed"))
         if skipped:
             print("      skipped (not worth the detour): " + ", ".join(skipped))
+        if lv.get("cars"):
+            print("      cars: " + ", ".join("%s %d" % kv for kv in sorted(lv["cars"].items())) +
+                  ("   hops: " + ", ".join("%s %d" % kv for kv in sorted(rep.get("hops", {}).items())) if rep.get("hops") else ""))
         if lv.get("alive"):
             print("      alive at the exit: " + " ".join(lv["alive"]))
     print("  victory: %s  game over: %s  deaths: %d  stuck events: %d" % (
@@ -68,8 +75,28 @@ def print_report(rep, metrics, names):
     print(format_table(metrics, names))
 
 
+def check_ride(rep, metrics):
+    """Spec limits of a ride run ("Ride promo video": completed within 180 s, at most 1 death, no
+    more stuck events than allowed, the ride metrics within their limits)."""
+    out = []
+    lv = rep["levels"][0] if rep.get("levels") else None
+    if not lv or not lv["completed"]:
+        out.append("ride not completed")
+    elif lv["time"] > RIDE_LIMIT_S:
+        out.append("ride took %.0f s > %d s" % (lv["time"], RIDE_LIMIT_S))
+    if rep.get("deaths", 0) > RIDE_DEATHS:
+        out.append("%d deaths > %d" % (rep["deaths"], RIDE_DEATHS))
+    if rep.get("stuck", 0) > STUCK_LIMIT:
+        out.append("%d stuck events > %d" % (rep["stuck"], STUCK_LIMIT))
+    if "total" in metrics:
+        out += failures(metrics["total"])
+    return out
+
+
 def check(rep, metrics, full):
     """Spec limits missed by a run (empty list = pass)."""
+    if rep.get("ride"):
+        return check_ride(rep, metrics)
     out = []
     if not rep.get("victory"):
         out.append("no victory")
@@ -130,8 +157,9 @@ def record(args):
     sink = FrameSink(proc)
     audio = {}
     t0 = time.time()
-    with Session(browser=args.browser, seed=args.seed, on_frame=sink, on_audio=lambda d: audio.setdefault("wav", d)) as s:
-        agent = Agent(s, seed=args.seed)
+    with Session(browser=args.browser, seed=args.seed, on_frame=sink, on_audio=lambda d: audio.setdefault("wav", d),
+                 first_reel=RIDE_REEL if args.ride else PROMO_FIRST_REEL) as s:
+        agent = RideAgent(s, seed=args.seed) if args.ride else Agent(s, seed=args.seed)
         s.start_recording(args.fps)
         last = [time.time()]
 
@@ -142,7 +170,7 @@ def record(args):
             if f % 300 == 0:
                 s.flush()
 
-        rep = agent.run(max_minutes=args.timeout, outro_s=5.0, on_progress=progress)
+        rep = agent.run(max_minutes=args.timeout, outro_s=2.5 if args.ride else 5.0, on_progress=progress)
         res = s.finish_recording(not args.no_audio)
         errors = list(s.errors)
     proc.stdin.close()
@@ -155,7 +183,8 @@ def record(args):
         print("PAGE ERRORS: " + "; ".join(errors[:5]))
     frames, dur = res["frames"], res["duration"]
     print(f"Captured {sink.count}/{frames} frames ({dur:.1f} s of video) in {time.time() - t0:.0f} s")
-    out = Path(args.out) if args.out else ROOT / "recordings" / f"buck_nukem_promo_{datetime.date.today().isoformat()}.mp4"
+    stem = "buck_nukem_ride_promo" if args.ride else "buck_nukem_promo"
+    out = Path(args.out) if args.out else ROOT / "recordings" / f"{stem}_{datetime.date.today().isoformat()}.mp4"
     out.parent.mkdir(parents=True, exist_ok=True)
     limit = int(args.max_mb * 1024 * 1024)
     audio_k = 64 if wav.exists() else 0
@@ -184,11 +213,17 @@ def main():
     ap.add_argument("--browser", default="chrome", choices=["chrome", "edge"])
     ap.add_argument("--seed", type=int, default=1977, help="random seed (game and agent): same seed, same run")
     ap.add_argument("--no-audio", action="store_true")
-    ap.add_argument("--dry", default=None, help="no video: 'all' or a level index (0 = clay courts ... 3 = boss arena; the mofa ride is skipped)")
+    ap.add_argument("--ride", action="store_true", help="record the mofa ride (reel 1) only: title, ride, limo finale, tally")
+    ap.add_argument("--dry", default=None, help="no video: 'all', 'ride' (the mofa ride) or a level index of the full run "
+                                                "(0 = clay courts ... 3 = boss arena)")
     ap.add_argument("--timeout", type=float, default=15, help="game minutes before giving up")
     args = ap.parse_args()
 
-    if args.dry is not None:
+    if args.dry == "ride":
+        out = dry_run_ride(browser=args.browser, seed=args.seed, max_minutes=min(args.timeout, 6), log=lambda *a: None)
+        rep, metrics, errors = out["report"], out["metrics"], out["errors"]
+        print_report(rep, metrics, out["names"])
+    elif args.dry is not None:
         out = dry_run(browser=args.browser, seed=args.seed, which=args.dry, max_minutes=args.timeout,
                       log=lambda *a: None)
         rep, metrics, errors = out["report"], out["metrics"], out["errors"]
@@ -199,8 +234,12 @@ def main():
     if errors:
         missed.append("page errors")
     print("Spec limits: " + ("all met" if not missed else "MISSED: " + "; ".join(missed)))
-    print("  (limits: level <= %d s, run <= %d s, stuck <= %d, %s)" % (
-        LEVEL_LIMIT_S, TOTAL_LIMIT_S, STUCK_LIMIT, ", ".join("%s <= %s" % kv for kv in LIMITS.items())))
+    if rep.get("ride"):
+        print("  (limits: ride <= %d s, deaths <= %d, stuck <= %d, throttle flips = reversals, hops = jumps, volleys = shots: %s)" % (
+            RIDE_LIMIT_S, RIDE_DEATHS, STUCK_LIMIT, ", ".join("%s <= %s" % kv for kv in LIMITS.items())))
+    else:
+        print("  (limits: level <= %d s, run <= %d s, stuck <= %d, %s)" % (
+            LEVEL_LIMIT_S, TOTAL_LIMIT_S, STUCK_LIMIT, ", ".join("%s <= %s" % kv for kv in LIMITS.items())))
     return 0 if not missed else 1
 
 

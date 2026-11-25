@@ -1,6 +1,6 @@
 ---
 name: buck-promo-video
-description: Create a promo video of Buck Nukem (dist/buck_nukem.html) auto-played by an AI - human-like, tactical, playing for the best score (items and kills worth their detour) - recorded to an MP4 no bigger than 16 MB. Use when the user asks for a promo video, gameplay video, trailer, recording or "autoplay" video of Buck Nukem.
+description: Create a promo video of Buck Nukem (dist/buck_nukem.html) auto-played by an AI - human-like, tactical, playing for the best score (items and kills worth their detour) - recorded to an MP4 no bigger than 16 MB; the whole game, or the mofa ride (reel 1) alone. Use when the user asks for a promo video, gameplay video, trailer, recording or "autoplay" video of Buck Nukem or of its road/mofa level.
 ---
 
 # Buck Nukem promo video
@@ -27,7 +27,18 @@ Produce an MP4 promo video of `dist/buck_nukem.html` played automatically by an 
   - key cards, the Mega Blaster, extra lives and the boss arena's Rivellas are always collected
   - skipped items are listed in the report as "not worth the detour"
 - **Kills**: lawyers and gardener-punks are tour stops and are hunted down; a stop follows its enemy as it walks. Mutant crayfish on the ground are only hit by a kneeling shot (a standing shot flies over them): the agent kneels and shoots those ahead on its route, and shoots leaping ones standing. It doesn't turn back or detour for crayfish.
-- **Complete run**: from the title poster to the victory screen, with the game's own music and sound effects.
+- **Complete run**: from the title poster to the victory screen, with the game's own music and sound effects. The full run starts at reel 2 (the clay courts); the mofa ride has its own promo (below).
+
+## The ride promo (reel 1, the mofa ride)
+
+`--ride` records only "THE ROAD TO WOLLERAU": the title poster, the REEL 1 card, the whole ride with the limo finale and the ride through the gate, ending on the level's tally (plus 2.5 s). Same rules (inputs only, reaction delays 150–300 ms, every hop and volley with a reason, same seed = same run), with the ride's own tactics (`tools/promo/agent/ride.py`):
+- gas toward the gate; both guns fire in bursts only while a car is on screen in a gun's line (or a shootable item is on screen), and stop when the shots in flight will already destroy it
+- Ferraris are heard about a second before they show up: it stops (and backs up a little), shoots them head-on and hops one it can't destroy in time (the hop timed with the game's own mofa physics, via `simulateHop`)
+- keeps a gap behind an X7; Teslas from behind get the rear gun (a ramming Tesla sometimes still lands a 2-health hit: from the moment it shows up it needs a little longer to destroy than it takes to reach the mofa)
+- shoots down thrown items in reach, dodges the others (gas/brake away or a hop)
+- rides each ramp with an item above it at the approach speed whose flight collects it
+- stops 85–130 px before the limo and fights it from there; leaves the finale alone (no Fire or Jump, so the whole scene is in the video)
+- ride limits: completed within 180 s, at most 1 death, at most 2 stuck events; the play-quality limits apply to throttle flips (gas ↔ brake), hops and volleys
 
 ## Steps
 
@@ -43,12 +54,13 @@ Produce an MP4 promo video of `dist/buck_nukem.html` played automatically by an 
    ```
    python tools/promo/record_promo.py --dry all [--seed 1977]
    ```
-   You can also dry-run one level with `--dry 0` … `--dry 3`. Expect `victory: True`.
+   You can also dry-run one level with `--dry 0` … `--dry 3`. Expect `victory: True`. The ride: `--dry ride` (about 1 min), expect `COMPLETED` and "Spec limits: all met".
 4. Record the video (about 5–10 minutes; run it in the background):
    ```
    python tools/promo/record_promo.py [--out recordings/<name>.mp4] [--max-mb 16] [--seed 1977]
    ```
    The default output is `recordings/buck_nukem_promo_<date>.mp4`. The same seed always gives the same run.
+   The ride alone: `python tools/promo/record_promo.py --ride` (about 3–5 minutes) → `recordings/buck_nukem_ride_promo_<date>.mp4`.
 5. Verify before handing over:
    - The run report shows `victory: True`. The last line says whether the play-quality limits were met. The exit code is 1 when a limit is missed: the video is still written, so judge whether it's good enough or try another `--seed`.
    - The printed file size is ≤ 16 MB.
@@ -72,14 +84,15 @@ Produce an MP4 promo video of `dist/buck_nukem.html` played automatically by an 
   - `planner.py`: the route over a level, built in key stages, ordered by nearest neighbour then 2-opt/or-opt, and pruned to the stops worth their detour
   - `behaviour.py`: the tactics as a py_trees tree (Boss, Dodge, Mower, Cray, Spacing, Kneel, Vault, Hold, Hunt, Route)
   - `controller.py`: human-like motion control and execution of jump plans
-  - `metrics.py`: reversals, unneeded jumps, shots without a target and hit rate
+  - `ride.py`: the mofa ride (no nav graph: a priority list per decision: finale, thrown items, cars, ramps, gas)
+  - `metrics.py`: reversals, unneeded jumps, shots without a target and hit rate (on the ride: throttle flips, hops and volleys)
 - **Video:** the 320×240 frames (film filter on, with grain reduced so it compresses well) are posted in batches and piped into ffmpeg. The ffmpeg binary comes from the `imageio_ffmpeg` package.
 - **Audio:** music, sound effects and the mower engines are logged with their game times. They are rendered afterwards with an `OfflineAudioContext` and muxed in as AAC 64 kbit/s mono.
 - **Encode:** two-pass H.264 at 640×480 (nearest-neighbour 2× upscale) with `-tune animation`. The bitrate is computed from the run length to fit `--max-mb`.
 
 ## Options
 
-`--out PATH`, `--max-mb 16`, `--seed N` (default 1977), `--browser chrome|edge`, `--no-audio`, `--dry all|0..3`, `--timeout <game minutes>` (default 15).
+`--out PATH`, `--max-mb 16`, `--seed N` (default 1977), `--browser chrome|edge`, `--no-audio`, `--ride`, `--dry all|ride|0..3`, `--timeout <game minutes>` (default 15).
 
 ## Troubleshooting
 

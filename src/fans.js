@@ -38,6 +38,15 @@ const FAN_VARIANTS_ROCKER = [
   { style: "rocker", hair: "teased", hairCol: "auburn", skin: "brown", accent: "green", item: "choker" },
   { style: "rocker", hair: "bob", hairCol: "ash", skin: "tan", accent: "blue", item: "bandana" },
 ];
+// The president's posh lady friends (the limo finale on the ride; never among the background fans):
+// big hats, sunglasses, pearls, dresses; frames stand, climb (half out of the car door), scold (finger wagging).
+const FAN_VARIANTS_POSH = [
+  { style: "posh", hair: "bob", hairCol: "blonde", skin: "light", accent: "pink", item: "sunglasses",
+    hat: "#e070a0", band: "#c04080", dress: "#e070a0", dress2: "#c04080", belt: "#f8f8f0", bag: "#f8f8f0" },
+  { style: "posh", hair: "long", hairCol: "black", skin: "light", accent: "pink", item: "sunglasses",
+    hat: "#f4f0e8", band: "#101010", dress: "#f4f0e8", dress2: "#c8c4bc", belt: "#2a2a40", bag: "#2a2a40" },
+];
+const POSH_FRAMES = ["stand", "climb", "scold"];
 const FAN_VARIANTS_BY_STYLE = { tennis: FAN_VARIANTS, activist: FAN_VARIANTS_ACTIVIST, rocker: FAN_VARIANTS_ROCKER };
 const FAN_STYLE_BY_CH = { F: "tennis", e: "activist", "]": "rocker" };
 const FAN_FRAMES = ["idle", "wave", "jump", "kiss"];
@@ -80,7 +89,7 @@ function buildFanFrame(v, frame) {
   const skin = FAN_SKIN[v.skin], hair = FAN_HAIR[v.hairCol], acc = FAN_ACCENT[v.accent];
   const ox = 2, oy = frame === "jump" ? 2 : 4;
   const P = function (col, x, y, w, h) { g.fillStyle = col; g.fillRect(ox + x, oy + y, w || 1, h || 1); };
-  const WHITE = "#f4f4f0", SHADE = "#d4d4d0", cheer = frame === "wave" || frame === "jump", kiss = frame === "kiss";
+  const WHITE = "#f4f4f0", SHADE = "#d4d4d0", cheer = frame === "wave" || frame === "jump" || frame === "scold", kiss = frame === "kiss";
   const style = v.style || "tennis";
   const lg = frame === "jump" ? 1 : 0;              // legs tucked a little when jumping
   let sleeve = skin, cuff = acc;                    // arm colour, wristband / cuff
@@ -102,6 +111,13 @@ function buildFanFrame(v, frame) {
     P(LEATHER, 3, 10, 10, 5); P(acc, 6, 10, 4, 5); P(WHITE, 7, 12, 2, 1); P("#101010", 7, 13, 2, 1);          // band tee with a skull
     P(STUD, 3, 10); P(STUD, 12, 10); P(STUD, 3, 12); P(STUD, 12, 12);
     sleeve = LEATHER; cuff = STUD;
+  } else if (style === "posh") {                    // knee-length dress with a belt, bare legs, high heels
+    const HEEL = "#101010";
+    P(v.dress, 4, 10, 8, 5); P(v.dress2, 4, 14, 8, 1); P(v.belt, 4, 15, 8, 1);
+    P(v.dress, 3, 16, 10, 6); P(v.dress2, 3, 21, 10, 1); for (let x = 4; x < 13; x += 3) P(v.dress2, x, 17, 1, 4);
+    P(skin, 5, 22, 2, 3); P(skin, 9, 22, 2, 3);                               // legs
+    P(HEEL, 4, 25, 3, 1); P(HEEL, 9, 25, 3, 1); P(HEEL, 4, 26); P(HEEL, 9, 26);
+    sleeve = v.dress; cuff = v.dress2;
   } else {
     // legs, socks with a stripe, sneakers
     P(skin, 5, 19, 2, 5 - lg); P(skin, 9, 19, 2, 5 - lg);
@@ -131,6 +147,10 @@ function buildFanFrame(v, frame) {
     case "curly": P(hair, 4, 1, 7, 2); P(hair, 3, 2, 3, 6); P(hair, 2, 4, 1, 3); P(hair, 10, 2, 2, 1); P(hair, 4, 8, 1, 2); break;
     case "teased": P(hair, 3, 0, 9, 1); P(hair, 2, 1, 11, 3); P(hair, 1, 3, 4, 7); P(hair, 11, 3, 2, 3); P(hair, 2, 10, 2, 1); break;   // big rock hair
   }
+  if (style === "posh") {                           // a big wide-brimmed hat with a band, pearls at the neck
+    P(v.hat, 1, 2, 14, 1); P(v.hat, 4, 0, 8, 2); P(v.band, 4, 1, 8, 1);
+    P("#f8f8f0", 6, 9, 4, 1); P("#d8d8d0", 7, 9);
+  }
   if (v.item === "flower") { P(acc, 4, 2, 2, 2); P("#f0e040", 4, 2); }
   if (v.item === "bandana") { P(acc, 4, 2, 7, 1); P(acc, 3, 3, 2, 2); }
   if (v.item === "choker") P("#101010", 7, 9, 2, 1);
@@ -151,9 +171,17 @@ function buildFanFrame(v, frame) {
     P(cuff, 12, 9);
     return { x: 11, y: 6 };
   }
-  const hand = frame === "idle" ? armDown(12) : kiss ? armToLips() : armUp(1);
+  const posh = style === "posh";
+  function armScold() {            // front forearm raised, index finger up, wagging at Buck
+    [[12, 10], [13, 9], [13, 8], [13, 7]].forEach(function (q) { P(sleeve, q[0], q[1], 1, 1); });
+    P(cuff, 13, 7); P(skin, 13, 5, 1, 1);
+    return { x: 13, y: 6 };
+  }
+  const hand = posh && frame === "scold" ? armScold() : frame === "idle" || posh ? armDown(12) : kiss ? armToLips() : armUp(1);
   const backHand = frame === "jump" ? armUp(-1) : armDown(3);
   P(skin, hand.x, hand.y); P(skin, backHand.x, backHand.y);
+  if (posh && frame !== "climb") P(v.bag, backHand.x - 1, backHand.y + 1, 3, 2);   // a little handbag
+  if (posh && frame === "climb") g.clearRect(0, FAN_H - 10, FAN_W, 10);           // the legs are still in the car
   const up = cheer;
   if (style === "activist" && !kiss) {                 // protest sign on a stick, beside her face: crossed-out car, leaf or globe
     const bx = 12, by = up ? Math.max(-oy, hand.y - 7) : 1;
@@ -189,6 +217,11 @@ function buildFanSprites() {
   }
   SPR.fans = sets(FAN_VARIANTS);                     // tennis fans (every level except the ride)
   SPR.fansBy = { tennis: SPR.fans, activist: sets(FAN_VARIANTS_ACTIVIST), rocker: sets(FAN_VARIANTS_ROCKER) };
+  SPR.fansBy.posh = FAN_VARIANTS_POSH.map(function (v) {             // the limo finale's ladies (src/ride.js)
+    const set = {};
+    POSH_FRAMES.forEach(function (f) { set[f] = makeSet(buildFanFrame(v, f)); });
+    return set;
+  });
 }
 
 // ---- behaviour: idle cheer, face Buck, react to his successes ----

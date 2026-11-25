@@ -6,6 +6,8 @@
 //  - step(seq)          apply one input set per game step (Input.simulate only) and advance
 //  - simulateJumps(...) run the game's own player physics on a copy of the hero for candidate
 //                       input plans (the agent picks one; physics stays in one implementation)
+//  - simulateHop(...)   the mofa's flight for a hop (or a ramp launch) from the hero's state now
+//                       (a mirror of the vertical motion in Mofa.update, checked by a test)
 //  - metrics log        per-step rows for the play-quality metrics (agent/metrics.py)
 //  - recording          frame capture + sound/track/tempo/engine logs + chunked audio render
 // Fair play: the only game object written is Input (via Input.simulate); everything else is
@@ -58,15 +60,22 @@ const PromoBridge = {
         return { id: self.id(e), type: e.type, x: e.x, y: e.y, w: e.w, h: e.h, vx: e.vx, vy: e.vy, face: e.face, state: e.state || "",
           leaping: !!e.leaping, hidden: !!(e.T.hidden && e.T.hidden(e)), active: !!e.active, onGround: !!e.onGround, hp: e.hp, t: e.t || 0 };
       });
-      s.enemyShots = Game.enemyShots.map(function (b) { return { kind: b.kind, x: b.x, y: b.y, w: b.w, h: b.h, vx: b.vx || 0, vy: b.vy || 0, grav: b.grav || 0 }; });
-      s.heroShots = Game.shots.filter(function (b) { return !b.deflected; }).map(function (b) { return { x: b.x, y: b.y, w: b.w, h: b.h, vx: b.vx, dmg: b.dmg }; });
+      s.enemyShots = Game.enemyShots.map(function (b) { return { id: self.id(b), kind: b.kind, x: b.x, y: b.y, w: b.w, h: b.h, vx: b.vx || 0, vy: b.vy || 0, grav: b.grav || 0, shootable: !!b.shootable }; });
+      s.heroShots = Game.shots.filter(function (b) { return !b.deflected; }).map(function (b) { return { x: b.x, y: b.y, w: b.w, h: b.h, vx: b.vx, vy: b.vy || 0, dmg: b.dmg }; });
       s.pickups = Game.pickups.map(function (p) { return { id: self.id(p), type: p.type, x: p.x, y: p.y, w: p.w, h: p.h }; });
       s.exit = Game.exit ? { x: Game.exit.x, y: Game.exit.y, w: Game.exit.w, h: Game.exit.h } : null;
       s.checkpoints = Game.checkpoints.map(function (c) { return { x: c.x, y: c.y, on: c.on }; });
       s.camera = { x: Camera.x, y: Camera.y };
       s.level = { name: L.name, isBoss: !!L.isBoss, w: L.w, h: L.h, pxW: L.pxW, pxH: L.pxH };
       const key = L.rows.map(function (r) { return r.join(""); }).join("\n");
-      if (full || key !== this.gridSent) { s.grid = L.rows.map(function (r) { return r.join(""); }); this.gridSent = key; }
+      if (full || key !== this.gridSent) {
+        s.grid = L.rows.map(function (r) { return r.join(""); }); this.gridSent = key;
+        if (L.isRide) {                       // the road surface per tile column (centre), and the ramps
+          s.road = []; for (let tx = 0; tx < L.w; tx++) s.road.push(L.roadTop(tx * TILE + TILE / 2));
+          s.ramps = Game.hazards.filter(function (z) { return z.type === "ramp"; }).map(function (z) { return { x: z.x, y: z.y, w: z.w, h: z.h }; });
+        }
+      }
+      if (L.isRide) s.ride = this.rideState();
       if (Boss.active) {
         s.boss = { state: Boss.state, hp: Boss.hp, maxHp: Boss.maxHp, raised: !!Boss.raised, claw: Boss.claw, ox: Boss.ox, homeX: Boss.homeX, floor: Boss.floor, phase: Boss.phase || null,
           face: Boss.face(), shell: Boss.shell(), claws: Boss.claws(), t: Boss.t || 0 };
@@ -98,6 +107,56 @@ const PromoBridge = {
     return true;
   },
 
+  // ---------------- the mofa ride ----------------
+  // gun muzzles relative to the hero box (from Mofa.fire), shot size/speed, rates, the finale, the gate
+  rideState() {
+    const P = Player, img = SPR.shot, left = P.w / 2 - MOFA_SPR_W / 2, top = P.h - MOFA_SPR_H, hy = Math.floor(img.height / 2);
+    return {
+      finale: !!Mofa.finale, finaleT: Mofa.finale ? Mofa.finale.t : 0, gateLocked: Game.gateLocked(), up: Input.down("up"),
+      front: { dx: left + MOFA_GUN_X + MOFA_GUN_W, dy: top + MOFA_GUN_Y + MOFA_BARREL_ROW - hy },
+      rear: { dx: left + MOFA_REAR_X - img.width, dy: top + MOFA_REAR_Y + MOFA_BARREL_ROW - hy },
+      shot: { w: img.width, h: img.height, v: CONFIG.mofaShotSpeed, aim: CONFIG.mofaAim }, rate: CONFIG.mofaRate,
+      top: CONFIG.mofaTop, hopVel: CONFIG.mofaHopVel, rampVel: CONFIG.mofaRampVel, rampGrav: CONFIG.mofaRampGrav,
+      gravity: CONFIG.gravity, maxFall: CONFIG.maxFall,
+      ladies: Mofa.ladies.length, wrecks: Cars.wrecks.length,
+    };
+  },
+  // The mofa's flight from now: vy0 (default a hop), gravity factor gk (ramp flights fly lighter).
+  // Airborne the speed does not change (Mofa.update only changes vx on the ground). Returns
+  // [[t, x, y], ...] per game step until the wheels are back on the road (or maxFrames).
+  // start: optional {x, y, vx} instead of the hero's (planning a ramp launch before reaching it).
+  simulateHop(vy0, gk, maxFrames, start) {
+    const P = Player, L = Game.level, out = [];
+    let x = start ? start.x : P.x, y = start ? start.y : P.y, vy = vy0 === undefined || vy0 === null ? CONFIG.mofaHopVel : vy0;
+    const vx = start ? start.vx : P.vx, k = gk || 1;
+    for (let i = 1; i <= (maxFrames || 90); i++) {
+      vy = Math.min(CONFIG.maxFall, vy + CONFIG.gravity * k * DT);
+      x = clamp(x + vx * DT, 0, L.pxW - P.w);
+      y += vy * DT;
+      const ground = Math.min(L.roadTop(x + 4), L.roadTop(x + P.w - 4));
+      if (vy >= 0 && y + P.h >= ground) { out.push([+(i * DT).toFixed(4), x, ground - P.h]); break; }
+      out.push([+(i * DT).toFixed(4), x, y]);
+    }
+    return out;
+  },
+  // a volley now has a target: a car on screen in a gun's line, or a shootable thrown item on screen
+  rideTargetInLine() {
+    const P = Player, R = this.rideState(), fy = P.y + R.front.dy, ry = P.y + R.rear.dy, fx = P.x + R.front.dx, rx = P.x + R.rear.dx;
+    const on = function (o) { return o.x + o.w > Camera.x && o.x < Camera.x + W; };
+    for (const e of Game.enemies) {
+      if (e.dead || !e.T.car || !on(e)) continue;
+      if (e.x + e.w > fx && e.y < fy + 8 && e.y + e.h > fy - 8) return true;
+      if (e.x < rx && e.y < ry + 8 && e.y + e.h > ry - 8) return true;
+    }
+    return Game.enemyShots.some(function (s) { return s.shootable && on(s); });
+  },
+  rideThreat() {
+    const P = Player, cx = P.cx(), cy = P.cy();
+    for (const s of Game.enemyShots) if (Math.abs(s.x - cx) < 6 * TILE && Math.abs(s.y - cy) < 6 * TILE) return true;
+    for (const e of Game.enemies) if (!e.dead && e.T.car && e.x < cx + 16 * TILE && e.x + e.w > cx - 10 * TILE) return true;
+    return false;
+  },
+
   // ---------------- play-quality metrics log ----------------
   preRow() { return { g: Player.onGround, x: Player.x, y: Player.y, shots: Game.stats.shots, c: Player.climbing, hits: this.hits }; },
   // the band a shot fired now would sweep: around the gun row (chest standing, knee kneeling)
@@ -121,18 +180,19 @@ const PromoBridge = {
     for (const e of Game.enemies) if (!e.dead && Math.abs(e.x + e.w / 2 - cx) < 3 * TILE && Math.abs(e.y + e.h / 2 - cy) < 2 * TILE) return true;
     return Boss.active && Boss.state !== "dying";
   },
-  // row: [level, t, dir, why, jumpStart, onGround, x, y, shot, hittable, threat, pickupsLeft, climbing, hits, fireInput]
+  // row: [level, t, dir, why, jumpStart, onGround, x, y, shot, hittable, threat, pickupsLeft, climbing, hits, fireInput, ride]
+  // (on the mofa: dir = gas 1 / brake -1, a jump is a hop, hittable/threat use the ride's rules)
   logRow(pre, inp) {
     if (Game.state !== STATE.PLAY && Game.state !== STATE.BOSS) return;
     const P = Player;
     const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
     // a jump = leaving the ground upward with Jump pressed (not a knockback or a water bounce)
     const jumpStart = inp.jump && pre.g && !P.onGround && P.vy < -100 && !P.climbing && !pre.c ? 1 : 0;
-    const shot = Game.stats.shots > pre.shots ? 1 : 0;
+    const shot = Game.stats.shots > pre.shots ? 1 : 0, ride = Game.level && Game.level.isRide;
     this.rows.push([Game.levelIndex, +Game.time.toFixed(4), dir, inp.why || "", jumpStart, P.onGround ? 1 : 0, Math.round(P.x * 10) / 10,
-      Math.round(P.y * 10) / 10, shot, shot ? ((this.hittableInLine() || this.hits > pre.hits) ? 1 : 0) : 0,   // a point-blank kill in the same step had a target too
-      (jumpStart || shot) ? (this.threatNear() ? 1 : 0) : 0,
-      Game.pickups.length, P.climbing ? 1 : 0, this.hits, inp.fire ? 1 : 0]);
+      Math.round(P.y * 10) / 10, shot, shot ? (((ride ? this.rideTargetInLine() : this.hittableInLine()) || this.hits > pre.hits) ? 1 : 0) : 0,   // a point-blank kill in the same step had a target too
+      (jumpStart || shot) ? ((ride ? this.rideThreat() : this.threatNear()) ? 1 : 0) : 0,
+      Game.pickups.length, P.climbing ? 1 : 0, this.hits, inp.fire ? 1 : 0, ride ? 1 : 0]);
   },
   takeRows() { const r = this.rows; this.rows = []; return r; },
 

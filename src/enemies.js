@@ -47,11 +47,11 @@ const Talk = {
       const rb = this.buckRects(Camera.x, Camera.y)[0], r0 = this.rect(e, { text: "", t: 0, dx: dx }, Camera.x, Camera.y);
       if (rb && Math.abs(r0.tx - (rb.x + rb.w / 2)) < rb.w / 2 + 70 && Math.abs(r0.y - rb.y) < 20) return false;
     }
-    if (ride && others.length + buck >= CONFIG.rideBubbles) return false;   // Buck's line counts as one of the ride's bubbles
+    if (ride && others.length + buck + this.ladyRects(Camera.x, Camera.y).length >= CONFIG.rideBubbles) return false;   // Buck's and the limo ladies' lines count too
     const bubble = { text: this.line(pool), t: secs, dx: dx };
     if (ride) {
       const r = this.rect(e, bubble, Camera.x, Camera.y);
-      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], this.buckRects(Camera.x, Camera.y));
+      const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], this.buckRects(Camera.x, Camera.y), this.ladyRects(Camera.x, Camera.y));
       if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
     }
     e.bubble = bubble;
@@ -66,7 +66,25 @@ const Talk = {
   // the car bubbles (and Buck's) currently up (screen boxes), for the fans to keep clear of
   rects(camX, camY) {
     return Game.enemies.filter(function (e) { return e.bubble && !e.dead; }).map(function (e) { return Talk.rect(e, e.bubble, camX, camY); })
-      .concat(this.buckRects(camX, camY));
+      .concat(this.buckRects(camX, camY), this.ladyRects(camX, camY));
+  },
+  // the limo ladies' bubbles (the finale and after), the two staggered so they never touch
+  ladySpeaker(l, i) { return { x: l.x, y: l.y - 2 - i * 14, w: FAN_W }; },
+  ladyRects(camX, camY) {
+    return Mofa.ladies.filter(function (l) { return l.bubble; }).map(function (l) { return Talk.rect(Talk.ladySpeaker(l, Mofa.ladies.indexOf(l)), l.bubble, camX, camY); });
+  },
+  // a lady's complaint after the scene, with the ride's bubble rules; true when she spoke
+  ladySay(l, text, secs) {
+    if (l.bubble) return false;
+    const others = Game.enemies.filter(function (o) { return o.bubble && !o.dead; });
+    const mine = this.buckRects(Camera.x, Camera.y).concat(this.ladyRects(Camera.x, Camera.y));
+    if (others.length + mine.length >= CONFIG.rideBubbles) return false;
+    const bubble = { text: text, t: secs };
+    const r = this.rect(this.ladySpeaker(l, Mofa.ladies.indexOf(l)), bubble, Camera.x, Camera.y);
+    const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], mine);
+    if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
+    l.bubble = bubble;
+    return true;
   },
   // Buck's bubble sits above his head: on the mofa the rider is drawn a little above the player box
   buckSpeaker() { return { x: Player.x, y: Player.y - (Game.level && Game.level.isRide ? 6 : 2), w: Player.w }; },
@@ -75,10 +93,11 @@ const Talk = {
   buckSay(text, secs) {
     if (Player.dead || Player.bubble) return false;
     const others = Game.enemies.filter(function (o) { return o.bubble && !o.dead; });
-    if (Game.level && Game.level.isRide && others.length >= CONFIG.rideBubbles) return false;
+    const ladies = this.ladyRects(Camera.x, Camera.y);
+    if (Game.level && Game.level.isRide && others.length + ladies.length >= CONFIG.rideBubbles) return false;
     const bubble = { text: text, t: secs };
     const r = this.rect(this.buckSpeaker(), bubble, Camera.x, Camera.y);
-    const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || []);
+    const busy = others.map(function (o) { return Talk.rect(o, o.bubble, Camera.x, Camera.y); }).concat(Fans.shown || [], ladies);
     if (busy.some(function (q) { return rectsTouch(r, q, 3); })) return false;
     Player.bubble = bubble;
     return true;
@@ -100,9 +119,9 @@ const Talk = {
       drawSpeechBubble(e.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     }
     this.buckRects(camX, camY).forEach(function (r) { drawSpeechBubble(Player.bubble.text, r.x, r.y, r.w, r.h, r.tx); });
-    if (Mofa.finale) Mofa.finale.ladies.forEach(function (l, i) {           // the limo finale's ladies, staggered
+    Mofa.ladies.forEach(function (l, i) {                // the limo ladies, staggered
       if (!l.bubble) return;
-      const r = Talk.rect({ x: l.x, y: l.y - 4 - i * 14, w: 12 }, l.bubble, camX, camY);
+      const r = Talk.rect(Talk.ladySpeaker(l, i), l.bubble, camX, camY);
       drawSpeechBubble(l.bubble.text, r.x, r.y, r.w, r.h, r.tx);
     });
   },
@@ -124,6 +143,8 @@ const Quotes = {
     Player.talkCd = CONFIG.buckTalkCd;
     return true;
   },
+  // Buck's reply in a closing scene (the ride's limo finale): a [finale] line, or nothing
+  finaleLine() { const pool = this.lines("finale"); return pool ? Talk.line(pool) : null; },
   // when a level's intro hands over to play (not on respawn): a start line 0.6 s later
   onStart() { this.startT = this.lines("start") ? 0.6 : -1; },
   update(dt) {

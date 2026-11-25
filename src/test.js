@@ -1178,8 +1178,8 @@ function runTests() {
     for (let i = 0; i < 20 && !e.dead; i++) damageEnemy(e, 1, 1);
     steps(1);
     check("cars: a destroyed car explodes, leaves a wreck, the driver runs off, and it scores its points",
-      e.dead && Game.enemies.indexOf(e) < 0 && sounds.indexOf("bigexplode") >= 0 && Cars.wrecks.length === 1 && Cars.runners.length === 1 && Game.score - s0 === 700,
-      "score +" + (Game.score - s0) + ", wrecks " + Cars.wrecks.length + ", runners " + Cars.runners.length);
+      e.dead && Game.enemies.indexOf(e) < 0 && sounds.indexOf("bigexplode") >= 0 && Cars.wrecks.length === 1 && typeof Cars.runners === "undefined" && Game.score - s0 === 700,
+      "score +" + (Game.score - s0) + ", wrecks " + Cars.wrecks.length);
     steps(60 * (CONFIG.wreckLife + 1));
     check("cars: the wreck fades away after a while", Cars.wrecks.length === 0);
   });
@@ -1330,7 +1330,7 @@ function runTests() {
       }
       return bad === 0 && outl > 10;
     }
-    const sets = SPR.mofa.frames.concat([SPR.mofa.rider], SPR.driverRun);
+    const sets = SPR.mofa.frames.concat([SPR.mofa.rider], SPR.fansBy.posh.map(function (v) { return v.stand; }));
     Object.keys(SPR.cars).forEach(function (k) { const C = SPR.cars[k]; sets.push(C.frames[0], C.frames[1], C.wreck); });
     check("ride art: mofa, rider, cars, wrecks and runners have dark outlines on every edge", sets.every(function (s) { return outlined(s.r) && outlined(s.l); }), sets.length + " sets");
     const hs = {}; Object.keys(SPR.cars).forEach(function (k) { hs[k] = SPR.cars[k].frames[0].h; });
@@ -1637,13 +1637,13 @@ function runTests() {
     // destroyed: no bubble, the president and both ladies run off
     for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
     steps(2);
-    const ladies = Mofa.finale ? Mofa.finale.ladies.length : 0;
+    const ladies = Mofa.finale ? Mofa.ladies.length : 0;
     TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false;
     const shown = TEXT_LOG.items.join("|"); TEXT_LOG.items = [];
-    Mofa.finale = null;
-    check("limo ladies: once the limo is destroyed its window bubbles are gone, the president runs off and the ladies are in the finale",
-      L.dead && ladies === 2 && Cars.runners.length >= 2 && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
-      ladies + " ladies, " + Cars.runners.length + " runners");
+    Mofa.finale = null; Mofa.ladies = [];
+    check("limo ladies: once the limo is destroyed its window bubbles are gone and the ladies are in the finale (no tiny runners)",
+      L.dead && ladies === 2 && typeof Cars.runners === "undefined" && !LIMO_LADY_LINES.concat(PRESIDENT_LINES).some(function (l) { return shown.indexOf(l) >= 0; }),
+      ladies + " ladies");
     Game.godMode = false; Input.reset();
   });
 
@@ -1675,7 +1675,7 @@ function runTests() {
   });
 
   safe("quote packs", function () {
-    const keep = Object.assign({}, QUOTE_PACKS);
+    const keep = Object.assign({}, QUOTE_PACKS), keepL1 = LEVEL_DATA[1].quotes;
     try {
       // a per-type section wins over [kill]; the level names the pack in its header
       QUOTE_PACKS.t1 = { kill: ["GENERIC."], "kill:tesla": ["TESLA DOWN."], start: ["HOPP, IS GLIS."] };
@@ -1718,10 +1718,45 @@ function runTests() {
         (Fans.shown || []).every(function (f) { return !rectsTouch(f, br, 0); }), Player.bubble ? Player.bubble.text : "none");
     } finally {
       Object.keys(QUOTE_PACKS).forEach(function (k) { if (!(k in keep)) delete QUOTE_PACKS[k]; });
-      delete LEVEL_DATA[1].quotes; Game.godMode = false; Player.bubble = null; Input.reset();
+      if (keepL1 === undefined) delete LEVEL_DATA[1].quotes; else LEVEL_DATA[1].quotes = keepL1;
+      Game.godMode = false; Player.bubble = null; Input.reset();
     }
     check("quote packs: the ride names its pack, and the pack has at least 12 kill lines",
       LEVEL_DATA[0].quotes === "ride" && QUOTE_PACKS.ride && QUOTE_PACKS.ride.kill.length >= 12);
+  });
+
+  safe("thurgau quotes", function () {
+    // every pack: lines fit (20 characters), use only the font's glyphs, no duplicates in a section
+    const bad = [];
+    Object.keys(QUOTE_PACKS).forEach(function (p) {
+      Object.keys(QUOTE_PACKS[p]).forEach(function (s) {
+        const lines = QUOTE_PACKS[p][s];
+        lines.forEach(function (l, i) {
+          if (l.length > 20 || l.split("").some(function (c) { return FONT_CHARS.indexOf(c) < 0; }) || lines.indexOf(l) !== i) bad.push(p + "[" + s + "] " + l);
+        });
+      });
+    });
+    check("thurgau quotes: every pack's lines are at most 20 characters, drawable and unique per section", !bad.length, bad.join(" | "));
+    // the levels on foot name the thurgau pack, with a set per enemy type on foot
+    const T = QUOTE_PACKS.thurgau || {};
+    const onFoot = LEVEL_DATA.filter(function (L) { return !L.ride; });
+    check("thurgau quotes: the levels on foot (courts, creek, clubhouse, boss arena) name the thurgau pack",
+      onFoot.length === 4 && onFoot.every(function (L) { return L.quotes === "thurgau"; }), onFoot.map(function (L) { return L.quotes; }).join(","));
+    const sizes = ["kill", "kill:lawyer", "kill:cray", "kill:punk"].map(function (s) { return (T[s] || []).length; });
+    check("thurgau quotes: [kill] and one set per enemy on foot (lawyer, cray, punk), each at least 12 lines",
+      sizes.every(function (n) { return n >= 12; }), sizes.join(","));
+    // the ride keeps its old lines and gains the Thurgau car lines
+    const R = QUOTE_PACKS.ride.kill;
+    check("thurgau quotes: the ride has at least 24 kill lines, old and new",
+      R.length >= 24 && R.indexOf("SO, FERTIG.") >= 0 && R.indexOf("HOI ABSCHLEPPDIENST!") >= 0, R.length + " lines");
+    // a lawyer kill on foot with the thurgau pack draws a lawyer line
+    load(grid(40, 12, [[3, 9, "P"], [12, 9, "L"]])); Game.level.quotes = "thurgau"; Fans.list = [];
+    const law = Game.enemies[0]; law.bubble = null;
+    Player.bubble = null; Player.talkCd = 0;
+    for (let i = 0; i < 10 && !law.dead; i++) damageEnemy(law, 1, 1);
+    const said = Player.bubble ? Player.bubble.text : null;
+    Player.bubble = null;
+    check("thurgau quotes: a lawyer kill on foot says a line from the lawyer set", said && (T["kill:lawyer"] || []).indexOf(said) >= 0, String(said));
   });
 
   safe("buck's lines", function () {
@@ -1781,34 +1816,111 @@ function runTests() {
       steps(1); t += DT;
       if (Mofa.finale && Game.shots.some(function (q) { return q.mg && !q._n && (q._n = 1); })) shots++;
       if (Mofa.finale) {
-        Mofa.finale.ladies.forEach(function (l, i) { if (l.bubble && !seen["l" + i]) { seen["l" + i] = 1; order.push("lady" + i); } });
-        if (t >= 2.0 && !ladiesOutBy2) ladiesOutBy2 = Mofa.finale.ladies.every(function (l) { return l.out; });
+        Mofa.ladies.forEach(function (l, i) { if (l.bubble && !seen["l" + i]) { seen["l" + i] = 1; order.push("lady" + i); } });
+        if (t >= 2.0 && !ladiesOutBy2) ladiesOutBy2 = Mofa.ladies.every(function (l) { return l.out; });
         if (t > 1.5 && x0 === null) x0 = Player.x;
         if (t >= T.end - 0.3) Game.enemyShots = [];       // the test's corks go before the scene ends
         else if (t > 3) Game.enemyShots = [{ kind: "cork", x: Player.x + 4, y: Player.y + 8, w: 5, h: 4, vx: 0, vy: 0, grav: 0, dmg: 1, t: 0, shootable: true }];
       }
-      if (Player.bubble && Player.bubble.text === "YOU HAVE NO CLUE" && !seen.buck) { seen.buck = 1; order.push("buck"); }
+      if (Player.bubble && QUOTE_PACKS.ride.finale.indexOf(Player.bubble.text) >= 0 && !seen.buck) { seen.buck = 1; order.push("buck"); }
       if (Player.cigarette && lit < 0) lit = t;
       if (!Mofa.finale && back < 0 && t > 0.1) { back = t; hpBack = Player.hp; }
     }
     release("right"); release("fire");
-    const ladiesRun = Cars.runners.filter(function (r) { return r.lady !== undefined; }).length;
+    const ladiesStay = Mofa.ladies.length;
     check("limo finale: destroying the limo starts the scene; Buck is locked (no gas, no fire) and can't be hurt",
       started && shots === 0 && x0 !== null && Math.abs(Player.x - x0) < 40 && hpBack === hp0, "shots " + shots + ", moved " + (x0 === null ? "?" : (Player.x - x0).toFixed(1)) + ", hp " + hpBack);
-    check("limo finale: both ladies crawl out by 2 s and speak, then Buck says YOU HAVE NO CLUE",
+    check("limo finale: both ladies climb out by 2 s and complain, then Buck answers with a [finale] line from the ride's pack",
       ladiesOutBy2 && order.join(",") === "lady0,lady1,buck", order.join(","));
-    check("limo finale: the cigarette is lit by 4.5 s and control returns by 5.2 s; the ladies run off, the gate is open",
-      lit > 0 && lit <= 4.5 && back > 0 && back <= 5.2 && ladiesRun === 2 && !Game.gateLocked() && Player.cigarette, "lit " + lit.toFixed(2) + ", back " + back.toFixed(2) + ", runners " + ladiesRun);
+    check("limo finale: the cigarette is lit by 4.5 s and control returns by 5.2 s; the ladies stay, the gate is open",
+      lit > 0 && lit <= 4.5 && back > 0 && back <= 5.2 && ladiesStay === 2 && !Game.gateLocked() && Player.cigarette, "lit " + lit.toFixed(2) + ", back " + back.toFixed(2) + ", ladies " + ladiesStay);
     // the cigarette puffs on the way to the gate
     FX.clear(); steps(150);
     check("limo finale: Buck keeps the cigarette and it puffs smoke", Player.cigarette && FX.parts.some(function (q) { return q.cig; }));
     // skip: Fire pressed after 0.3 s ends the scene at once
     setup(); steps(25); tap("fire"); steps(2);
-    check("limo finale: Fire skips the scene (control back, cigarette lit, ladies running)", !Mofa.finale && Player.cigarette &&
-      Cars.runners.filter(function (r) { return r.lady !== undefined; }).length === 2);
-    check("limo finale: the ladies' lines are posh, at most 20 characters and drawable",
-      LIMO_FINALE_LINES.length >= 4 && LIMO_FINALE_LINES.every(function (l) { return l.length <= 20 && l.split("").every(function (c) { return FONT_CHARS.indexOf(c) >= 0; }); }));
-    Input.reset(); Mofa.finale = null;
+    check("limo finale: Fire skips the scene (control back, cigarette lit, both ladies out and staying)", !Mofa.finale && Player.cigarette &&
+      Mofa.ladies.length === 2 && Mofa.ladies.every(function (l) { return l.out && l.climbT === 0; }));
+    check("limo finale: at least 12 complaints, at most 20 characters and drawable",
+      LIMO_FINALE_LINES.length >= 12 && LIMO_FINALE_LINES.every(function (l) { return l.length <= 20 && l.split("").every(function (c) { return FONT_CHARS.indexOf(c) >= 0; }); }));
+    Input.reset(); Mofa.finale = null; Mofa.ladies = [];
+  });
+
+  safe("full-size limo ladies", function () {
+    // no tiny runners: destroyed cars just burn
+    loadRide([], 300); Game.godMode = true; Game.enemies = [];
+    ["suv", "tesla", "ferrari"].forEach(function (k, i) {
+      const e = makeEnemy(k, Player.x + 140 + i * 130, Player.y + Player.h, Game.level, 1); e.awake = true; Game.enemies.push(e);
+      for (let j = 0; j < 40 && !e.dead; j++) damageEnemy(e, 1, 1);
+    });
+    steps(5);
+    check("no tiny runners: destroyed X7, Tesla and Ferrari leave burning wrecks and no running figures",
+      Cars.wrecks.length === 3 && typeof Cars.runners === "undefined" && typeof SPR.driverRun === "undefined" && typeof SPR.ladyRun === "undefined");
+    // the posh style: fan size, two looks, four frames
+    const P = SPR.fansBy.posh, fanS = SPR.fansBy.tennis[0].idle;
+    const framesOk = P.length === 2 && P.every(function (v) { return POSH_FRAMES.every(function (f) { return v[f] && v[f].w === FAN_W && v[f].h === FAN_H; }); });
+    check("posh ladies: two looks with stand, climb and scold frames, 20 x 32 like the fans",
+      framesOk && fanS.w === FAN_W && fanS.h === FAN_H && FAN_VARIANTS_POSH[0].hat !== FAN_VARIANTS_POSH[1].hat && !FAN_STYLE_BY_CH.posh &&
+      Object.keys(FAN_STYLE_BY_CH).every(function (c) { return FAN_STYLE_BY_CH[c] !== "posh"; }));
+    // the finale: both out and standing by 2.6 s, at fan size; afterwards they walk away from Buck and leave
+    loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90);
+    const L = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+    Player.x = L.x - 140; Camera.snap(Player, Game.level); L.corkT = 99;
+    for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L, 1, 1);
+    steps(Math.round(2.6 * 60));
+    const ls = Mofa.finale ? Mofa.ladies : [];
+    const standing = ls.length === 2 && ls.every(function (l) { return l.out && l.climbT === 0 && Math.abs(l.y + FAN_H - Game.level.roadTop(l.x + FAN_W / 2)) <= 1; });
+    check("posh ladies: in the finale both have climbed out by 2.6 s and stand on the road beside the wreck, at fan size", standing,
+      ls.map(function (l) { return l.out + "/" + l.climbT.toFixed(2); }).join(" "));
+    steps(Math.round(2.6 * 60));                         // the scene ends
+    const spots = Mofa.ladies.map(function (l) { return l.x + "," + l.y; }).join(" ");
+    // ride on slowly toward the ladies (the gate is open): they stay, face Buck and take turns complaining
+    let bubbles = [], maxUp = 0, overlap = false, scold = 0, frames = 0, prev = [null, null];
+    const drawn = [];
+    const realDraw = ctx.drawImage;
+    for (let k = 0; k < 8 * 60; k++) {
+      Player.vx = 30; steps(1);
+      Mofa.ladies.forEach(function (l, i) { if (l.bubble && l.bubble !== prev[i]) bubbles.push({ i: i, text: l.bubble.text }); prev[i] = l.bubble; });
+      const rs = Talk.rects(Camera.x, Camera.y);
+      maxUp = Math.max(maxUp, rs.length);
+      for (let a = 0; a < rs.length; a++) for (let b = a + 1; b < rs.length; b++) if (rectsTouch(rs[a], rs[b], 0)) overlap = true;
+      if (k % 30 === 0 && Mofa.ladies.some(function (l) { return l.bubble; })) {
+        const set = SPR.fansBy.posh;
+        ctx.drawImage = function (img) { drawn.push(img); return realDraw.apply(ctx, arguments); };
+        try { Mofa.drawFinale(Camera.x, Camera.y); } finally { ctx.drawImage = realDraw; }
+        frames++;
+        Mofa.ladies.forEach(function (l) { if (l.bubble && drawn.indexOf(set[l.style].scold[l.dir > 0 ? "r" : "l"]) >= 0) scold++; });
+      }
+    }
+    const stayed = Mofa.ladies.length === 2 && Mofa.ladies.map(function (l) { return l.x + "," + l.y; }).join(" ") === spots;
+    const facing = Mofa.ladies.every(function (l) { return l.dir === (Player.x + Player.w / 2 < l.x + FAN_W / 2 ? -1 : 1); });
+    check("posh ladies: after the scene both stay at their spots by the wreck, facing Buck", stayed && facing, spots);
+    const turns = bubbles.length >= 2 && bubbles.some(function (b) { return b.i === 0; }) && bubbles.some(function (b) { return b.i === 1; }) &&
+      bubbles.every(function (b) { return LIMO_FINALE_LINES.indexOf(b.text) >= 0; });
+    check("posh ladies: riding on, they take turns complaining (from both, at most two ride bubbles, none overlapping), scolding while they talk",
+      turns && maxUp <= CONFIG.rideBubbles && !overlap && frames > 0 && scold > 0,
+      bubbles.length + " complaints, max " + maxUp + ", overlap " + overlap + ", scold " + scold + "/" + frames);
+    // off screen they are quiet
+    Mofa.ladies.forEach(function (l) { l.bubble = null; });
+    Mofa.ladies.forEach(function (l) { l.x -= 4000; });
+    let quiet = true;
+    for (let k = 0; k < 6 * 60; k++) { steps(1); if (Mofa.ladies.some(function (l) { return l.bubble; })) quiet = false; }
+    check("posh ladies: off screen they say nothing", quiet);
+    // a pack without [finale]: Buck stays quiet in the scene, the cigarette still lights
+    const keepPack = QUOTE_PACKS.ride.finale;
+    try {
+      delete QUOTE_PACKS.ride.finale;
+      loadRide([[30, 9, "9"], [60, 6, "}"], [62, 9, "E"]], 90);
+      const L2 = Game.enemies.filter(function (e) { return e.type === "limo"; })[0];
+      Player.x = L2.x - 140; Camera.snap(Player, Game.level); L2.corkT = 99; Player.bubble = null;
+      for (let i = 0; i < CONFIG.limoHp; i++) damageEnemy(L2, 1, 1);
+      let buckSaid = false;
+      for (let k = 0; k < 5.2 * 60; k++) { steps(1); if (Player.bubble) buckSaid = true; }
+      check("posh ladies: without a [finale] section Buck says nothing in the scene, and still lights the cigarette", !buckSaid && Player.cigarette);
+    } finally { QUOTE_PACKS.ride.finale = keepPack; }
+    check("posh ladies: the ride's pack has at least 6 dry Swiss German [finale] replies", keepPack && keepPack.length >= 6);
+    Mofa.ladies = [];
+    Game.godMode = false; Input.reset();
   });
 
   safe("mofa smoke", function () {
@@ -4307,7 +4419,7 @@ function runShot(spec) {
       const L = C.frames[1].l;
       ctx.drawImage(L, 230 - C.frames[0].pad, base - C.frames[0].h - C.frames[0].pad);
     });
-    SPR.driverRun.forEach(function (S, i) { ctx.drawImage(S.r, 300 + i * 9, 40); });
+    SPR.fansBy.posh.forEach(function (v, i) { ctx.drawImage(v.stand.r, 280 + i * 20 - v.stand.pad, 8 - v.stand.pad); });
     Game.hazards = [Mofa.makeHazard("/", 7, 12)];
     Mofa.drawHazards(0, 0);
     present();

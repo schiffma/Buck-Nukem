@@ -364,12 +364,12 @@ def parse_quote_pack(path, chars):
         m = re.fullmatch(r"\[(\w+)(?::(\w+))?\]", line)
         if m:
             kind, enemy = m.group(1), m.group(2)
-            if kind == "start" and enemy is None:
-                section = "start"
+            if kind in ("start", "finale") and enemy is None:
+                section = kind
             elif kind == "kill" and (enemy is None or enemy in ENEMY_TYPES):
                 section = "kill" if enemy is None else "kill:" + enemy
             else:
-                errors.append(f"{where}: unknown section {line} (known: [start], [kill], [kill:<{'|'.join(sorted(ENEMY_TYPES))}>])")
+                errors.append(f"{where}: unknown section {line} (known: [start], [finale], [kill], [kill:<{'|'.join(sorted(ENEMY_TYPES))}>])")
                 section = None
                 continue
             pack.setdefault(section, [])

@@ -33,8 +33,9 @@ GAME = ROOT / "dist" / "buck_nukem.html"
 CHANNELS = {"chrome": "chrome", "edge": "msedge"}
 FRAME_BYTES = 320 * 240 * 4
 
-# First reel the promo agent plays (reel 1 is the mofa ride, not supported by the agent yet).
+# First reel of the full promo run (reel 1, the mofa ride, has its own ride-only promo: --ride).
 PROMO_FIRST_REEL = 2
+RIDE_REEL = 1
 
 SEED_PRELUDE = """<link rel="icon" href="data:,">
 <script>(function () {
@@ -64,10 +65,11 @@ def page_html(seed):
 
 class Session:
     def __init__(self, browser="chrome", seed=1977, headless=True,
-                 on_frame=None, on_audio=None, log=print):
+                 on_frame=None, on_audio=None, log=print, first_reel=PROMO_FIRST_REEL):
         self.browser_name, self.seed = browser, seed
         self.headless, self.on_frame, self.on_audio, self.log = headless, on_frame, on_audio, log
         self.errors = []
+        self.first_reel = first_reel
         self._browser = self.page = self._server = None
         self.origin = None
 
@@ -119,8 +121,8 @@ class Session:
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
         self.origin = "http://127.0.0.1:%d" % self._server.server_address[1]
-        # The agent can't ride the mofa (reel 1) yet: promo runs start at reel 2, the clay courts.
-        self.page.goto(self.origin + "/#level=%d" % PROMO_FIRST_REEL)
+        # The full promo starts at reel 2 (the clay courts); the ride promo at reel 1.
+        self.page.goto(self.origin + "/#level=%d" % self.first_reel)
         self.page.evaluate("() => PromoBridge.boot()")
         return self.snapshot(True)
 
@@ -142,6 +144,11 @@ class Session:
 
     def simulate_jumps(self, cands, max_frames=150):
         return self.page.evaluate("([c, m]) => PromoBridge.simulateJumps(c, m)", [cands, max_frames])
+
+    def simulate_hop(self, vy0=None, gk=1, max_frames=90, start=None):
+        """The mofa's flight from now, or from start {x, y, vx} ([[t, x, y], ...]), by the bridge's
+        mirror of Mofa.update."""
+        return self.page.evaluate("([v, g, m, s]) => PromoBridge.simulateHop(v, g, m, s)", [vy0, gk, max_frames, start])
 
     def take_rows(self):
         return self.page.evaluate("() => PromoBridge.takeRows()")

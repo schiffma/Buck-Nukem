@@ -1,4 +1,5 @@
 name: THE CREEK - LAIR OF THE GIANT CRAYFISH
+quotes: thurgau
 theme: creek
 bg: bg_creek
 boss: 1

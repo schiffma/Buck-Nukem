@@ -55,6 +55,11 @@ class QuotePacks(unittest.TestCase):
         self.assertEqual(errs, [])
         self.assertEqual(pack, {"start": ["HOPP!"], "kill": ["SO, FERTIG."], "kill:suv": ["GÄLL."]})
 
+    def test_finale_section(self):
+        pack, errs = self.parse("[finale]\nNÖD MIS PROBLEM.\n")
+        self.assertEqual(errs, [])
+        self.assertEqual(pack, {"finale": ["NÖD MIS PROBLEM."]})
+
     def test_lower_case_is_upper_cased(self):
         pack, errs = self.parse("[kill]\nso, fertig.\n")
         self.assertEqual(errs, [])
@@ -65,6 +70,7 @@ class QuotePacks(unittest.TestCase):
             "OUTSIDE\n": "outside a section",
             "[hurt]\nX\n": "unknown section",
             "[kill:dragon]\nX\n": "unknown section",
+            "[finale:limo]\nX\n": "unknown section",
             "[kill]\nTHIS LINE IS FAR TOO LONG\n": "longer than 20",
             "[kill]\nNO ~ TILDE\n": "cannot draw",
             "[kill]\nSO.\nSO.\n": "duplicate",
@@ -94,6 +100,7 @@ class QuotePacks(unittest.TestCase):
         packs = build.load_quote_packs()
         self.assertIn("ride", packs)
         self.assertGreaterEqual(len(packs["ride"]["kill"]), 12)
+        self.assertGreaterEqual(len(packs["ride"]["finale"]), 6)
 
 
 if __name__ == "__main__":

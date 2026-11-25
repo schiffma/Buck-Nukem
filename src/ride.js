@@ -31,15 +31,19 @@ const Mofa = {
   },
   // ---------------- the limo finale ----------------
   // When the limo is destroyed: play pauses (no gas, fire or jump; Buck can't be hurt) while the
-  // mofa rolls to a stop, the two posh ladies crawl out of the wreck one after the other with a
-  // line each, Buck answers "YOU HAVE NO CLUE" and lights a cigarette; Fire or Jump skips it.
+  // mofa rolls to a stop, the two posh ladies climb out of the wreck one after the other, each
+  // complaining at Buck, Buck answers with a dry [finale] line from the level's quote pack and lights
+  // a cigarette; Fire or Jump skips it. The ladies stay by the wreck and keep complaining.
   finale: null,
+  ladies: [],                                            // the two posh ladies, from the explosion to the level's end
+  nagT: 0, nagI: 0,
   startFinale(limo) {
-    const lines = shuffle(LIMO_FINALE_LINES.slice());
     const floor = limo.y + limo.h;
-    this.finale = { t: 0, ladies: [limoX(37), limoX(107)].map(function (dx, i) {
-      return { x: limo.x + dx - 6, y: floor - 7, dir: i ? 1 : -1, style: i, out: false, line: lines[i], bubble: null, anim: 0 };
-    }) };
+    this.ladies = [limoX(37), limoX(107)].map(function (dx, i) {   // at the two side doors, fan size
+      return { x: limo.x + dx - FAN_W / 2, y: floor - FAN_H, dir: -1, style: i, out: false, climbT: 0, line: Talk.line(LIMO_FINALE_LINES), bubble: null };
+    });
+    this.finale = { t: 0 };
+    this.nagT = 0; this.nagI = 0;
     Cars.pending = []; Cars.triggers = []; Game.enemyShots = [];
   },
   updateFinale(P, dt) {
@@ -47,31 +51,48 @@ const Mofa = {
     if (!F) return;
     const t0 = F.t; F.t += dt;
     const at = function (k) { return t0 < T[k] && F.t >= T[k]; };
-    const ladies = F.ladies;
-    if (at("lady1")) ladies[0].out = true;
-    if (at("lady2")) ladies[1].out = true;
+    const ladies = this.ladies;
+    if (at("lady1")) { ladies[0].out = true; ladies[0].climbT = T.climb; }
+    if (at("lady2")) { ladies[1].out = true; ladies[1].climbT = T.climb; }
     if (at("say1")) ladies[0].bubble = { text: ladies[0].line, t: 1.6 };
     if (at("say2")) ladies[1].bubble = { text: ladies[1].line, t: 1.6 };
-    if (at("buck")) { P.bubble = { text: "YOU HAVE NO CLUE", t: 1.8 }; P.talkCd = CONFIG.buckTalkCd; }
+    if (at("buck")) {                                     // Buck's dry reply from the quote pack ([finale])
+      const q = Quotes.finaleLine();
+      if (q) { P.bubble = { text: q, t: 1.8 }; P.talkCd = CONFIG.buckTalkCd; }
+    }
     if (at("light")) P.lighterT = T.lit - T.light;
     if (at("lit")) { P.cigarette = true; P.puffT = 0; }
-    ladies.forEach(function (l) {
-      if (l.out) { l.x += l.dir * T.crawl * dt; l.anim += dt * 4; }
-      if (l.bubble && (l.bubble.t -= dt) <= 0) l.bubble = null;
-    });
     if (P.lighterT > 0) P.lighterT -= dt;
     const skip = F.t > T.skipAfter && (Input.pressed("fire") || Input.pressed("jump"));
     if (F.t >= T.end || skip) this.endFinale(P);
   },
   endFinale(P) {
-    const F = this.finale;
-    if (!F) return;
-    F.ladies.forEach(function (l) {                      // they get up and run off in their dresses
-      Cars.runners.push({ x: l.x + 6, y: l.y - 7, vx: l.dir * 95, t: 3, anim: 0, lady: l.style });
-    });
+    if (!this.finale) return;
+    this.ladies.forEach(function (l) { l.out = true; l.climbT = 0; });
+    this.nagT = rnd(CONFIG.finale.nagEvery[0], CONFIG.finale.nagEvery[1]);
     if (!P.cigarette) { P.cigarette = true; P.puffT = 0; }
     P.lighterT = 0;
     this.finale = null;
+  },
+  // the ladies: climbing out, facing Buck; after the scene they take turns complaining while on screen
+  updateLadies(P, dt) {
+    const L = this.ladies;
+    if (!L.length) return;
+    L.forEach(function (l) {
+      if (l.climbT > 0) l.climbT = Math.max(0, l.climbT - dt);
+      if (l.bubble && (l.bubble.t -= dt) <= 0) l.bubble = null;
+      l.dir = P.x + P.w / 2 < l.x + FAN_W / 2 ? -1 : 1;
+    });
+    if (this.finale) return;
+    const on = function (l) { return l.x + FAN_W > Camera.x && l.x < Camera.x + W; };
+    if (!L.some(on) || (this.nagT -= dt) > 0) return;
+    const l = L[this.nagI % L.length];
+    if (on(l) && Talk.ladySay(l, Talk.line(LIMO_FINALE_LINES), CONFIG.finale.nagT)) {
+      this.nagI++; this.nagT = rnd(CONFIG.finale.nagEvery[0], CONFIG.finale.nagEvery[1]);
+    } else {
+      if (!on(l)) this.nagI++;                           // her turn passes to the one Buck can see
+      this.nagT = 0.3;
+    }
   },
   // a lit cigarette at Buck's mouth puffs a little smoke about every 1.1 s
   updateCigarette(P, dt) {
@@ -86,13 +107,16 @@ const Mofa = {
     return { x: mx + MOFA_RIDER_X + 11, y: my + MOFA_SEAT_Y - MOFA_HIP_ROW + 7 };
   },
   drawFinale(camX, camY) {
-    const F = this.finale;
-    if (!F) return;
-    const oy = HUD_H - camY;
-    F.ladies.forEach(function (l) {
+    const oy = HUD_H - camY, T = CONFIG.finale;
+    function draw(set, frame, x, y, dir) {
+      const S = set[frame];
+      ctx.drawImage(dir > 0 ? S.r : S.l, Math.round(x - camX) - S.pad, Math.round(y + oy) - S.pad);
+    }
+    this.ladies.forEach(function (l) {                   // in front of the wreck: climbing out, standing, scolding
       if (!l.out) return;
-      const S = SPR.ladyCrawl[l.style][Math.floor(l.anim) % 2];
-      ctx.drawImage(l.dir > 0 ? S.r : S.l, Math.round(l.x - camX) - S.pad, Math.round(l.y + oy) - S.pad);
+      const set = SPR.fansBy.posh[l.style];
+      if (l.climbT > 0) draw(set, "climb", l.x, l.y + Math.round(10 * l.climbT / T.climb), l.dir);
+      else draw(set, l.bubble ? "scold" : "stand", l.x, l.y, l.dir);
     });
   },
   update(P, dt, level) {

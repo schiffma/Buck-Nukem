@@ -44,6 +44,19 @@ class FairPlayTest(unittest.TestCase):
             self.assertEqual(sa["hero"], sb["hero"])
             self.assertEqual(sa["enemies"], sb["enemies"])
 
+    def test_ride_step_matches_the_games_own_update(self):
+        with Session(browser=BROWSER, seed=7, log=lambda *a: None, first_reel=1) as a,                 Session(browser=BROWSER, seed=7, log=lambda *a: None, first_reel=1) as b:
+            seq = [{"enter": 1}] + [{}] * 399 + [{"right": 1, "fire": 1}] * 300 + [{"right": 1, "jump": 1}] + [{"right": 1}] * 99
+            sa = a.step(seq)
+            a.simulate_hop()                           # queries leave no trace
+            sa2 = a.snapshot()
+            b.page.evaluate("(seq) => PromoBridge.rawUpdate(seq)", seq)
+            sb = b.snapshot()
+            self.assertEqual(sa["level"]["name"], "THE ROAD TO WOLLERAU")
+            for k in ("hero", "enemies", "enemyShots", "score"):
+                self.assertEqual(sa[k], sb[k], k)
+                self.assertEqual(sa2[k], sb[k], k)
+
     def test_same_seed_same_game(self):
         seq = [{"enter": 1}] + [{}] * 399 + [{"right": 1, "fire": 1}] * 150 + [{"jump": 1, "right": 1}] * 50
         snaps = []

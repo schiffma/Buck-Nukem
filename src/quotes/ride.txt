@@ -1,6 +1,7 @@
-; Buck's quotes on the mofa ride (reel 1): Swiss German, dry.
+; Buck's quotes on the mofa ride (reel 1): Swiss German, dry; plus Thurgau macho lines about cars.
 ; One quote per line, at most 20 characters, in capitals; Ä Ö Ü are fine.
-; Sections: [start] once after the intro, [kill] after any kill, [kill:<type>] for one enemy type
+; Sections: [start] once after the intro, [kill] after any kill, [kill:<type>] for one enemy type,
+; [finale] Buck's reply to the posh ladies after the limo blows up
 ; (lawyer, cray, punk, suv, tesla, ferrari, limo). Every section is optional; see README "Quote packs".
 [kill]
 SO, FERTIG.
@@ -17,3 +18,25 @@ SO GAHTS HALT.
 GHÖRT ALLES ZUM JOB
 BIS GLII, GELL.
 SCHO WIEDER EINE.
+; Thurgau macho lines (cocky agglo style)
+S MOFA ISCH KÖNIG!
+PS SIND NÖD ALLES.
+LEASING ABGLAUFE.
+MFK? NÖD BESTANDE.
+SCHÖNI CHARRE, GSII.
+CHROM UND RAUCH, HOI
+HOI ABSCHLEPPDIENST!
+DIE KISTE ISCH HIN.
+GOPF, BIN I GUET.
+STIL HÄND MIR, GÄLL.
+SCHÄTZELI, LUEG MOL!
+KÖNIG VO MOSTINDIE.
+[finale]
+NÖD MIS PROBLEM.
+MACH KEI THEATER.
+WÄRSCH DIHEI BLIBE.
+SO ISCH DS LÄBE.
+ÄXGÜSI, MADAME.
+TUET MER NÖD LEID.
+CHASCH DÄNK, GELL?
+ISCH HALT SO.

@@ -65,6 +65,7 @@ const Player = {
       Mofa.updateFinale(this, dt);                       // the limo finale (control locked while it plays)
       Mofa.update(this, dt, level);
       Mofa.updateCigarette(this, dt);
+      Mofa.updateLadies(this, dt);
       // the twin gun: Fire held fires a volley forward and backward (no automatic fire)
       if (!Mofa.finale && Input.down("fire") && this.fireCd <= 0) this.fire();
       if (this.y > level.pxH + 32) { this.hp = 0; this.die(); }

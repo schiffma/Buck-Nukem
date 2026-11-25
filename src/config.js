@@ -52,7 +52,7 @@ const CONFIG = {
   corkEvery: [1.0, 1.5],                               // champagne corks from the sunroof, while Buck is within a screen
   suvSpeed: 90, ferrariSpeed: 340, carKnockback: 160, carContact: 2, suvThrowEvery: [1.5, 2.5], wreckLife: 20,
   driverTalkT: 1.5, driverTalkEvery: [2.5, 3.5],    // posh drivers: a line on first sight, then every 2.5-3.5 s
-  finale: { lady1: 0.6, say1: 0.9, lady2: 1.8, say2: 2.1, buck: 3.2, light: 3.8, lit: 4.2, end: 5.0, skipAfter: 0.3, crawl: 12 },   // limo finale (s, px/s)
+  finale: { lady1: 0.6, say1: 0.9, lady2: 1.8, say2: 2.1, buck: 3.2, light: 3.8, lit: 4.2, end: 5.0, skipAfter: 0.3, climb: 0.4, nagEvery: [2, 3], nagT: 1.5 },   // limo finale (s)
   buckTalkCd: 3, buckTalkT: 1.5,                      // Buck's Swiss German line after a car kill (ride)
   rideBubbles: 2,                                    // ride: at most this many car bubbles at once (never overlapping)
   mofaRate: 8, mofaShotSpeed: 300, mofaAim: 30,    // heavy twin guns: volleys/s, px/s, Up angle (degrees)

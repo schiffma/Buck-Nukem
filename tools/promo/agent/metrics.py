@@ -9,11 +9,23 @@ Row: [level, t, dir, why, jumpStart, onGround, x, y, shot, hittable, threat, pic
     around the gun row: chest height standing, knee height kneeling, where a crayfish on the
     ground is hittable too)
   - hit rate: hero shot hits (enemies + boss face) / shots
+
+On the mofa ride (rows with the ride flag) the same keys are measured by the ride's rules:
+  - reversals = throttle flips (gas <-> brake; coasting in between does not reset it), "quick"
+    when flipped back within 1 s, unless the new state's reason is a dodge
+  - jumps = hops; unneeded when no threat was near at take-off (a car within reach or a thrown
+    item within 6 tiles) and no pickup was collected in the flight
+  - shots = volleys (both guns); no target = no car on screen in a gun's line and no shootable
+    item on screen; hit rate = hits / (2 x volleys)
 """
 DT = 1 / 60
 HERO_W, HERO_H, TILE = 10, 28, 16
 SOLID, PLATFORM = set("#BRUGDd"), set("=aAT")      # D/d: cover crates
-R_LEVEL, R_T, R_DIR, R_WHY, R_JUMP, R_GROUND, R_X, R_Y, R_SHOT, R_HIT, R_THREAT, R_PICK, R_CLIMB, R_HITS = range(14)
+R_LEVEL, R_T, R_DIR, R_WHY, R_JUMP, R_GROUND, R_X, R_Y, R_SHOT, R_HIT, R_THREAT, R_PICK, R_CLIMB, R_HITS, R_FIRE, R_RIDE = range(16)
+
+
+def is_ride(rows):
+    return bool(rows) and len(rows[0]) > R_RIDE and rows[0][R_RIDE] == 1
 
 
 class Grid:
@@ -42,6 +54,8 @@ def level_metrics(rows, grid):
     if not rows:
         return m
     m["hits"] = rows[-1][R_HITS] - rows[0][R_HITS]
+    ride = is_ride(rows)
+    m["ride"] = ride
     last_dir, last_start = 0, -10 ** 9
     jump = None
     for i, r in enumerate(rows):
@@ -63,6 +77,10 @@ def level_metrics(rows, grid):
             # take-off position: the row before (the jump row is logged after the first rising step)
             prev = rows[i - 1] if i > 0 else r
             jump = (i, r, prev)
+        elif jump and ride and r[R_GROUND] and i - jump[0] > 3:
+            if not jump[1][R_THREAT] and r[R_PICK] == jump[2][R_PICK]:
+                m["unneeded_jumps"] += 1
+            jump = None
         elif jump and r[R_GROUND] and i - jump[0] > 3:
             j0, p0 = jump[1], jump[2]
             same_row = abs(r[R_Y] - p0[R_Y]) < 2
@@ -82,7 +100,8 @@ def level_metrics(rows, grid):
     m["quick_reversals_per_min"] = round(m["quick_reversals"] / minutes, 1) if minutes else 0
     m["unneeded_jump_pct"] = round(100 * m["unneeded_jumps"] / m["jumps"], 1) if m["jumps"] else 0.0
     m["no_target_pct"] = round(100 * m["shots_no_target"] / m["shots"], 1) if m["shots"] else 0.0
-    m["hit_rate_pct"] = round(100 * m["hits"] / m["shots"], 1) if m["shots"] else 0.0
+    per = 2 if ride else 1                     # a mofa volley is two shots
+    m["hit_rate_pct"] = round(100 * m["hits"] / (per * m["shots"]), 1) if m["shots"] else 0.0
     return m
 
 
@@ -103,7 +122,9 @@ def run_metrics(rows, grids):
     tot["quick_reversals_per_min"] = round(tot["quick_reversals"] / minutes, 1) if minutes else 0
     tot["unneeded_jump_pct"] = round(100 * tot["unneeded_jumps"] / tot["jumps"], 1) if tot["jumps"] else 0.0
     tot["no_target_pct"] = round(100 * tot["shots_no_target"] / tot["shots"], 1) if tot["shots"] else 0.0
-    tot["hit_rate_pct"] = round(100 * tot["hits"] / tot["shots"], 1) if tot["shots"] else 0.0
+    shots = sum(m["shots"] * (2 if m.get("ride") else 1) for m in out.values())
+    tot["hit_rate_pct"] = round(100 * tot["hits"] / shots, 1) if shots else 0.0
+    tot["ride"] = bool(out) and all(m.get("ride") for m in out.values())
     out["total"] = tot
     return out
 
@@ -120,6 +141,11 @@ def format_table(res, names=None):
     lines = []
     for lv, m in res.items():
         name = "TOTAL" if lv == "total" else "L%d" % (lv + 1) + (" " + names[lv] if names and lv in names else "")
+        if m.get("ride"):
+            lines.append("%-30s %6.1fs  throttle flips %5.1f/min (quick %4.1f/min)  hops %3d unneeded %4.1f%%  volleys %3d no-target %4.1f%% hit %5.1f%%" % (
+                name[:30], m["time"], m["reversals_per_min"], m["quick_reversals_per_min"], m["jumps"], m["unneeded_jump_pct"],
+                m["shots"], m["no_target_pct"], m["hit_rate_pct"]))
+            continue
         lines.append("%-30s %6.1fs  reversals %5.1f/min (quick %4.1f/min)  jumps %3d unneeded %4.1f%%  shots %3d no-target %4.1f%% hit %5.1f%%" % (
             name[:30], m["time"], m["reversals_per_min"], m["quick_reversals_per_min"], m["jumps"], m["unneeded_jump_pct"],
             m["shots"], m["no_target_pct"], m["hit_rate_pct"]))

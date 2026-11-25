@@ -1,5 +1,6 @@
 name: CLUBHOUSE AND INDOOR HALL
 music: clarinetpolka
+quotes: thurgau
 theme: hall
 bg: bg_hall
 interior: 0-63

@@ -15,8 +15,10 @@ const LIMO_LADY_LINES = ["IS THAT A MOFA? EW.", "RUN HIM OVER, DEAR", "HOW VERY 
 // Who speaks from the limo: px from its left edge (bubble anchor) and the lines.
 // (positions in the limo's 160-wide layout grid, scaled to its real width by limoX)
 const LIMO_SPEAKERS = [{ bx: 61, lines: PRESIDENT_LINES }, { bx: 37, lines: LIMO_LADY_LINES }, { bx: 107, lines: LIMO_LADY_LINES }];
-// The posh ladies crawling out of the limo's wreck (the finale), at most 20 characters each.
-const LIMO_FINALE_LINES = ["MY DRESS! IT'S DIOR!", "CALL MY HUSBAND!", "MY NAILS! MY NAILS!", "THIS IS AN OUTRAGE!", "WHO IS YOUR LAWYER?", "I'LL HAVE YOU FIRED!"];
+// The posh ladies complaining at Buck by the limo's wreck (the finale and after), at most 20 characters each.
+const LIMO_FINALE_LINES = ["MY DRESS! IT'S DIOR!", "CALL MY HUSBAND!", "MY NAILS! MY NAILS!", "THIS IS AN OUTRAGE!", "WHO IS YOUR LAWYER?",
+  "I'LL HAVE YOU FIRED!", "YOU RUINED MY DAY!", "I'LL SUE YOU, MOFA!", "THAT WAS A BENTLEY!", "MY HUSBAND'S A JUDGE", "DO YOU KNOW MY NAME?",
+  "CALL SECURITY!", "YOU SMELL OF PETROL!", "MY CHAMPAGNE! SPILT!"];
 const POSH_LINES = ["DO YOU KNOW MY DAD?", "NICE BIKE, GRANDPA!", "GET OFF MY ROAD!", "I PAY YOUR SALARY!",
   "DADDY'S CAR!", "MY LAWYER WILL CALL", "ZERO EMISSIONS, LOL", "0 TO 100 IN 2.9!", "PARKING IS FOR POOR",
   "TRUST FUND, BABY!", "ROSE O'CLOCK!", "MOVE IT, PEASANT!"];
@@ -154,25 +156,19 @@ function carType(kind) {
       if (k === "limo") {                                 // bigger: a chain of blasts along the whole car
         for (let i = 0; i < 4; i++) FX.explode(e.x + e.w * (i + 0.5) / 4, y - 4 + rnd(-6, 6), false);
         FX.shake(8, 0.6);
-        Cars.runners.push({ x: e.x + limoX(LIMO_SUNROOF_BX), y: e.y + e.h - 12, vx: 110, t: 3, anim: 0 });   // the president, in tails
-        Mofa.startFinale(e);                                                                       // the ladies crawl out: the finale
+        Mofa.startFinale(e);                                                                       // the ladies climb out: the finale
       }
       Cars.wreck(e);
-      Cars.bailOut(e);
     },
   };
 });
 
 // Wrecks and the drivers running off after a car is destroyed; triggers for cars from behind/ahead.
 const Cars = {
-  wrecks: [], runners: [], triggers: [], pending: [],
-  reset() { this.wrecks = []; this.runners = []; this.triggers = []; this.pending = []; },
+  wrecks: [], triggers: [], pending: [],
+  reset() { this.wrecks = []; this.triggers = []; this.pending = []; },
   addTrigger(ch, tx, ty) { this.triggers.push({ ch: ch, cars: CAR_TRIGGERS[ch], tx: tx, floor: (ty + 1) * TILE }); },
   wreck(e) { this.wrecks.push({ kind: e.T.car, x: e.x, y: e.y, w: e.w, h: e.h, t: CONFIG.wreckLife }); },
-  bailOut(e) {
-    const away = Player.cx() < e.x + e.w / 2 ? 1 : -1;
-    this.runners.push({ x: e.x + e.w / 2, y: e.y + e.h - 12, vx: away * 90, t: 2.5, anim: 0 });
-  },
   spawn(kind, floor, offset) {
     const I = CAR_INFO[kind];
     let x;
@@ -205,11 +201,6 @@ const Cars = {
           color: pick(["#ff8020", "#ffd040", "#e04010"]), grav: -20, size: 2 });
       if (w.t <= 0) this.wrecks.splice(i, 1);
     }
-    for (let i = this.runners.length - 1; i >= 0; i--) {
-      const r = this.runners[i];
-      r.x += r.vx * dt; r.t -= dt; r.anim += dt * 10;
-      if (r.t <= 0) this.runners.splice(i, 1);
-    }
   },
   draw(camX, camY) {
     const oy = HUD_H - camY;
@@ -220,10 +211,6 @@ const Cars = {
       ctx.globalAlpha = 1;
     }
     Mofa.drawFinale(camX, camY);
-    for (const r of this.runners) {
-      const S = (r.lady !== undefined ? SPR.ladyRun[r.lady] : SPR.driverRun)[Math.floor(r.anim) % 2];
-      ctx.drawImage(r.vx > 0 ? S.r : S.l, Math.round(r.x - camX) - S.pad, Math.round(r.y + oy) - S.pad);
-    }
   },
 };
 
@@ -366,38 +353,5 @@ function buildCarSprites() {
       frames: [makeSet(drawCar(k, 0)), makeSet(drawCar(k, 1))],
       wreck: makeSet(drawCar(k, 0, true)),
     };
-  });
-  // the limo's ladies crawling out of the wreck on hands and knees (12 x 7, hat askew), 2 frames each
-  SPR.ladyCrawl = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {
-    return [0, 1].map(function (f) {
-      const c = makeCanvas(12, 7), g = c.getContext("2d");
-      function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-      r(8, 0, 4, 1, C[0]); r(9, 1, 2, 1, C[0]);                       // the hat, askew
-      r(8, 2, 3, 2, "#e8b898"); r(9, 2, 2, 1, "#101010");            // face, sunglasses
-      r(2, 2, 7, 3, C[1]); r(7, 2, 2, 1, "#f8f8f0");                 // dress, pearls
-      r(f ? 8 : 9, 4, 1, 3, "#e8b898"); r(f ? 3 : 2, 5, 1, 2, "#e8b898"); r(0, 4, 2, 1, "#e8b898");   // arms, knees, feet
-      return makeSet(c);
-    });
-  });
-  // the limo's ladies running off (big hat, dress, heels), 2 frames each: pink and white
-  SPR.ladyRun = [["#e070a0", "#c04080"], ["#f4f0e8", "#2a2a40"]].map(function (C) {
-    return [0, 1].map(function (f) {
-      const c = makeCanvas(8, 14), g = c.getContext("2d");
-      function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-      r(0, 0, 8, 1, C[0]); r(2, 0, 4, 2, C[0]);                       // hat
-      r(2, 2, 4, 3, "#e8b898"); r(3, 3, 3, 1, "#101010");            // face, sunglasses
-      r(1, 5, 6, 6, C[1]); r(2, 5, 4, 1, "#f8f8f0");                 // dress, pearls
-      if (f) { r(1, 11, 1, 3, "#e8b898"); r(5, 11, 1, 2, "#e8b898"); } else { r(2, 11, 1, 2, "#e8b898"); r(4, 11, 1, 3, "#e8b898"); }
-      return makeSet(c);
-    });
-  });
-  // a driver running off (suit, sunglasses), 2 frames
-  SPR.driverRun = [0, 1].map(function (f) {
-    const c = makeCanvas(6, 12), g = c.getContext("2d");
-    function r(x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
-    r(1, 0, 4, 3, "#e8b898"); r(1, 0, 4, 1, "#2a1a10"); r(2, 1, 3, 1, "#101010");
-    r(0, 3, 6, 5, "#f4f0e8"); r(1, 3, 4, 5, "#3a3050");
-    if (f) { r(0, 8, 2, 4, "#202020"); r(4, 8, 2, 3, "#202020"); } else { r(1, 8, 2, 3, "#202020"); r(3, 8, 2, 4, "#202020"); }
-    return makeSet(c);
   });
 }
