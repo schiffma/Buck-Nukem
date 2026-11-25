@@ -40,6 +40,28 @@ function drawFramedPortrait(x, y) {
   ctx.drawImage(IMG.portrait, x, y);
 }
 
+// Level-complete screen layout: the bonus table in a right-hand column, Buck's framed portrait at the
+// lower left with a cigarette between his lips (portrait pixels), his winning line above it.
+const LC_LAYOUT = {
+  titleY: 30, nameY: 56,
+  labelX: 140, valueX: 306, rowY: 80, rowH: 16, colX: 224, scoreY: 176, promptY: 210,
+  px: 14, py: 120, mouth: { x: 38, y: 47 },     // the filter end: on the line between the lips, right under the moustache
+  bubbleX: 8, bubbleY: 98, headX: 47,
+};
+const LC_CIG = { len: 10, drop: 4 };               // 10 px long, almost level (1 px down per 4 px), across the left moustache droop
+function lcCigTip(mx, my) { return { x: mx - LC_CIG.len, y: my + Math.floor((LC_CIG.len - 1) / LC_CIG.drop) }; }
+const LC_EMBER_DRAG = "#ffd060";
+// how a smoke particle looks: the wisp is thin, cool blue-grey and faint; exhaled smoke is whiter and spreads
+function lcSmokeStyle(s) {
+  const k = Math.max(0, s.life / s.max), age = 1 - k;
+  if (s.kind === "wisp") return { size: age < 0.33 ? 1 : 2, alpha: 0.45 * k, color: "#c8ccd8" };
+  return { size: 1 + Math.round(age * 4), alpha: 0.7 * k, color: "#e4e2de" };
+}
+function lcBubbleRect(text) {
+  const L = LC_LAYOUT, w = textWidth(text) + 6;
+  return { x: L.bubbleX, y: L.bubbleY, w: w, h: 11, tx: L.headX };
+}
+
 function blink(rate) { return Math.floor(Game.time * (rate || 2)) % 2 === 0; }
 
 // Big distressed, outlined poster lettering; cached per text/scale/colour.
@@ -211,19 +233,91 @@ const Screens = {
   levelComplete() {
     ctx.drawImage(IMG.bg_complete, 0, 0);
     fillRect(0, 0, W, H, "rgba(20,4,0,0.35)");
-    const t = Game.tally;
-    drawText("LEVEL COMPLETE!", W / 2, 30, "#ffe860", { scale: 2, align: "center", shadow: "#000" });
-    drawText(Game.level.name, W / 2, 56, "#ffffff", { align: "center" });
+    const t = Game.tally, L = LC_LAYOUT;
+    drawText("LEVEL COMPLETE!", W / 2, L.titleY, "#ffe860", { scale: 2, align: "center", shadow: "#000" });
+    drawText(Game.level.name, W / 2, L.nameY, "#ffffff", { align: "center" });
     const rows = [
       ["LEVEL BONUS", t.level], ["HEALTH BONUS", t.health], ["TIME BONUS", t.time],
       ["ENEMIES", Game.stats.kills], ["TOTAL BONUS", t.shown],
     ];
     rows.forEach(function (r, i) {
-      drawText(r[0], 60, 86 + i * 16, i === 4 ? "#ffe860" : "#c0c8d8");
-      drawText(String(r[1]), 260, 86 + i * 16, i === 4 ? "#ffe860" : "#ffffff", { align: "right" });
+      drawText(r[0], L.labelX, L.rowY + i * L.rowH, i === 4 ? "#ffe860" : "#c0c8d8", { shadow: "#000" });
+      drawText(String(r[1]), L.valueX, L.rowY + i * L.rowH, i === 4 ? "#ffe860" : "#ffffff", { align: "right", shadow: "#000" });
     });
-    drawText("SCORE " + Game.score, W / 2, 180, "#ffffff", { align: "center" });
-    if (t.done && blink(2)) drawText(promptText("continue"), W / 2, 210, "#ffffff", { align: "center" });
+    drawText("SCORE " + Game.score, L.colX, L.scoreY, "#ffffff", { align: "center", shadow: "#000" });
+    if (t.done && blink(2)) drawText(promptText("continue"), L.colX, L.promptY, "#ffffff", { align: "center", shadow: "#000" });
+    // Buck, smoking, and his winning line once the count is done
+    drawFramedPortrait(L.px, L.py);
+    this.drawCigarette(L.px + L.mouth.x, L.py + L.mouth.y);
+    this.smoke.forEach(function (s) {
+      const st = lcSmokeStyle(s), size = st.size;
+      ctx.globalAlpha = st.alpha;
+      const x = Math.round(s.x - size / 2), y = Math.round(s.y - size / 2);
+      if (size < 3) fillRect(x, y, size, size, st.color);
+      else { fillRect(x + 1, y, size - 2, size, st.color); fillRect(x, y + 1, 1, size - 2, st.color); fillRect(x + size - 1, y + 1, 1, size - 2, st.color); }   // a round-ish puff
+    });
+    ctx.globalAlpha = 1;
+    if (t.done && t.quote) {
+      const b = lcBubbleRect(t.quote);
+      drawSpeechBubble(t.quote, b.x, b.y, b.w, b.h, b.tx);
+    }
+  },
+
+  // the cigarette in Buck's mouth (portrait pixels): slanting down to the left, ember at the tip
+  drawCigarette(mx, my) {
+    for (let i = 0; i < LC_CIG.len; i++) {
+      const x = mx - i, y = my + Math.floor(i / LC_CIG.drop);
+      const filter = i < 2;
+      fillRect(x, y, 1, 1, filter ? "#d89850" : "#f6f2e6");
+      fillRect(x, y + 1, 1, 1, filter ? "#a86c30" : "#c8c2b2");
+    }
+    const tip = lcCigTip(mx, my);
+    fillRect(tip.x, tip.y, 1, 2, "#605850");                                   // ash
+    if (this.drag > 0) {                                                        // a drag: the ember flares
+      ctx.globalAlpha = 0.5; fillRect(tip.x - 2, tip.y - 1, 3, 4, "#ffa040"); ctx.globalAlpha = 1;
+      fillRect(tip.x - 1, tip.y, 1, 2, LC_EMBER_DRAG);
+    } else fillRect(tip.x - 1, tip.y, 1, 2, Math.floor(Game.time * 6) % 2 ? "#ff7020" : "#ffb040");   // ember
+  },
+
+  // Cigarette smoke (screen coordinates; the tally screen only), modelled on a real cigarette:
+  // a thin side-stream wisp that sways more the higher it climbs, and every 4.5-6 s a drag (the ember
+  // flares) followed by an exhaled cloud from the mouth that drifts away from his face, rises and spreads.
+  smoke: [], clock: 0, wispT: 0, nextDrag: 0, drag: 0, exhaleT: -1,
+  resetSmoke() { this.smoke = []; this.clock = 0; this.wispT = 0; this.nextDrag = 1.5; this.drag = 0; this.exhaleT = -1; },
+  updateSmoke(dt) {
+    const L = LC_LAYOUT, tip = lcCigTip(L.px + L.mouth.x, L.py + L.mouth.y);
+    this.clock += dt;
+    if (this.drag > 0) {                                 // drawing on the cigarette: no side-stream, then exhale
+      if ((this.drag -= dt) <= 0) { this.drag = 0; this.exhaleT = 0.4; }
+    } else {
+      this.wispT -= dt;
+      while (this.wispT <= 0) {
+        this.wispT += 0.06;
+        this.smoke.push({ kind: "wisp", x0: tip.x - 1, y0: tip.y - 1, x: tip.x - 1, y: tip.y - 1, rise: 0, vy: rnd(7, 10),
+          phase: this.clock * 2.4, life: 2.2, max: 2.2 });
+      }
+      if ((this.nextDrag -= dt) <= 0) { this.drag = 0.5; this.nextDrag = rnd(4.5, 6); }
+    }
+    if (this.exhaleT >= 0 && (this.exhaleT -= dt) < 0) {   // the exhale leaves the left half of the mouth line
+      const n = 14 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < n; i++) {
+        const life = rnd(1.6, 2.2);
+        this.smoke.push({ kind: "exhale", x: L.px + rnd(31, 36), y: L.py + 48 + rnd(0, 1), vx: rnd(-16, -10), vy: rnd(0, 4), life: life, max: life });
+      }
+    }
+    this.smoke.forEach(function (s) {
+      s.life -= dt;
+      if (s.kind === "wisp") {                           // one wavy ribbon: the sway grows with the height
+        s.rise += s.vy * dt;
+        s.y = s.y0 - s.rise;
+        s.x = s.x0 - s.rise * 0.12 + Math.sin(s.phase - s.rise * 0.28) * Math.min(3, s.rise * 0.15);
+      } else {                                           // exhaled smoke slows down and rises as it cools
+        s.vx *= Math.max(0, 1 - 1.2 * dt); s.vy -= 7 * dt;
+        s.x += s.vx * dt; s.y += s.vy * dt;
+      }
+    });
+    const x0 = L.px + 2, x1 = L.px + 93, y0 = L.py + 2, y1 = L.py + 93;   // inside the portrait only
+    this.smoke = this.smoke.filter(function (s) { return s.life > 0 && s.x > x0 && s.x < x1 && s.y > y0 && s.y < y1; });
   },
 
   pause() {

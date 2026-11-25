@@ -60,6 +60,11 @@ class QuotePacks(unittest.TestCase):
         self.assertEqual(errs, [])
         self.assertEqual(pack, {"finale": ["NÖD MIS PROBLEM."]})
 
+    def test_complete_section(self):
+        pack, errs = self.parse("[complete]\nGWUNNE, WIE IMMER.\n")
+        self.assertEqual(errs, [])
+        self.assertEqual(pack, {"complete": ["GWUNNE, WIE IMMER."]})
+
     def test_lower_case_is_upper_cased(self):
         pack, errs = self.parse("[kill]\nso, fertig.\n")
         self.assertEqual(errs, [])
@@ -71,6 +76,7 @@ class QuotePacks(unittest.TestCase):
             "[hurt]\nX\n": "unknown section",
             "[kill:dragon]\nX\n": "unknown section",
             "[finale:limo]\nX\n": "unknown section",
+            "[complete:x]\nX\n": "unknown section",
             "[kill]\nTHIS LINE IS FAR TOO LONG\n": "longer than 20",
             "[kill]\nNO ~ TILDE\n": "cannot draw",
             "[kill]\nSO.\nSO.\n": "duplicate",

@@ -1759,6 +1759,83 @@ function runTests() {
     check("thurgau quotes: a lawyer kill on foot says a line from the lawyer set", said && (T["kill:lawyer"] || []).indexOf(said) >= 0, String(said));
   });
 
+  safe("level complete: buck smokes", function () {
+    const L = LC_LAYOUT, C = QUOTE_PACKS.thurgau.complete || [];
+    const texts = function () { TEXT_LOG.active = true; TEXT_LOG.items = []; Game.render(); TEXT_LOG.active = false; return TEXT_LOG.items; };
+    const px = function (x, y) { const d = ctx.getImageData(x, y, 1, 1).data; return [d[0], d[1], d[2]]; };
+    Player.resetForGame(); Game.loadLevel(1); Game.setState(STATE.PLAY);
+    Game.completeLevel();
+    const t = Game.tally;
+    check("level complete: the winning line comes from the pack's [complete] lines", C.length >= 12 && C.indexOf(t.quote) >= 0, String(t.quote));
+    // during the count: the portrait smokes, no bubble
+    for (let i = 0; i < 30; i++) Game.update(DT);
+    const during = texts();
+    const frame = px(L.px - 2, L.py + 40), mouth = { x: L.px + L.mouth.x, y: L.py + L.mouth.y }, tip = lcCigTip(mouth.x, mouth.y);
+    let ember = false;
+    for (let k = 0; k < 2; k++) { Game.time = k / 6 + 0.01; Game.render(); const e = px(tip.x - 1, tip.y); if (e[0] > 230 && e[1] > 90 && e[1] < 200 && e[2] < 90) ember = true; }
+    check("level complete: Buck's framed portrait with a cigarette and a glowing ember", !t.done && frame.join() === "232,216,168" && ember,
+      "frame " + frame + ", ember " + px(tip.x - 1, tip.y) + ", paper " + px(mouth.x - 4, mouth.y + 1));
+    check("level complete: no bubble while the bonus counts", during.indexOf(t.quote) < 0);
+    // the cigarette sits in the mouth: filter on the lips under the moustache, the tip left of the moustache's left droop
+    Game.render();
+    const filt = px(mouth.x, mouth.y), lips = L.mouth.x >= 31 && L.mouth.x <= 44 && L.mouth.y >= 46 && L.mouth.y <= 48;
+    check("level complete: the cigarette's filter is on the lip line and its tip left of the moustache",
+      lips && filt.join() === "216,152,80" && tip.x - L.px < 30, "filter at " + L.mouth.x + "/" + L.mouth.y + " " + filt + ", tip x " + (tip.x - L.px));
+    // smoke rises from the ember over about 2 s
+    let puffs = 0, above = 0;
+    for (let i = 0; i < 120; i++) { Game.update(DT); puffs = Math.max(puffs, Screens.smoke.length); Screens.smoke.forEach(function (s) { if (s.y < tip.y - 8) above++; }); }
+    const area = function () { Game.render(); return Array.from(ctx.getImageData(tip.x - 12, tip.y - 30, 30, 30).data).join(); };
+    const withSmoke = area(), keepSmoke = Screens.smoke; Screens.smoke = [];
+    const noSmoke = area(); Screens.smoke = keepSmoke;
+    check("level complete: smoke puffs rise from the cigarette and are drawn above it", puffs >= 3 && above > 0 && withSmoke !== noSmoke,
+      puffs + " puffs, " + above + " above, drawn " + (withSmoke !== noSmoke) + ", now " + Screens.smoke.length + " at " + Screens.smoke.slice(0, 3).map(function (s) { return Math.round(s.x) + "/" + Math.round(s.y); }).join(" "));
+    // a real cigarette: a faint continuous wisp, drags with a flaring ember, exhales from the mouth; all inside the portrait
+    Screens.resetSmoke();
+    let wispFrames = 0, faint = true, dragSeen = false, flare = false, exhale = null, outside = 0;
+    for (let i = 0; i < 7 * 60; i++) {
+      Game.update(DT);
+      const S = Screens.smoke;
+      if (i > 10 && i < 180 && S.some(function (s) { return s.kind === "wisp"; })) wispFrames++;
+      S.forEach(function (s) {
+        if (lcSmokeStyle(s).alpha >= 1) faint = false;
+        if (s.x < L.px || s.x > L.px + 96 || s.y < L.py || s.y > L.py + 96) outside++;
+        if (s.kind === "exhale" && !exhale && dragSeen) exhale = { y: s.y - L.py, vx: s.vx };
+      });
+      if (Screens.drag > 0 && !dragSeen) { dragSeen = true; Game.render(); flare = px(tip.x - 1, tip.y).join() === "255,208,96"; }
+    }
+    check("level complete: a faint wisp rises from the ember all the time", wispFrames === 169 && faint, wispFrames + " of 169 frames, faint " + faint);
+    check("level complete: Buck takes a drag (the ember flares) and exhales smoke from his mouth line, drifting left",
+      dragSeen && flare && exhale && exhale.y >= 47 && exhale.y <= 50 && exhale.vx < 0, "drag " + dragSeen + ", flare " + flare + ", exhale " + JSON.stringify(exhale));
+    check("level complete: no smoke outside the portrait", outside === 0, outside + " particles outside");
+    // after the count: the bubble with the line, above the portrait
+    const after = texts();
+    check("level complete: after the count Buck says his line", t.done && after.indexOf(t.quote) >= 0, after.join("|"));
+    // another level: another line (no repeats until the deck is used up)
+    const first = t.quote;
+    Game.setState(STATE.PLAY); Game.completeLevel();
+    check("level complete: the next screen picks another line", Game.tally.quote && Game.tally.quote !== first, first + " / " + Game.tally.quote);
+    // no [complete] lines: the portrait, no bubble
+    Game.setState(STATE.PLAY); Game.level.quotes = null; Game.completeLevel();
+    Game.tally.shown = Game.tally.total; Game.tally.done = true;
+    const none = texts();
+    check("level complete: no lines in the pack, no bubble", Game.tally.quote === null && none.every(function (s) { return C.indexOf(s) < 0; }));
+    Game.level.quotes = "thurgau";
+    // layout: everything inside the screen, nothing overlapping (keyboard and touch prompts, longest line)
+    const longest = C.reduce(function (a, b) { return textWidth(b) > textWidth(a) ? b : a; }, "");
+    const box = function (s, x, y, align, scale) { const w = textWidth(s, scale || 1); return { x: align === "center" ? x - w / 2 : align === "right" ? x - w : x, y: y, w: w, h: 7 * (scale || 1) }; };
+    const b = lcBubbleRect(longest);
+    const rects = [["title", box("LEVEL COMPLETE!", W / 2, L.titleY, "center", 2)], ["name", box("KREBSBACH - CREEK AND SPORTS FIELDS", W / 2, L.nameY, "center")],
+      ["score", box("SCORE 9999999", L.colX, L.scoreY, "center")], ["prompt", box(PROMPTS.continue[0], L.colX, L.promptY, "center")],
+      ["touch prompt", box(PROMPTS.continue[1], L.colX, L.promptY, "center")],
+      ["portrait", { x: L.px - 3, y: L.py - 3, w: 102, h: 102 }], ["bubble", { x: b.x - 1, y: b.y - 1, w: b.w + 2, h: b.h + 4 }]];
+    for (let i = 0; i < 5; i++) rects.push(["row " + i, { x: L.labelX, y: L.rowY + i * L.rowH, w: L.valueX - L.labelX, h: 7 }]);
+    const out = rects.filter(function (r) { return r[1].x < 0 || r[1].y < 0 || r[1].x + r[1].w > W || r[1].y + r[1].h > H; }).map(function (r) { return r[0]; });
+    const clash = [];
+    rects.forEach(function (a, i) { rects.slice(i + 1).forEach(function (c) { if (a[0] !== "touch prompt" && c[0] !== "touch prompt" || a[0].indexOf("prompt") < 0 || c[0].indexOf("prompt") < 0) { if (rectsTouch(a[1], c[1], 0) && !(a[0].indexOf("prompt") >= 0 && c[0].indexOf("prompt") >= 0)) clash.push(a[0] + "/" + c[0]); } }); });
+    check("level complete: title, name, table, score, prompt, portrait and bubble fit and don't overlap", !out.length && !clash.length, "out " + out + " clash " + clash);
+    Game.setState(STATE.TITLE);
+  });
+
   safe("buck's lines", function () {
     const bad = /\b(FUCK|SHIT|SEX|BITCH|DICK|PUSSY|ASS|DAMN|SCHEISS|ARSCH)\b/;
     const long = QUOTE_PACKS.ride.kill.filter(function (l) { return l.length > 20; });
@@ -4547,7 +4624,7 @@ function runShot(spec) {
       if ((what === "fire" || what === "kneelfire") && i % 10 === 0) Player.fire();
       Game.update(DT); Input.endStep();
     }
-    if (what === "complete") { Game.completeLevel(); for (let i = 0; i < 200; i++) Game.update(DT); }
+    if (what === "complete") { Game.completeLevel(); for (let i = 0; i < (+p[5] || 200); i++) Game.update(DT); }
     if (what === "pause") Game.setState(STATE.PAUSE);
   }
   Game.render();

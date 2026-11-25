@@ -339,7 +339,7 @@ def music_errors(meta, name="level"):
     return []
 
 
-# Buck's quote packs (src/quotes/<pack>.txt): [start], [kill], [kill:<enemy type>] sections,
+# Buck's quote packs (src/quotes/<pack>.txt): [start], [kill], [kill:<enemy type>], [finale], [complete] sections,
 # one quote per line, at most QUOTE_MAX characters, drawable with the game font.
 ENEMY_TYPES = {"lawyer", "cray", "punk", "suv", "tesla", "ferrari", "limo"}   # ENEMY_TYPES in src/enemies.js and src/cars.js
 QUOTE_MAX = 20
@@ -364,12 +364,12 @@ def parse_quote_pack(path, chars):
         m = re.fullmatch(r"\[(\w+)(?::(\w+))?\]", line)
         if m:
             kind, enemy = m.group(1), m.group(2)
-            if kind in ("start", "finale") and enemy is None:
+            if kind in ("start", "finale", "complete") and enemy is None:
                 section = kind
             elif kind == "kill" and (enemy is None or enemy in ENEMY_TYPES):
                 section = "kill" if enemy is None else "kill:" + enemy
             else:
-                errors.append(f"{where}: unknown section {line} (known: [start], [finale], [kill], [kill:<{'|'.join(sorted(ENEMY_TYPES))}>])")
+                errors.append(f"{where}: unknown section {line} (known: [start], [finale], [complete], [kill], [kill:<{'|'.join(sorted(ENEMY_TYPES))}>])")
                 section = None
                 continue
             pack.setdefault(section, [])

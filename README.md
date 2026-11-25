@@ -4,7 +4,7 @@ A retro early-90s style run-and-gun platformer set at TC Wollerau and the Krebsb
 Native resolution 320×240, delivered as **one self-contained HTML file**: `dist/buck_nukem.html`
 (no network access and no other files needed, about 400 KB).
 
-Version **1.0.9** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
+Version **1.0.10** (see `VERSION`; releases are git tags `vX.Y.Z`). The title screen shows the build's version in small print, bottom right: the release tag (`V1.0.2`), or for builds in between the tag plus commits since and the commit (`V1.0.2-3-GAB12CD3`, `-DIRTY` with uncommitted changes). Changes under `dist/` don't count.
 
 Open `dist/buck_nukem.html` in Chrome or Edge (tested). Firefox should also work but has not been tested. On a phone, hold it in landscape and use Chrome on Android or Safari on iOS: the same file switches to touch controls (see [Playing on a phone](#playing-on-a-phone)). Browsers allow no sound before the first key, click or tap, so the title first says "PRESS ANY KEY FOR SOUND": that input only starts the music (a 70s hard-rock title theme) and the title stays; then Enter starts the game. Where the browser allows autoplay (for example after allowing sound for the page in the site settings), the music plays as soon as the page opens and Enter starts at once. Each reel has its own music: a biker rock song on the mofa ride, 70s funk on the clay courts, Ride of the Valkyries at the creek, the Clarinet Polka with an oom-pah band in the clubhouse, and the Valkyries again, faster, in the boss arena.
 
@@ -71,7 +71,7 @@ The game is styled like a 1970s grindhouse movie on a lurid, saturated colour pr
 - **Gore:** cartoon pixel blood. Enemies burst into blood and gibs, the punks' mowers explode into oil and sparks, and leave stains that fade after 20 seconds.
 - **Damage:** a red edge flash when Buck is hit.
 - **Fans:** a crowd of TC Wollerau tennis players in 70s whites cheers Buck on: 8–10 per level, 4–5 in the boss arena, 14 different looks. When he scores nearby, they cheer and call out in speech bubbles. When he walks past, a fan blows him a kiss, a heart floats up and she calls out something cheeky ("HEY HANDSOME!", "NICE RACKET, BUCK!"), with a wolf whistle. The lines are flirty grindhouse innuendo, never explicit. At most 3 bubbles show at a time. Fans are pure decoration: nothing collides with them.
-- **Screens:** a red-tinted exploitation-poster title, film-reel countdown intros ("REEL n", "MISSING REEL" before the boss) and "THE END" cards.
+- **Screens:** a red-tinted exploitation-poster title, film-reel countdown intros ("REEL n", "MISSING REEL" before the boss) and "THE END" cards. The level-complete screen shows Buck's framed photo portrait with a lit cigarette at the corner of his mouth, puffing smoke, next to the bonus count. Once the count is done he says a winning line in Thurgau dialect ("GWUNNE, WIE IMMER.", "ZIIT FÜR EN MOST.") from the `[complete]` section of the level's quote pack.
 
 ## Build
 
@@ -209,6 +209,8 @@ UFGRUMT!
 DE ISCH GSI.
 [finale]           ; Buck's reply in a level's closing scene (the ride's limo finale)
 NÖD MIS PROBLEM.
+[complete]         ; Buck's winning line on the level-complete screen, once the bonus count is done
+GWUNNE, WIE IMMER.
 ```
 
 - One quote per line, at most 20 characters; lower case is shown in capitals. Allowed characters are those of the game font: A–Z, 0–9, `. , ! ? : - ' / ( ) + = > < % " *`, `♥` and `Ä Ö Ü`.
@@ -216,8 +218,8 @@ NÖD MIS PROBLEM.
 - Every section is optional. Quotes are picked at random without repeats until a section is used up, and shown in a speech bubble above Buck (on foot or on the mofa) that never covers another bubble; if there is no room, Buck stays quiet.
 - `python tools/build.py` checks the packs and stops with `file:line: reason` for a quote outside a section, an unknown section or enemy type, a quote that is too long, a character the font cannot draw, a duplicate, or a `quotes:` header naming a missing pack.
 - The packs today:
-  - `ride.txt` is used by the mofa ride. Its `[kill]` lines are dry Swiss German plus cocky Thurgau car lines ("MFK? NÖD BESTANDE.", "HOI ABSCHLEPPDIENST!"), and it has a `[finale]` section.
-  - `thurgau.txt` is shared by the courts, creek, clubhouse and boss arena. It holds Thurgau-dialect lines in the voice of an agglo macho in love with his own style, with `[kill]` plus one set each for `lawyer`, `cray` and `punk`. A `[kill:<type>]` section replaces `[kill]`, so each set also repeats a few general boasts.
+  - `ride.txt` is used by the mofa ride. Its `[kill]` lines are dry Swiss German plus cocky Thurgau car lines ("MFK? NÖD BESTANDE.", "HOI ABSCHLEPPDIENST!"), and it has `[finale]` and `[complete]` sections.
+  - `thurgau.txt` is shared by the courts, creek, clubhouse and boss arena. It holds Thurgau-dialect lines in the voice of an agglo macho in love with his own style, with `[kill]` plus one set each for `lawyer`, `cray` and `punk`. A `[kill:<type>]` section replaces `[kill]`, so each set also repeats a few general boasts. Its `[complete]` lines (the same as the ride's) are about winning.
   - To give a level its own pack, add `src/quotes/<name>.txt` and put `quotes: <name>` in the level's header.
 
 ## Credits

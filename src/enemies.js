@@ -145,6 +145,8 @@ const Quotes = {
   },
   // Buck's reply in a closing scene (the ride's limo finale): a [finale] line, or nothing
   finaleLine() { const pool = this.lines("finale"); return pool ? Talk.line(pool) : null; },
+  // Buck's winning line on the level-complete screen: a [complete] line, or nothing
+  completeLine() { const pool = this.lines("complete"); return pool ? Talk.line(pool) : null; },
   // when a level's intro hands over to play (not on respawn): a start line 0.6 s later
   onStart() { this.startT = this.lines("start") ? 0.6 : -1; },
   update(dt) {

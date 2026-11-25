@@ -176,7 +176,9 @@ const Game = {
     const time = Math.max(0, 300 - Math.floor(this.levelTime)) * 10;
     const t = { level: CONFIG.levelBonus, health: Player.hp * 100, time: time };
     t.total = t.level + t.health + t.time; t.shown = 0; t.done = false;
+    t.quote = Quotes.completeLine();                     // Buck's winning line ([complete] in the level's quote pack)
     this.tally = t;
+    Screens.resetSmoke();
     Sound.play("oneup");
     this.setState(STATE.LEVEL_COMPLETE);
   },
@@ -247,6 +249,7 @@ const Game = {
         break;
       case STATE.LEVEL_COMPLETE: {
         const t = this.tally;
+        Screens.updateSmoke(dt);                         // Buck's cigarette on the tally screen
         if (!t.done) {
           t.shown = Math.min(t.total, t.shown + Math.ceil(t.total * dt / 1.5));
           if (Input.pressed("enter")) t.shown = t.total;
